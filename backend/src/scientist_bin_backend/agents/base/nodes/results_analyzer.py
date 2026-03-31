@@ -23,7 +23,7 @@ from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.journal import get_journal_for_experiment
 from scientist_bin_backend.execution.metrics_bridge import parse_results_json
-from scientist_bin_backend.utils.llm import get_chat_model
+from scientist_bin_backend.utils.llm import extract_text_content, get_chat_model
 
 
 async def analyze_results(state: dict) -> dict:
@@ -325,7 +325,7 @@ async def _reflect_on_iteration(
         reasoning=decision.reasoning,
     )
     response = await llm.ainvoke([HumanMessage(content=prompt)])
-    content = response.content.strip()
+    content = extract_text_content(response.content).strip()
     return content if content else None
 
 

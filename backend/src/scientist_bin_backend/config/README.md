@@ -2,6 +2,8 @@
 
 Application settings loaded from environment variables using Pydantic Settings.
 
+The `.env` file is resolved relative to `backend/` (not the current working directory), so the CLI and server work correctly regardless of where they are invoked from.
+
 ## Environment Variables
 
 | Variable | Default | Description |

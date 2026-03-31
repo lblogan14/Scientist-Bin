@@ -56,10 +56,10 @@ backend/
 ├── data/                          # Input datasets
 │   └── iris_data/Iris.csv         # Example dataset (150 rows, 3 classes)
 ├── outputs/                       # Agent-generated output (git-ignored)
-│   ├── runs/                      # Per-experiment execution artifacts
-│   ├── models/                    # Trained model checkpoints
-│   ├── results/                   # Evaluation reports
-│   └── logs/                      # Run metadata
+│   ├── models/                    # Best model per experiment (<id>.joblib)
+│   ├── results/                   # Result JSON per experiment (<id>.json)
+│   ├── logs/                      # Decision journal per experiment (<id>.jsonl)
+│   └── runs/                      # Raw per-run execution artifacts (scripts, stdout, stderr)
 ├── src/scientist_bin_backend/     # Main package
 │   ├── agents/
 │   │   ├── base/                  # Reusable graph topology (build_ml_graph factory)
@@ -70,7 +70,7 @@ backend/
 │   ├── api/                       # FastAPI routes + experiment store
 │   ├── config/                    # Pydantic settings
 │   └── utils/                     # LLM helpers, SKILL.md loader
-└── tests/                         # 85 tests (pytest)
+└── tests/                         # 92 tests (pytest)
 ```
 
 ## API Endpoints
@@ -88,13 +88,38 @@ backend/
 ## CLI
 
 ```bash
-uv run scientist-bin serve                                    # Start server
-uv run scientist-bin train "Classify iris" --data-file data/iris_data/Iris.csv
-uv run scientist-bin train-remote "Classify iris" --data-file data/iris_data/Iris.csv
-uv run scientist-bin list                                     # List experiments
-uv run scientist-bin show <id> --json                         # Show experiment
-uv run scientist-bin delete <id>                              # Delete experiment
+uv run scientist-bin serve                                              # Start server
+uv run scientist-bin train "Classify iris" --data-file data/iris_data/Iris.csv  # Train locally
+uv run scientist-bin train "Classify iris" --data-file data/iris_data/Iris.csv -q  # JSON only
+uv run scientist-bin train-remote "Classify iris"                       # Submit to server
+uv run scientist-bin list                                               # List experiments
+uv run scientist-bin show <id> --json                                   # Show experiment
+uv run scientist-bin delete <id>                                        # Delete experiment
 ```
+
+The `train` command prints real-time progress as the agent runs:
+
+```
+  Scientist-Bin  |  Training Agent
+  Experiment: 42ab3ddd43e8
+  Objective:  Classify iris species
+  Data file:  C:\...\data\iris_data\Iris.csv
+
+  [classify] Classified as classification
+  [eda] Shape: 150 rows x 6 columns ...
+  [planning] A comprehensive classification workflow ...
+  [iter 0] generate_code
+  [run] Started (timeout: 60s, estimated: 10s)
+  [run] completed in 3.6s
+  [iter 1] analyze_results -> accept
+  [done] Best model: LogisticRegression (accuracy=1.0000)
+
+  [saved] Results  -> ...\outputs\results\42ab3ddd43e8.json
+  [saved] Model    -> ...\outputs\models\42ab3ddd43e8.joblib
+  [saved] Journal  -> ...\outputs\logs\42ab3ddd43e8.jsonl
+```
+
+Use `--quiet` / `-q` to suppress progress output and emit only the final JSON result. Data file paths (`--data-file`) are resolved to absolute and validated before the agent starts. The `.env` file is always loaded from `backend/` regardless of the current working directory.
 
 ## Key Design Decisions
 
@@ -108,7 +133,7 @@ uv run scientist-bin delete <id>                              # Delete experimen
 ## Development
 
 ```bash
-uv run pytest -v              # Run all tests (85 tests)
+uv run pytest -v              # Run all tests (92 tests)
 uv run pytest -k "iris"       # Integration tests with real data
 uv run ruff check .           # Lint
 uv run ruff format .          # Format
@@ -119,7 +144,7 @@ uv run ruff format .          # Format
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GOOGLE_API_KEY` | (required) | Google Gemini API key |
-| `SCIENTIST_BIN_GEMINI_MODEL` | `gemini-2.0-flash` | Gemini model |
+| `SCIENTIST_BIN_GEMINI_MODEL` | `gemini-3-flash` | Gemini model |
 | `SCIENTIST_BIN_DEBUG` | `false` | Debug mode |
 | `SCIENTIST_BIN_CORS_ORIGINS` | `["http://localhost:5173"]` | CORS origins |
 | `SCIENTIST_BIN_SANDBOX_TIMEOUT` | `300` | Seconds per code execution |

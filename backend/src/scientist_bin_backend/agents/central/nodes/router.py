@@ -8,7 +8,7 @@ from langgraph.graph import END
 from scientist_bin_backend.agents.central.prompts.templates import ROUTER_PROMPT
 from scientist_bin_backend.agents.central.schemas import FrameworkSelection
 from scientist_bin_backend.agents.central.states import CentralState
-from scientist_bin_backend.utils.llm import get_chat_model
+from scientist_bin_backend.utils.llm import extract_text_content, get_chat_model
 
 SUPPORTED_FRAMEWORKS = {"sklearn"}
 
@@ -27,7 +27,7 @@ async def route(state: CentralState) -> dict:
     # Otherwise, ask the LLM to decide
     analysis = ""
     if state.get("messages"):
-        analysis = state["messages"][-1].content  # type: ignore[union-attr]
+        analysis = extract_text_content(state["messages"][-1].content)  # type: ignore[union-attr]
 
     llm = get_chat_model()
     structured_llm = llm.with_structured_output(FrameworkSelection)

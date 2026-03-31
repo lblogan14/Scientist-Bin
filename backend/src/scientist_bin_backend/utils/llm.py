@@ -7,8 +7,33 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from scientist_bin_backend.config.settings import Settings, get_settings
 
 
+def extract_text_content(content: str | list) -> str:
+    """Normalize AIMessage.content to a plain string.
+
+    Newer Gemini models may return content as a list of dicts
+    (``[{'type': 'text', 'text': '...', ...}]``) instead of a plain string.
+    This helper handles both formats.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+            elif isinstance(block, str):
+                parts.append(block)
+        return "".join(parts)
+    return str(content)
+
+
 def get_chat_model(settings: Settings | None = None) -> ChatGoogleGenerativeAI:
-    """Return a LangChain ChatGoogleGenerativeAI instance configured from settings."""
+    """Return a LangChain ChatGoogleGenerativeAI instance configured from settings.
+
+    Note: With some Gemini models, ``AIMessage.content`` may be a list of dicts
+    rather than a plain string. Use :func:`extract_text_content` to normalize
+    the content when accessing it directly (not needed for structured output).
+    """
     if settings is None:
         settings = get_settings()
     return ChatGoogleGenerativeAI(

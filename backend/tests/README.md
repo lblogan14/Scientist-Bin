@@ -20,6 +20,7 @@ tests/
 │   ├── test_metrics_bridge.py         — ===RESULTS=== JSON parsing
 │   └── test_runner_integration.py     — End-to-end CodeRunner with iris data
 └── utils/
+    ├── test_llm.py                    — extract_text_content() for Gemini content normalization
     └── test_skill_loader.py           — SKILL.md parsing, discovery, matching
 ```
 

@@ -15,7 +15,7 @@ from scientist_bin_backend.agents.sklearn.prompts.templates import CODE_GENERATO
 from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
-from scientist_bin_backend.utils.llm import get_chat_model
+from scientist_bin_backend.utils.llm import extract_text_content, get_chat_model
 
 
 async def generate_code(state: dict) -> dict:
@@ -85,7 +85,7 @@ async def generate_code(state: dict) -> dict:
         retry_context=retry_context,
     )
     response = await llm.ainvoke([HumanMessage(content=prompt)])
-    code = strip_code_fences(response.content)
+    code = strip_code_fences(extract_text_content(response.content))
 
     experiment_id = state.get("experiment_id")
     if experiment_id:
