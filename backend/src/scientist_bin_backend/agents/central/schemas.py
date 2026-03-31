@@ -10,6 +10,7 @@ class TrainRequest(BaseModel):
 
     objective: str = Field(..., description="What the user wants to achieve")
     data_description: str = Field(default="", description="Description of the dataset")
+    data_file_path: str | None = Field(default=None, description="Path to the dataset file")
     framework_preference: str | None = Field(
         default=None,
         description="Optional framework preference (e.g. 'sklearn', 'pytorch')",
@@ -27,7 +28,11 @@ class AgentResponse(BaseModel):
     """Final response produced by the agent pipeline."""
 
     framework: str
-    plan: str | None = None
+    plan: dict | None = None
     generated_code: str | None = None
     evaluation_results: dict | None = None
+    experiment_history: list[dict] = []
+    data_profile: dict | None = None
+    problem_type: str | None = None
+    iterations: int = 0
     status: str = "completed"

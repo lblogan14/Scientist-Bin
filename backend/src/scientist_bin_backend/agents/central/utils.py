@@ -14,6 +14,7 @@ def build_initial_state(request: TrainRequest) -> CentralState:
         messages=[],
         objective=request.objective,
         data_description=request.data_description,
+        data_file_path=request.data_file_path,
         framework_preference=request.framework_preference,
         selected_framework=None,
         agent_response=None,

@@ -2,35 +2,32 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from scientist_bin_backend.agents.base.schemas import (
+    AlgorithmCandidate,
+    FeatureEngineeringStep,
+    PreprocessingStep,
+    StrategyPlan,
+)
 
 
-class SklearnPlan(BaseModel):
-    """Structured plan produced by the planner node."""
+class SklearnStrategyPlan(StrategyPlan):
+    """Sklearn-specific strategy plan with pipeline details."""
 
-    approach: str = Field(..., description="High-level approach description")
-    algorithms: list[str] = Field(default_factory=list, description="Algorithms to try")
-    preprocessing_steps: list[str] = Field(
-        default_factory=list, description="Data preprocessing steps"
+    pipeline_structure: str = Field(
+        default="", description="Description of the sklearn Pipeline structure"
     )
-    evaluation_metrics: list[str] = Field(
-        default_factory=list, description="Metrics to evaluate the model"
+    use_grid_search: bool = Field(
+        default=True, description="Whether to use GridSearchCV or RandomizedSearchCV"
     )
 
 
-class CodeGenerationResult(BaseModel):
-    """Output of the code generation step."""
-
-    code: str = Field(..., description="Complete, runnable Python/sklearn code")
-    explanation: str = Field(default="", description="Brief explanation of the code")
-
-
-class EvaluationResult(BaseModel):
-    """Output of the code evaluation step."""
-
-    success: bool = Field(..., description="Whether the code is correct and complete")
-    metrics: dict | None = Field(default=None, description="Predicted/estimated metrics")
-    errors: list[str] | None = Field(default=None, description="Issues found")
-    suggestions: list[str] | None = Field(
-        default=None, description="Improvement suggestions"
-    )
+# Re-export base schemas for convenience
+__all__ = [
+    "AlgorithmCandidate",
+    "FeatureEngineeringStep",
+    "PreprocessingStep",
+    "SklearnStrategyPlan",
+    "StrategyPlan",
+]

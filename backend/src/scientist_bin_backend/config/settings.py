@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     debug: bool = False
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # Sandbox / execution settings
+    sandbox_timeout: int = 300  # seconds per code execution
+    max_iterations: int = 5  # max generate-execute-analyze cycles
+    sandbox_max_output_bytes: int = 1_000_000  # 1 MB stdout cap
+
 
 @lru_cache
 def get_settings() -> Settings:

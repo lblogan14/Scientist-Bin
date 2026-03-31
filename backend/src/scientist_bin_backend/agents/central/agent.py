@@ -24,5 +24,9 @@ class CentralAgent:
             plan=agent_resp.get("plan"),
             generated_code=agent_resp.get("generated_code"),
             evaluation_results=agent_resp.get("evaluation_results"),
+            experiment_history=agent_resp.get("experiment_history", []),
+            data_profile=agent_resp.get("data_profile"),
+            problem_type=agent_resp.get("problem_type"),
+            iterations=agent_resp.get("iterations", 0),
             status="failed" if final_state.get("error") else "completed",
         )

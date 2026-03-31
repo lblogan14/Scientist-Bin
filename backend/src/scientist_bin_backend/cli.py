@@ -29,6 +29,7 @@ def serve(
 def train(
     objective: str = typer.Argument(..., help="Training objective description"),
     data: str = typer.Option("", "--data", help="Data description"),
+    data_file: str | None = typer.Option(None, "--data-file", help="Path to dataset file"),
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
 ) -> None:
     """Run training agent locally (no server required)."""
@@ -41,6 +42,7 @@ def train(
     request = TrainRequest(
         objective=objective,
         data_description=data,
+        data_file_path=data_file,
         framework_preference=framework,
     )
     result = asyncio.run(agent.run(request))
@@ -51,13 +53,16 @@ def train(
 def train_remote(
     objective: str = typer.Argument(..., help="Training objective description"),
     data: str = typer.Option("", "--data", help="Data description"),
+    data_file: str | None = typer.Option(None, "--data-file", help="Path to dataset file"),
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
     base_url: str = typer.Option("http://localhost:8000", "--base-url", help="Server URL"),
 ) -> None:
     """Submit training request to a running server."""
     import httpx
 
-    payload = {"objective": objective, "data_description": data}
+    payload: dict = {"objective": objective, "data_description": data}
+    if data_file:
+        payload["data_file_path"] = data_file
     if framework:
         payload["framework_preference"] = framework
     response = httpx.post(f"{base_url}/api/v1/train", json=payload)

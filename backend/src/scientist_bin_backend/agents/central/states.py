@@ -14,6 +14,7 @@ class CentralState(TypedDict):
     messages: Annotated[list, add_messages]
     objective: str
     data_description: str
+    data_file_path: str | None
     framework_preference: str | None
     selected_framework: str | None
     agent_response: dict | None

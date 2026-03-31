@@ -21,9 +21,7 @@ async def route(state: CentralState) -> dict:
     if preference and preference.lower() in SUPPORTED_FRAMEWORKS:
         return {
             "selected_framework": preference.lower(),
-            "messages": [
-                HumanMessage(content=f"Using user-requested framework: {preference}")
-            ],
+            "messages": [HumanMessage(content=f"Using user-requested framework: {preference}")],
         }
 
     # Otherwise, ask the LLM to decide
@@ -38,9 +36,7 @@ async def route(state: CentralState) -> dict:
         objective=state["objective"],
         framework_preference=preference or "none",
     )
-    selection: FrameworkSelection = await structured_llm.ainvoke(
-        [HumanMessage(content=prompt)]
-    )
+    selection: FrameworkSelection = await structured_llm.ainvoke([HumanMessage(content=prompt)])
 
     msg = f"Selected {selection.framework}: {selection.reasoning}"
     return {

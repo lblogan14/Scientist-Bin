@@ -1,54 +1,93 @@
 """Tests for the sklearn subagent schemas, utilities, and routing logic."""
 
-from langgraph.graph import END
-
-from scientist_bin_backend.agents.sklearn.nodes.evaluator import should_retry
-from scientist_bin_backend.agents.sklearn.schemas import (
-    CodeGenerationResult,
-    EvaluationResult,
-    SklearnPlan,
+from scientist_bin_backend.agents.base.nodes.results_analyzer import route_decision
+from scientist_bin_backend.agents.base.schemas import (
+    AlgorithmCandidate,
+    FinalReport,
+    IterationDecision,
+    ProblemClassification,
+    StrategyPlan,
 )
+from scientist_bin_backend.agents.sklearn.schemas import SklearnStrategyPlan
 from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
 
-# --- Schema tests ---
+# --- Base schema tests ---
 
 
-def test_sklearn_plan_defaults():
-    plan = SklearnPlan(approach="Random forest classification")
-    assert plan.approach == "Random forest classification"
-    assert plan.algorithms == []
-    assert plan.preprocessing_steps == []
-
-
-def test_sklearn_plan_full():
-    plan = SklearnPlan(
-        approach="Ensemble classification",
-        algorithms=["RandomForest", "GradientBoosting"],
-        preprocessing_steps=["StandardScaler", "OneHotEncoder"],
-        evaluation_metrics=["accuracy", "f1"],
+def test_problem_classification():
+    result = ProblemClassification(
+        problem_type="classification",
+        reasoning="Categorical target",
+        target_column_guess="species",
+        suggested_metrics=["accuracy", "f1"],
     )
-    assert len(plan.algorithms) == 2
+    assert result.problem_type == "classification"
+    assert result.target_column_guess == "species"
 
 
-def test_code_generation_result():
-    result = CodeGenerationResult(code="print('hello')", explanation="A simple test")
-    assert "hello" in result.code
-
-
-def test_evaluation_result_success():
-    result = EvaluationResult(success=True, metrics={"accuracy": 0.95})
-    assert result.success is True
-    assert result.errors is None
-
-
-def test_evaluation_result_failure():
-    result = EvaluationResult(
-        success=False,
-        errors=["Missing import"],
-        suggestions=["Add import sklearn"],
+def test_algorithm_candidate():
+    candidate = AlgorithmCandidate(
+        algorithm_name="RandomForestClassifier",
+        rationale="Good for tabular data",
+        hyperparameter_grid={"n_estimators": [100, 200], "max_depth": [5, 10]},
+        priority=2,
     )
-    assert result.success is False
-    assert len(result.errors) == 1
+    assert candidate.algorithm_name == "RandomForestClassifier"
+    assert len(candidate.hyperparameter_grid) == 2
+
+
+def test_strategy_plan_defaults():
+    plan = StrategyPlan(
+        approach_summary="Ensemble classification",
+        candidate_algorithms=[
+            AlgorithmCandidate(
+                algorithm_name="LogisticRegression",
+                rationale="Simple baseline",
+            ),
+        ],
+    )
+    assert plan.approach_summary == "Ensemble classification"
+    assert len(plan.candidate_algorithms) == 1
+    assert plan.cv_strategy == "5-fold stratified"
+
+
+def test_sklearn_strategy_plan():
+    plan = SklearnStrategyPlan(
+        approach_summary="Sklearn pipeline",
+        candidate_algorithms=[
+            AlgorithmCandidate(
+                algorithm_name="RandomForest",
+                rationale="Good for tabular",
+            ),
+        ],
+        pipeline_structure="imputer -> scaler -> model",
+        use_grid_search=True,
+    )
+    assert plan.pipeline_structure == "imputer -> scaler -> model"
+    assert plan.use_grid_search is True
+
+
+def test_iteration_decision():
+    decision = IterationDecision(
+        action="refine_params",
+        reasoning="Best model can be improved",
+        refinement_instructions="Increase n_estimators",
+        confidence=0.8,
+    )
+    assert decision.action == "refine_params"
+    assert decision.confidence == 0.8
+
+
+def test_final_report():
+    report = FinalReport(
+        best_model="RandomForest",
+        best_metrics={"accuracy": 0.95},
+        total_iterations=3,
+        interpretation="RandomForest performed best",
+        recommendations=["Try more data"],
+    )
+    assert report.best_model == "RandomForest"
+    assert report.total_iterations == 3
 
 
 # --- Utility tests ---
@@ -69,31 +108,39 @@ def test_strip_code_fences_no_fences():
     assert strip_code_fences(text) == 'print("hello")'
 
 
-# --- Retry routing tests ---
+# --- Route decision tests ---
 
 
-def test_should_retry_success():
-    state = {
-        "evaluation_results": {"success": True},
-        "retry_count": 1,
-        "max_retries": 3,
-    }
-    assert should_retry(state) == END
+def test_route_decision_accept():
+    state = {"next_action": "accept"}
+    assert route_decision(state) == "finalize"
 
 
-def test_should_retry_failure():
-    state = {
-        "evaluation_results": {"success": False},
-        "retry_count": 1,
-        "max_retries": 3,
-    }
-    assert should_retry(state) == "generate_code"
+def test_route_decision_abort():
+    state = {"next_action": "abort"}
+    assert route_decision(state) == "finalize"
 
 
-def test_should_retry_max_reached():
-    state = {
-        "evaluation_results": {"success": False},
-        "retry_count": 3,
-        "max_retries": 3,
-    }
-    assert should_retry(state) == END
+def test_route_decision_fix_error():
+    state = {"next_action": "fix_error"}
+    assert route_decision(state) == "generate_code"
+
+
+def test_route_decision_refine_params():
+    state = {"next_action": "refine_params"}
+    assert route_decision(state) == "generate_code"
+
+
+def test_route_decision_try_new_algo():
+    state = {"next_action": "try_new_algo"}
+    assert route_decision(state) == "generate_code"
+
+
+def test_route_decision_feature_engineer():
+    state = {"next_action": "feature_engineer"}
+    assert route_decision(state) == "generate_code"
+
+
+def test_route_decision_default_aborts():
+    state = {}
+    assert route_decision(state) == "finalize"
