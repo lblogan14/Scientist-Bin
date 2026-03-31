@@ -121,6 +121,31 @@ async def execute_code(state: dict) -> dict:
         },
     )
 
+    # Stream stdout/stderr as log_output events for the frontend console
+    for line in result.stdout.splitlines():
+        await event_bus.emit(
+            experiment_id,
+            ExperimentEvent(event_type="log_output", data={"line": line}),
+        )
+    if result.stderr:
+        for line in result.stderr.splitlines():
+            await event_bus.emit(
+                experiment_id,
+                ExperimentEvent(event_type="log_output", data={"line": f"[stderr] {line}"}),
+            )
+
+    # Parse results to enrich the completion event
+    from scientist_bin_backend.execution.metrics_bridge import parse_results_json as _parse_results
+
+    parsed = _parse_results(result.stdout)
+    best_algo = parsed.get("best_model", "") if parsed else ""
+    best_metrics: dict = {}
+    if parsed and "results" in parsed:
+        for entry in parsed["results"]:
+            entry_metrics = entry.get("metrics", {})
+            if not best_metrics or (entry.get("algorithm") == best_algo and entry_metrics):
+                best_metrics = entry_metrics
+
     # Emit completion event
     await event_bus.emit(
         experiment_id,
@@ -128,9 +153,12 @@ async def execute_code(state: dict) -> dict:
             event_type="run_completed",
             data={
                 "run_id": run_id,
+                "iteration": state.get("current_iteration", 0),
                 "status": result.status,
                 "exit_code": result.exit_code,
                 "wall_time_seconds": result.wall_time_seconds,
+                "algorithm": best_algo,
+                "metrics": best_metrics,
             },
         ),
     )

@@ -1,12 +1,50 @@
-"""Thread-safe in-memory experiment store."""
+"""Thread-safe experiment store with file-based persistence."""
 
 from __future__ import annotations
 
+import json
 import threading
 import uuid
 from datetime import UTC, datetime
+from enum import StrEnum
+from pathlib import Path
 
 from pydantic import BaseModel, Field
+
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
+
+
+class ExperimentStatus(StrEnum):
+    pending = "pending"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class ExperimentPhase(StrEnum):
+    initializing = "initializing"
+    classify = "classify"
+    eda = "eda"
+    planning = "planning"
+    execution = "execution"
+    analysis = "analysis"
+    done = "done"
+    error = "error"
+
+
+class Framework(StrEnum):
+    sklearn = "sklearn"
+    pytorch = "pytorch"
+    tensorflow = "tensorflow"
+    transformers = "transformers"
+    diffusers = "diffusers"
+
+
+# ---------------------------------------------------------------------------
+# Models
+# ---------------------------------------------------------------------------
 
 
 class MetricPoint(BaseModel):
@@ -45,7 +83,7 @@ class Experiment(BaseModel):
     data_description: str = ""
     data_file_path: str | None = None
     framework: str | None = None
-    status: str = "pending"  # pending | running | completed | failed
+    status: str = ExperimentStatus.pending
     phase: str | None = None
     runs: list[Run] = Field(default_factory=list)
     best_run_id: str | None = None
@@ -56,12 +94,51 @@ class Experiment(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
-class ExperimentStore:
-    """Thread-safe CRUD store backed by an in-memory dict."""
+# ---------------------------------------------------------------------------
+# Store
+# ---------------------------------------------------------------------------
 
-    def __init__(self) -> None:
+
+_DEFAULT_STORE_DIR = (
+    Path(__file__).resolve().parent.parent.parent.parent / "outputs" / "experiments"
+)
+
+
+class ExperimentStore:
+    """Thread-safe CRUD store with JSON file persistence."""
+
+    def __init__(self, store_dir: Path | None = None) -> None:
         self._experiments: dict[str, Experiment] = {}
         self._lock = threading.Lock()
+        self._store_dir = store_dir or _DEFAULT_STORE_DIR
+        self._store_dir.mkdir(parents=True, exist_ok=True)
+        self._load_from_disk()
+
+    # -- Persistence helpers --------------------------------------------------
+
+    def _experiment_path(self, experiment_id: str) -> Path:
+        return self._store_dir / f"{experiment_id}.json"
+
+    def _save_to_disk(self, experiment: Experiment) -> None:
+        """Persist a single experiment to its JSON file."""
+        path = self._experiment_path(experiment.id)
+        path.write_text(experiment.model_dump_json(indent=2), encoding="utf-8")
+
+    def _load_from_disk(self) -> None:
+        """Load all experiments from the store directory on startup."""
+        for path in self._store_dir.glob("*.json"):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                exp = Experiment.model_validate(data)
+                self._experiments[exp.id] = exp
+            except Exception:
+                continue  # skip corrupt files
+
+    def _delete_from_disk(self, experiment_id: str) -> None:
+        path = self._experiment_path(experiment_id)
+        path.unlink(missing_ok=True)
+
+    # -- CRUD -----------------------------------------------------------------
 
     def create(
         self,
@@ -78,6 +155,7 @@ class ExperimentStore:
         )
         with self._lock:
             self._experiments[experiment.id] = experiment
+            self._save_to_disk(experiment)
         return experiment
 
     def get(self, experiment_id: str) -> Experiment | None:
@@ -99,6 +177,7 @@ class ExperimentStore:
                 return None
             updated = exp.model_copy(update={**kwargs, "updated_at": datetime.now(UTC)})
             self._experiments[experiment_id] = updated
+            self._save_to_disk(updated)
             return updated
 
     def append_events(self, experiment_id: str, events: list[dict]) -> Experiment | None:
@@ -114,11 +193,15 @@ class ExperimentStore:
                 }
             )
             self._experiments[experiment_id] = updated
+            self._save_to_disk(updated)
             return updated
 
     def delete(self, experiment_id: str) -> bool:
         with self._lock:
-            return self._experiments.pop(experiment_id, None) is not None
+            removed = self._experiments.pop(experiment_id, None) is not None
+            if removed:
+                self._delete_from_disk(experiment_id)
+            return removed
 
 
 experiment_store = ExperimentStore()

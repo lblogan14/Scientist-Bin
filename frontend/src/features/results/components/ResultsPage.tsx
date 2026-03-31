@@ -5,11 +5,14 @@ import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useResult } from "../hooks/use-result";
+import { AlgorithmComparisonChart } from "./AlgorithmComparisonChart";
+import { AlgorithmRadarChart } from "./AlgorithmRadarChart";
 import { CodeDisplay } from "./CodeDisplay";
 import { DataProfileCard } from "./DataProfileCard";
 import { EvaluationReport } from "./EvaluationReport";
 import { JournalViewer } from "./JournalViewer";
 import { MetricCards } from "./MetricCards";
+import { TrainingTimeChart } from "./TrainingTimeChart";
 
 export default function ResultsPage() {
   const [searchParams] = useSearchParams();
@@ -61,11 +64,16 @@ export default function ResultsPage() {
           <TabsTrigger value="journal">Journal</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="experiments" className="mt-4">
+        <TabsContent value="experiments" className="mt-4 space-y-4">
           <EvaluationReport
             evaluation={evaluationResults}
             experimentHistory={experimentHistory}
           />
+          <div className="grid gap-4 md:grid-cols-2">
+            <AlgorithmComparisonChart history={experimentHistory} />
+            <TrainingTimeChart history={experimentHistory} />
+          </div>
+          <AlgorithmRadarChart history={experimentHistory} />
         </TabsContent>
 
         <TabsContent value="code" className="mt-4">

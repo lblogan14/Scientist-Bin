@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from scientist_bin_backend.api.experiments import experiment_store
+from scientist_bin_backend.api.experiments import Run, experiment_store
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 
@@ -39,6 +40,9 @@ async def _sync_events_to_store(experiment_id: str) -> None:
     (GET /experiments/{id}) see up-to-date phase and progress_events without
     relying solely on the SSE stream.
     """
+    # Track the current run being assembled from events
+    _current_run_id: str | None = None
+
     async for event in event_bus.subscribe(experiment_id):
         event_dict = event.model_dump(mode="json")
 
@@ -50,15 +54,45 @@ async def _sync_events_to_store(experiment_id: str) -> None:
 
         elif event.event_type == "run_started":
             experiment_store.update(experiment_id, phase="execution")
+            # Create a new Run object
+            run_id = event.data.get("run_id", "")
+            _current_run_id = run_id
+            exp = experiment_store.get(experiment_id)
+            if exp is not None:
+                new_run = Run(
+                    id=run_id,
+                    experiment_id=experiment_id,
+                    status="running",
+                    started_at=datetime.now(UTC),
+                )
+                experiment_store.update(experiment_id, runs=exp.runs + [new_run])
             experiment_store.append_events(experiment_id, [event_dict])
 
         elif event.event_type == "run_completed":
+            run_id = event.data.get("run_id", _current_run_id or "")
             exp = experiment_store.get(experiment_id)
             if exp is not None:
+                # Update the matching run with completion data
+                updated_runs = []
+                for run in exp.runs:
+                    if run.id == run_id:
+                        run = run.model_copy(
+                            update={
+                                "status": event.data.get("status", "completed"),
+                                "wall_time_seconds": event.data.get("wall_time_seconds"),
+                                "algorithm": event.data.get("algorithm", ""),
+                                "final_metrics": event.data.get("metrics"),
+                                "completed_at": datetime.now(UTC),
+                            }
+                        )
+                    updated_runs.append(run)
                 experiment_store.update(
-                    experiment_id, iteration_count=exp.iteration_count + 1
+                    experiment_id,
+                    runs=updated_runs,
+                    iteration_count=exp.iteration_count + 1,
                 )
             experiment_store.append_events(experiment_id, [event_dict])
+            _current_run_id = None
 
         elif event.event_type == "agent_activity":
             action = event.data.get("action")

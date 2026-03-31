@@ -1,13 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { MetricPieChart } from "@/components/charts/MetricPieChart";
+import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import type { DataProfile } from "@/types/api";
 
 interface DataProfileCardProps {
@@ -19,12 +13,28 @@ export function DataProfileCard({ profile }: DataProfileCardProps) {
 
   const [rows, cols] = profile.shape;
 
+  const classDistData = profile.class_distribution
+    ? Object.entries(profile.class_distribution).map(([name, value]) => ({
+        name,
+        value,
+      }))
+    : [];
+
+  const columnTypeData = [
+    { name: "Numeric", value: profile.numeric_columns.length },
+    { name: "Categorical", value: profile.categorical_columns.length },
+  ].filter((d) => d.value > 0);
+
+  const missingData = Object.entries(profile.missing_counts)
+    .filter(([, count]) => count > 0)
+    .map(([name, value]) => ({ name, value }));
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm font-medium">Data Profile (EDA)</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Key stats */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div>
@@ -55,45 +65,35 @@ export function DataProfileCard({ profile }: DataProfileCardProps) {
           </div>
         )}
 
-        {/* Class distribution */}
-        {profile.class_distribution && (
-          <div>
-            <p className="text-muted-foreground mb-1 text-xs">
-              Class Distribution
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(profile.class_distribution).map(
-                ([cls, count]) => (
-                  <Badge key={cls} variant="outline">
-                    {cls}: {count}
-                  </Badge>
-                ),
-              )}
-            </div>
-          </div>
-        )}
+        {/* Charts row */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Class distribution pie chart */}
+          {classDistData.length > 0 && (
+            <MetricPieChart
+              title="Class Distribution"
+              data={classDistData}
+              height={250}
+            />
+          )}
 
-        {/* Missing values */}
-        {Object.keys(profile.missing_counts).length > 0 && (
-          <div>
-            <p className="text-muted-foreground mb-1 text-xs">Missing Values</p>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Column</TableHead>
-                  <TableHead>Missing</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(profile.missing_counts).map(([col, count]) => (
-                  <TableRow key={col}>
-                    <TableCell className="font-mono text-xs">{col}</TableCell>
-                    <TableCell>{count}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          {/* Column type donut */}
+          {columnTypeData.length > 1 && (
+            <MetricPieChart
+              title="Column Types"
+              data={columnTypeData}
+              height={250}
+            />
+          )}
+        </div>
+
+        {/* Missing values chart */}
+        {missingData.length > 0 && (
+          <HorizontalBarChart
+            title="Missing Values"
+            data={missingData}
+            color="var(--chart-5)"
+            height={Math.max(150, missingData.length * 40)}
+          />
         )}
 
         {/* Data quality issues */}

@@ -3,6 +3,8 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { useModels } from "../hooks/use-models";
 import { ModelComparisonTable } from "./ModelComparisonTable";
+import { ModelMetricChart } from "./ModelMetricChart";
+import { ModelTradeoffScatter } from "./ModelTradeoffScatter";
 
 export default function ModelSelectionPage() {
   const { data: models, isLoading } = useModels();
@@ -19,7 +21,13 @@ export default function ModelSelectionPage() {
           description="Complete a training experiment to see models here."
         />
       ) : (
-        <ModelComparisonTable models={models} />
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            <ModelMetricChart models={models} />
+            <ModelTradeoffScatter models={models} />
+          </div>
+          <ModelComparisonTable models={models} />
+        </>
       )}
     </div>
   );

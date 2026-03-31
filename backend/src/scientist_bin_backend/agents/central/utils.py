@@ -8,9 +8,7 @@ from scientist_bin_backend.agents.central.states import CentralState
 SUPPORTED_FRAMEWORKS = {"sklearn"}
 
 
-def build_initial_state(
-    request: TrainRequest, *, experiment_id: str | None = None
-) -> CentralState:
+def build_initial_state(request: TrainRequest, *, experiment_id: str | None = None) -> CentralState:
     """Convert a TrainRequest into the initial CentralState dict."""
     return CentralState(
         messages=[],
