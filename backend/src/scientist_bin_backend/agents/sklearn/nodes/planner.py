@@ -15,6 +15,8 @@ from langchain_core.messages import HumanMessage
 
 from scientist_bin_backend.agents.sklearn.prompts.templates import PLANNER_PROMPT
 from scientist_bin_backend.agents.sklearn.schemas import SklearnStrategyPlan
+from scientist_bin_backend.events.bus import event_bus
+from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.utils.llm import get_chat_model, search_with_gemini
 from scientist_bin_backend.utils.skill_loader import (
     discover_skills,
@@ -107,6 +109,21 @@ async def plan_strategy(state: dict) -> dict:
         f"CV strategy: {plan.cv_strategy}\n"
         f"Success criteria: {json.dumps(plan.success_criteria)}"
     )
+
+    experiment_id = state.get("experiment_id")
+    if experiment_id:
+        await event_bus.emit(
+            experiment_id,
+            ExperimentEvent(
+                event_type="phase_change",
+                data={
+                    "phase": "planning",
+                    "algorithms": candidate_algorithms,
+                    "summary": plan.approach_summary,
+                    "matched_skill": matched_skill.name if matched_skill else None,
+                },
+            ),
+        )
 
     return {
         "strategy": plan.model_dump(),

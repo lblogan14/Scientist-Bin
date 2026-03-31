@@ -14,6 +14,8 @@ from langchain_core.messages import HumanMessage
 
 from scientist_bin_backend.agents.base.prompts.templates import CLASSIFY_PROBLEM_PROMPT
 from scientist_bin_backend.agents.base.schemas import ProblemClassification
+from scientist_bin_backend.events.bus import event_bus
+from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.runner import CodeRunner, RunConfig
 from scientist_bin_backend.execution.templates import EDA_TEMPLATE
 from scientist_bin_backend.utils.llm import get_chat_model
@@ -51,6 +53,20 @@ async def classify_problem(state: dict) -> dict:
     )
     result: ProblemClassification = await structured_llm.ainvoke([HumanMessage(content=prompt)])
 
+    experiment_id = state.get("experiment_id")
+    if experiment_id:
+        await event_bus.emit(
+            experiment_id,
+            ExperimentEvent(
+                event_type="phase_change",
+                data={
+                    "phase": "classify",
+                    "problem_type": result.problem_type,
+                    "message": f"Classified as {result.problem_type}",
+                },
+            ),
+        )
+
     return {
         "problem_type": result.problem_type,
         "phase": "eda",
@@ -80,6 +96,7 @@ async def analyze_data(state: dict) -> dict:
 
     Uses 0 LLM calls — all analysis is done by pandas in a subprocess.
     """
+    experiment_id = state.get("experiment_id")
     data_file_path = state.get("data_file_path")
     if not data_file_path:
         return {
@@ -132,6 +149,14 @@ async def analyze_data(state: dict) -> dict:
         try:
             data_profile = json.loads(result.stdout.strip())
             summary = data_profile.get("statistics_summary", "EDA completed")
+            if experiment_id:
+                await event_bus.emit(
+                    experiment_id,
+                    ExperimentEvent(
+                        event_type="phase_change",
+                        data={"phase": "eda", "message": summary},
+                    ),
+                )
             return {
                 "data_profile": data_profile,
                 "eda_code": eda_code,

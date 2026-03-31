@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from scientist_bin_backend.api.experiments import experiment_store
 from scientist_bin_backend.events.bus import event_bus
+from scientist_bin_backend.events.types import ExperimentEvent
 
 router = APIRouter(prefix="/api/v1")
 
@@ -29,6 +32,48 @@ class TrainRequestBody(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+async def _sync_events_to_store(experiment_id: str) -> None:
+    """Subscribe to experiment events and mirror phase/progress into the store.
+
+    Runs as a concurrent task alongside the agent so that polling clients
+    (GET /experiments/{id}) see up-to-date phase and progress_events without
+    relying solely on the SSE stream.
+    """
+    async for event in event_bus.subscribe(experiment_id):
+        event_dict = event.model_dump(mode="json")
+
+        if event.event_type == "phase_change":
+            phase = event.data.get("phase")
+            if phase:
+                experiment_store.update(experiment_id, phase=phase)
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        elif event.event_type == "run_started":
+            experiment_store.update(experiment_id, phase="execution")
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        elif event.event_type == "run_completed":
+            exp = experiment_store.get(experiment_id)
+            if exp is not None:
+                experiment_store.update(
+                    experiment_id, iteration_count=exp.iteration_count + 1
+                )
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        elif event.event_type == "agent_activity":
+            action = event.data.get("action")
+            if action == "analyze_results":
+                experiment_store.update(experiment_id, phase="analysis")
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        elif event.event_type == "experiment_done":
+            experiment_store.update(experiment_id, phase="done")
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        else:
+            experiment_store.append_events(experiment_id, [event_dict])
+
+
 async def _run_training(
     experiment_id: str,
     objective: str,
@@ -38,6 +83,10 @@ async def _run_training(
 ) -> None:
     """Run the central agent and update the experiment with results."""
     experiment_store.update(experiment_id, status="running", phase="initializing")
+
+    # Mirror events into the experiment store so polling clients stay current
+    sync_task = asyncio.create_task(_sync_events_to_store(experiment_id))
+
     try:
         from scientist_bin_backend.agents.central.agent import CentralAgent
         from scientist_bin_backend.agents.central.schemas import TrainRequest
@@ -49,7 +98,7 @@ async def _run_training(
             data_file_path=data_file_path,
             framework_preference=framework,
         )
-        result = await agent.run(request)
+        result = await agent.run(request, experiment_id=experiment_id)
         experiment_store.update(
             experiment_id,
             status="completed",
@@ -65,8 +114,20 @@ async def _run_training(
             phase="error",
             result={"error": str(exc)},
         )
+        await event_bus.emit(
+            experiment_id,
+            ExperimentEvent(
+                event_type="error",
+                data={"message": str(exc), "phase": "error"},
+            ),
+        )
     finally:
         await event_bus.close(experiment_id)
+        sync_task.cancel()
+        try:
+            await sync_task
+        except asyncio.CancelledError:
+            pass
 
 
 # ---------------------------------------------------------------------------

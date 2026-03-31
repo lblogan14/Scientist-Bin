@@ -1,3 +1,4 @@
+import { HTTPError } from "ky";
 import { useQuery } from "@tanstack/react-query";
 import { getExperiment } from "../api";
 
@@ -6,6 +7,12 @@ export function useTrainingStatus(id: string | null) {
     queryKey: ["experiments", id],
     queryFn: () => getExperiment(id!),
     enabled: !!id,
+    retry: (_failureCount, error) => {
+      if (error instanceof HTTPError && error.response.status === 404) {
+        return false;
+      }
+      return _failureCount < 1;
+    },
     // Reduced frequency — SSE is now the primary real-time channel.
     // Polling serves as a fallback to sync phase/status changes.
     refetchInterval: (query) => {

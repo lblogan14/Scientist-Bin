@@ -18,4 +18,5 @@ class CentralState(TypedDict):
     framework_preference: str | None
     selected_framework: str | None
     agent_response: dict | None
+    experiment_id: str | None
     error: str | None

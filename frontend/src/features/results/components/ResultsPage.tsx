@@ -33,8 +33,10 @@ export default function ResultsPage() {
   const { result } = data;
   const experimentHistory = result?.experiment_history ?? [];
   const dataProfile = result?.data_profile ?? null;
-  const bestMetrics =
+  const evaluationResults =
     result?.evaluation_results as Record<string, unknown> | null;
+  const bestMetrics =
+    (evaluationResults?.metrics as Record<string, unknown>) ?? null;
 
   return (
     <div className="space-y-6">
@@ -61,7 +63,7 @@ export default function ResultsPage() {
 
         <TabsContent value="experiments" className="mt-4">
           <EvaluationReport
-            evaluation={bestMetrics}
+            evaluation={evaluationResults}
             experimentHistory={experimentHistory}
           />
         </TabsContent>

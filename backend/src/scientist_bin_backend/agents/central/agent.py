@@ -13,9 +13,11 @@ class CentralAgent:
     def __init__(self) -> None:
         self.graph = build_central_graph()
 
-    async def run(self, request: TrainRequest) -> AgentResponse:
+    async def run(
+        self, request: TrainRequest, *, experiment_id: str | None = None
+    ) -> AgentResponse:
         """Execute the graph end-to-end and return a structured response."""
-        initial_state = build_initial_state(request)
+        initial_state = build_initial_state(request, experiment_id=experiment_id)
         final_state = await self.graph.ainvoke(initial_state)
 
         agent_resp = final_state.get("agent_response") or {}

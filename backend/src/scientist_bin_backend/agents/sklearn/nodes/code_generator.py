@@ -13,6 +13,8 @@ from langchain_core.messages import HumanMessage
 
 from scientist_bin_backend.agents.sklearn.prompts.templates import CODE_GENERATOR_PROMPT
 from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
+from scientist_bin_backend.events.bus import event_bus
+from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.utils.llm import get_chat_model
 
 
@@ -84,6 +86,19 @@ async def generate_code(state: dict) -> dict:
     )
     response = await llm.ainvoke([HumanMessage(content=prompt)])
     code = strip_code_fences(response.content)
+
+    experiment_id = state.get("experiment_id")
+    if experiment_id:
+        await event_bus.emit(
+            experiment_id,
+            ExperimentEvent(
+                event_type="agent_activity",
+                data={
+                    "action": "generate_code",
+                    "iteration": state.get("current_iteration", 0),
+                },
+            ),
+        )
 
     return {
         "generated_code": code,

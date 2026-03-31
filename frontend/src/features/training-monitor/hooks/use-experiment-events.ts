@@ -28,6 +28,7 @@ interface ExperimentEvents {
  */
 export function useExperimentEvents(
   experimentId: string | null,
+  enabled: boolean = true,
 ): ExperimentEvents {
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [logLines, setLogLines] = useState<string[]>([]);
@@ -79,7 +80,7 @@ export function useExperimentEvents(
   }, [flush]);
 
   useEffect(() => {
-    if (!experimentId) return;
+    if (!experimentId || !enabled) return;
 
     // Reset state for new experiment
     setActivities([]);
@@ -89,9 +90,20 @@ export function useExperimentEvents(
     setIsDone(false);
 
     const source = createExperimentEventSource(experimentId);
+    let hasOpened = false;
 
-    source.onopen = () => setIsConnected(true);
-    source.onerror = () => setIsConnected(false);
+    source.onopen = () => {
+      hasOpened = true;
+      setIsConnected(true);
+    };
+    source.onerror = () => {
+      setIsConnected(false);
+      // If the connection never opened, the endpoint likely returned an HTTP
+      // error (e.g. 404). Close to prevent the browser's auto-reconnect loop.
+      if (!hasOpened) {
+        source.close();
+      }
+    };
 
     source.addEventListener("phase_change", (e: MessageEvent) => {
       const event: ProgressEvent = JSON.parse(e.data);
@@ -193,7 +205,7 @@ export function useExperimentEvents(
       if (flushTimer.current) clearTimeout(flushTimer.current);
       setIsConnected(false);
     };
-  }, [experimentId, flush, scheduleFlush]);
+  }, [experimentId, enabled, flush, scheduleFlush]);
 
   return { activities, logLines, metrics, isConnected, isDone };
 }
