@@ -18,6 +18,7 @@ import { useSubmitTrain } from "../hooks/use-submit-train";
 const formSchema = z.object({
   objective: z.string().min(10, "Objective must be at least 10 characters"),
   data_description: z.string().optional(),
+  data_file_path: z.string().optional(),
   framework_preference: z.string().optional(),
 });
 
@@ -39,6 +40,7 @@ export function ObjectiveForm() {
     mutate({
       objective: values.objective,
       data_description: values.data_description,
+      data_file_path: values.data_file_path || undefined,
       framework_preference: values.framework_preference as
         | "sklearn"
         | undefined,
@@ -73,6 +75,18 @@ export function ObjectiveForm() {
               placeholder="e.g. '4 features, 3 classes, 150 samples'"
               {...register("data_description")}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="data_file_path">Dataset File Path (optional)</Label>
+            <Input
+              id="data_file_path"
+              placeholder="e.g. 'data/iris_data/Iris.csv'"
+              {...register("data_file_path")}
+            />
+            <p className="text-muted-foreground text-xs">
+              Path to a CSV file on the server. The agent will run EDA and train models on this data.
+            </p>
           </div>
 
           <div className="space-y-2">

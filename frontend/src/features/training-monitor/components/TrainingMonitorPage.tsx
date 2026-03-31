@@ -3,15 +3,19 @@ import { Activity } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { useTrainingStatus } from "../hooks/use-training-status";
+import { useExperimentEvents } from "../hooks/use-experiment-events";
 import { ProgressDisplay } from "./ProgressDisplay";
 import { AgentActivityLog } from "./AgentActivityLog";
 import { ConsoleOutput } from "./ConsoleOutput";
+import { MetricsStream } from "./MetricsStream";
 
 export default function TrainingMonitorPage() {
   const [searchParams] = useSearchParams();
   const experimentId = searchParams.get("id");
 
   const { data: experiment, isLoading } = useTrainingStatus(experimentId);
+  const { activities, logLines, metrics, isConnected } =
+    useExperimentEvents(experimentId);
 
   if (!experimentId) {
     return (
@@ -28,12 +32,21 @@ export default function TrainingMonitorPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Training Monitor</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Training Monitor</h2>
+        {isConnected && (
+          <span className="flex items-center gap-2 text-sm text-green-600">
+            <span className="size-2 animate-pulse rounded-full bg-green-500" />
+            Live
+          </span>
+        )}
+      </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <ProgressDisplay experiment={experiment} />
-        <AgentActivityLog activities={[]} />
+        <AgentActivityLog activities={activities} />
       </div>
-      <ConsoleOutput logs={[]} />
+      {metrics.size > 0 && <MetricsStream metrics={metrics} />}
+      <ConsoleOutput logs={logLines} />
     </div>
   );
 }

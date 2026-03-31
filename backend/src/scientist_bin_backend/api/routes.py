@@ -132,6 +132,19 @@ async def stream_events(experiment_id: str) -> StreamingResponse:
     )
 
 
+@router.get("/experiments/{experiment_id}/journal")
+async def get_journal(experiment_id: str) -> list[dict]:
+    """Get the experiment journal (append-only decision/reasoning log)."""
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    from scientist_bin_backend.execution.journal import get_journal_for_experiment
+
+    journal = get_journal_for_experiment(experiment_id)
+    return journal.read_all()
+
+
 @router.delete("/experiments/{experiment_id}")
 async def delete_experiment(experiment_id: str) -> dict:
     """Delete an experiment."""

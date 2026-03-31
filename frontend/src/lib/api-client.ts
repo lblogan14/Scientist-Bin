@@ -2,6 +2,7 @@ import ky from "ky";
 import type {
   Experiment,
   HealthResponse,
+  JournalEntry,
   TrainRequest,
 } from "@/types/api";
 
@@ -28,6 +29,22 @@ export async function deleteExperiment(id: string): Promise<void> {
   await api.delete(`experiments/${id}`);
 }
 
+export async function getExperimentJournal(
+  id: string,
+): Promise<JournalEntry[]> {
+  return api.get(`experiments/${id}/journal`).json<JournalEntry[]>();
+}
+
 export async function checkHealth(): Promise<HealthResponse> {
   return api.get("health").json<HealthResponse>();
+}
+
+/**
+ * Create an SSE connection for real-time experiment events.
+ * Returns an EventSource that emits typed events.
+ */
+export function createExperimentEventSource(
+  experimentId: string,
+): EventSource {
+  return new EventSource(`/api/v1/experiments/${experimentId}/events`);
 }
