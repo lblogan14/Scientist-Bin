@@ -16,6 +16,12 @@ EventType = Literal[
     "run_completed",
     "error",
     "experiment_done",
+    "plan_review_pending",
+    "plan_review_submitted",
+    "plan_completed",
+    "analysis_completed",
+    "sklearn_completed",
+    "summary_completed",
 ]
 
 

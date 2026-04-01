@@ -1,24 +1,5 @@
 """Prompt templates for framework-agnostic nodes."""
 
-CLASSIFY_PROBLEM_PROMPT = """\
-You are an expert data scientist. Analyze the following machine learning task and \
-classify the problem type.
-
-Objective: {objective}
-Data description: {data_description}
-
-{data_sample}
-
-Classify this as one of:
-- classification: Predicting categorical labels
-- regression: Predicting continuous numeric values
-- clustering: Grouping data without labels
-- dimensionality_reduction: Reducing feature space
-- anomaly_detection: Identifying outliers
-
-Also suggest which column is likely the target and what metrics are appropriate.
-"""
-
 RESULTS_ANALYZER_PROMPT = """\
 You are an expert data scientist analyzing experiment results.
 

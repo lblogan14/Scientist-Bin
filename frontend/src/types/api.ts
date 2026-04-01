@@ -16,8 +16,11 @@ export type ExperimentPhase =
   | "classify"
   | "eda"
   | "planning"
+  | "plan_review"
+  | "data_analysis"
   | "execution"
   | "analysis"
+  | "summarizing"
   | "done"
   | "error";
 
@@ -29,7 +32,13 @@ export type ProgressEventType =
   | "run_started"
   | "run_completed"
   | "error"
-  | "experiment_done";
+  | "experiment_done"
+  | "plan_review_pending"
+  | "plan_review_submitted"
+  | "plan_completed"
+  | "analysis_completed"
+  | "sklearn_completed"
+  | "summary_completed";
 
 // ---------------------------------------------------------------------------
 // Request types
@@ -40,6 +49,11 @@ export interface TrainRequest {
   data_description?: string;
   data_file_path?: string;
   framework_preference?: Framework;
+  auto_approve_plan?: boolean;
+}
+
+export interface ReviewRequest {
+  feedback: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +73,10 @@ export interface Experiment {
   iteration_count: number;
   progress_events: ProgressEvent[];
   result: ExperimentResult | ExperimentError | null;
+  execution_plan: Record<string, unknown> | null;
+  analysis_report: string | null;
+  summary_report: string | null;
+  split_data_paths: Record<string, string> | null;
   created_at: string;
   updated_at: string;
 }
@@ -115,12 +133,17 @@ export function isExperimentError(
 export interface ExperimentResult {
   framework: string;
   plan: Record<string, unknown> | null;
+  plan_markdown: string | null;
   generated_code: string | null;
   evaluation_results: Record<string, unknown> | null;
   experiment_history: ExperimentRecord[];
   data_profile: DataProfile | null;
   problem_type: string | null;
   iterations: number;
+  analysis_report: string | null;
+  summary_report: string | null;
+  best_model: string | null;
+  best_hyperparameters: Record<string, unknown> | null;
   status: string;
 }
 
@@ -146,6 +169,16 @@ export interface DataProfile {
   target_stats: Record<string, number> | null;
   statistics_summary: string;
   data_quality_issues: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Plan review types
+// ---------------------------------------------------------------------------
+
+export interface PendingReview {
+  plan_markdown: string;
+  message: string;
+  revision_count: number;
 }
 
 // ---------------------------------------------------------------------------

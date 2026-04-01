@@ -28,8 +28,11 @@ class ExperimentPhase(StrEnum):
     classify = "classify"
     eda = "eda"
     planning = "planning"
+    plan_review = "plan_review"
+    data_analysis = "data_analysis"
     execution = "execution"
     analysis = "analysis"
+    summarizing = "summarizing"
     done = "done"
     error = "error"
 
@@ -90,6 +93,10 @@ class Experiment(BaseModel):
     iteration_count: int = 0
     progress_events: list[dict] = Field(default_factory=list)
     result: dict | None = None
+    execution_plan: dict | None = None
+    analysis_report: str | None = None
+    summary_report: str | None = None
+    split_data_paths: dict | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

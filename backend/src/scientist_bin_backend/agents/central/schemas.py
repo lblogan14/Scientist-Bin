@@ -15,6 +15,10 @@ class TrainRequest(BaseModel):
         default=None,
         description="Optional framework preference (e.g. 'sklearn', 'pytorch')",
     )
+    auto_approve_plan: bool = Field(
+        default=False,
+        description="Skip human-in-the-loop plan review",
+    )
 
 
 class FrameworkSelection(BaseModel):
@@ -29,10 +33,15 @@ class AgentResponse(BaseModel):
 
     framework: str
     plan: dict | None = None
+    plan_markdown: str | None = None
     generated_code: str | None = None
     evaluation_results: dict | None = None
     experiment_history: list[dict] = []
     data_profile: dict | None = None
     problem_type: str | None = None
     iterations: int = 0
+    analysis_report: str | None = None
+    summary_report: str | None = None
+    best_model: str | None = None
+    best_hyperparameters: dict | None = None
     status: str = "completed"

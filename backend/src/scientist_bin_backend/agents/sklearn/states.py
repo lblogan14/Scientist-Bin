@@ -1,4 +1,9 @@
-"""State schema for the scikit-learn subagent."""
+"""State schema for the scikit-learn subagent.
+
+The sklearn agent receives a pre-built execution plan and split data paths
+from the plan and analyst agents.  It focuses on code generation, execution,
+iterative refinement, and finalization.
+"""
 
 from __future__ import annotations
 
@@ -10,66 +15,58 @@ from typing_extensions import TypedDict
 
 
 class SklearnState(TypedDict, total=False):
-    """Typed state for the sklearn subagent graph.
-
-    Extends BaseMLState with sklearn-specific fields.
-    All base fields are inlined here (rather than using inheritance)
-    because TypedDict inheritance with Annotated fields and LangGraph
-    requires all fields to be visible at the class level.
-    """
+    """Typed state for the sklearn subagent graph."""
 
     # -- Message history (LangGraph convention) --
     messages: Annotated[list, add_messages]
 
-    # -- Input context --
+    # -- Input (from Plan + Analyst agents) --
     objective: str
-    data_description: str
-    data_file_path: str | None
+    execution_plan: dict | None
+    analysis_report: str | None
+    split_data_paths: dict | None  # {"train": path, "val": path, "test": path}
     problem_type: str | None
-
-    # -- Phase 1: Data Analysis --
     data_profile: dict | None
-    eda_code: str | None
-    eda_output: str | None
 
-    # -- Phase 2: Strategy --
+    # -- Strategy (derived from execution_plan on first iteration) --
     strategy: dict | None
     candidate_algorithms: list[str]
-    preprocessing_plan: list[str]
-    feature_engineering_plan: list[str]
     hyperparameter_spaces: dict | None
-    cv_strategy: str | None
-    success_criteria: dict | None
 
-    # -- Phase 3: Code Generation & Execution --
+    # -- Code Generation & Execution --
     generated_code: str | None
     execution_output: str | None
     execution_success: bool
     execution_error: str | None
     execution_metrics: list[dict]
 
-    # -- Phase 3b: Duration estimation --
+    # -- Duration estimation --
     estimated_duration_seconds: float | None
     dynamic_timeout: int | None
-    data_subset_size: int | None
 
-    # -- Phase 4: Results & Iteration --
+    # -- Runs & Iteration --
     experiment_history: Annotated[list[dict], operator.add]
-    best_experiment: dict | None
+    best_run: dict | None
     current_iteration: int
     max_iterations: int
     next_action: str | None
     refinement_context: str | None
 
+    # -- Error research (web search) --
+    search_results: str | None
+
+    # -- Hyperparameter listing for summary --
+    hyperparameters_summary: list[dict]
+
     # -- Reflection & learning --
     reflection: str | None
     learned_heuristics: list[str]
+
+    # -- Success criteria --
+    success_criteria: dict | None
 
     # -- Control --
     phase: str
     experiment_id: str | None
     error: str | None
     progress_events: list[dict]
-
-    # -- Sklearn-specific --
-    search_results: str | None

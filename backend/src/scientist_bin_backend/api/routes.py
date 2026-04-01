@@ -34,6 +34,11 @@ class TrainRequestBody(BaseModel):
     data_description: str = ""
     data_file_path: str | None = None
     framework_preference: str | None = None
+    auto_approve_plan: bool = False
+
+
+class ReviewBody(BaseModel):
+    feedback: str
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +117,34 @@ async def _sync_events_to_store(experiment_id: str) -> None:
             experiment_store.update(experiment_id, phase="done")
             experiment_store.append_events(experiment_id, [event_dict])
 
+        elif event.event_type == "plan_completed":
+            plan = event.data.get("execution_plan")
+            if plan:
+                experiment_store.update(experiment_id, execution_plan=plan)
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        elif event.event_type == "analysis_completed":
+            report = event.data.get("analysis_report")
+            paths = event.data.get("split_data_paths")
+            updates: dict = {}
+            if report:
+                updates["analysis_report"] = report
+            if paths:
+                updates["split_data_paths"] = paths
+            if updates:
+                experiment_store.update(experiment_id, **updates)
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        elif event.event_type == "summary_completed":
+            report = event.data.get("summary_report")
+            if report:
+                experiment_store.update(experiment_id, summary_report=report)
+            experiment_store.append_events(experiment_id, [event_dict])
+
+        elif event.event_type == "plan_review_pending":
+            experiment_store.update(experiment_id, phase="plan_review")
+            experiment_store.append_events(experiment_id, [event_dict])
+
         else:
             experiment_store.append_events(experiment_id, [event_dict])
 
@@ -154,6 +187,7 @@ async def _run_training(
     data_description: str,
     data_file_path: str | None,
     framework: str | None,
+    auto_approve_plan: bool = False,
 ) -> None:
     """Run the central agent and update the experiment with results."""
     data_file_path = _resolve_data_file_path(data_file_path)
@@ -177,6 +211,7 @@ async def _run_training(
             data_description=data_description,
             data_file_path=data_file_path,
             framework_preference=framework,
+            auto_approve_plan=auto_approve_plan,
         )
         result = await agent.run(request, experiment_id=experiment_id)
         result_dict = result.model_dump()
@@ -187,6 +222,9 @@ async def _run_training(
             framework=result.framework,
             iteration_count=result.iterations,
             result=result_dict,
+            execution_plan=result.plan,
+            analysis_report=result.analysis_report,
+            summary_report=result.summary_report,
         )
 
         # Save artifacts (model, results JSON, journal) like the CLI does
@@ -254,6 +292,7 @@ async def create_train(body: TrainRequestBody, background_tasks: BackgroundTasks
         body.data_description,
         resolved_data_file,
         body.framework_preference,
+        body.auto_approve_plan,
     )
     return experiment.model_dump(mode="json")
 
@@ -351,6 +390,36 @@ async def delete_experiment(experiment_id: str) -> dict:
     if not experiment_store.delete(experiment_id):
         raise HTTPException(status_code=404, detail="Experiment not found")
     return {"detail": "Experiment deleted"}
+
+
+@router.get("/experiments/{experiment_id}/plan")
+async def get_plan(experiment_id: str) -> dict:
+    """Get the execution plan for an experiment."""
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    return {"execution_plan": experiment.execution_plan}
+
+
+@router.get("/experiments/{experiment_id}/analysis")
+async def get_analysis(experiment_id: str) -> dict:
+    """Get the analyst report for an experiment."""
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    return {
+        "analysis_report": experiment.analysis_report,
+        "split_data_paths": experiment.split_data_paths,
+    }
+
+
+@router.get("/experiments/{experiment_id}/summary")
+async def get_summary(experiment_id: str) -> dict:
+    """Get the summary report for an experiment."""
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    return {"summary_report": experiment.summary_report}
 
 
 @router.get("/health")

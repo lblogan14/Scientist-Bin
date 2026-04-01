@@ -6,12 +6,12 @@ from langchain_core.messages import HumanMessage
 
 from scientist_bin_backend.agents.central.prompts.templates import ANALYZER_PROMPT
 from scientist_bin_backend.agents.central.states import CentralState
-from scientist_bin_backend.utils.llm import get_chat_model
+from scientist_bin_backend.utils.llm import get_agent_model
 
 
 async def analyze(state: CentralState) -> dict:
     """Analyze the user's training request."""
-    llm = get_chat_model()
+    llm = get_agent_model("central")
     prompt = ANALYZER_PROMPT.format(
         objective=state["objective"],
         data_description=state.get("data_description", ""),

@@ -2,6 +2,9 @@
 
 Uses 1 LLM call. The generated code must follow the structured output convention
 (===RESULTS=== marker + JSON) and use the report_metric() function.
+
+The sklearn agent now receives pre-split data paths (train/val/test) from the
+analyst agent, so generated code loads data from those paths directly.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from scientist_bin_backend.agents.sklearn.prompts.templates import CODE_GENERATO
 from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
-from scientist_bin_backend.utils.llm import extract_text_content, get_chat_model
+from scientist_bin_backend.utils.llm import extract_text_content, get_agent_model
 
 
 async def generate_code(state: dict) -> dict:
@@ -26,11 +29,15 @@ async def generate_code(state: dict) -> dict:
     refinement_context = state.get("refinement_context")
 
     if next_action == "fix_error" and refinement_context:
-        retry_context = (
-            "== PREVIOUS ATTEMPT FAILED ==\n"
-            f"{refinement_context}\n"
-            "Fix the error and regenerate a working version.\n"
-        )
+        retry_context = f"== PREVIOUS ATTEMPT FAILED ==\n{refinement_context}\n"
+        # Include web search results for error resolution
+        search_results = state.get("search_results")
+        if search_results:
+            retry_context += (
+                "\n== WEB SEARCH RESULTS (solutions found online) ==\n"
+                f"{search_results}\n"
+                "Use the above information to fix the error.\n"
+            )
     elif next_action == "refine_params" and refinement_context:
         retry_context = (
             "== REFINEMENT REQUESTED ==\n"
@@ -68,20 +75,35 @@ async def generate_code(state: dict) -> dict:
     if data_profile:
         data_profile_str = json.dumps(data_profile, indent=2, default=str)
 
-    # Format strategy
-    strategy = state.get("strategy")
+    # Format strategy / execution plan
+    execution_plan = state.get("execution_plan")
+    strategy = state.get("strategy") or execution_plan
     strategy_str = "No strategy available."
     if strategy:
         strategy_str = json.dumps(strategy, indent=2, default=str)
 
-    llm = get_chat_model()
+    # Resolve split data paths
+    split_data_paths = state.get("split_data_paths", {})
+    train_path = str(Path(split_data_paths.get("train", "train.csv")).resolve())
+    val_path = str(Path(split_data_paths.get("val", "val.csv")).resolve())
+    test_path = str(Path(split_data_paths.get("test", "test.csv")).resolve())
+
+    # Include analysis report if available
+    analysis_context = ""
+    analysis_report = state.get("analysis_report")
+    if analysis_report:
+        analysis_context = f"\n== DATA ANALYSIS REPORT ==\n{analysis_report[:2000]}\n"
+
+    llm = get_agent_model("sklearn")
     prompt = CODE_GENERATOR_PROMPT.format(
-        objective=state["objective"],
-        data_description=state.get("data_description", ""),
+        objective=state.get("objective", ""),
         problem_type=state.get("problem_type", "classification"),
         data_profile=data_profile_str,
         strategy=strategy_str,
-        data_file_path=str(Path(state.get("data_file_path", "data.csv")).resolve()),
+        train_file_path=train_path,
+        val_file_path=val_path,
+        test_file_path=test_path,
+        analysis_context=analysis_context,
         retry_context=retry_context,
     )
     response = await llm.ainvoke([HumanMessage(content=prompt)])

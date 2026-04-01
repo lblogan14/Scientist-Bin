@@ -3,6 +3,7 @@ import type {
   Experiment,
   HealthResponse,
   JournalEntry,
+  ReviewRequest,
   TrainRequest,
 } from "@/types/api";
 
@@ -33,6 +34,34 @@ export async function getExperimentJournal(
   id: string,
 ): Promise<JournalEntry[]> {
   return api.get(`experiments/${id}/journal`).json<JournalEntry[]>();
+}
+
+export async function getExperimentPlan(
+  id: string,
+): Promise<{ execution_plan: Record<string, unknown> | null }> {
+  return api.get(`experiments/${id}/plan`).json();
+}
+
+export async function getExperimentAnalysis(
+  id: string,
+): Promise<{
+  analysis_report: string | null;
+  split_data_paths: Record<string, string> | null;
+}> {
+  return api.get(`experiments/${id}/analysis`).json();
+}
+
+export async function getExperimentSummary(
+  id: string,
+): Promise<{ summary_report: string | null }> {
+  return api.get(`experiments/${id}/summary`).json();
+}
+
+export async function submitPlanReview(
+  id: string,
+  review: ReviewRequest,
+): Promise<{ status: string }> {
+  return api.post(`experiments/${id}/review`, { json: review }).json();
 }
 
 export async function checkHealth(): Promise<HealthResponse> {

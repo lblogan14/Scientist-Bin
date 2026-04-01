@@ -1,6 +1,7 @@
 """Tests for the sklearn subagent schemas, utilities, and routing logic."""
 
-from scientist_bin_backend.agents.base.nodes.results_analyzer import route_decision
+from __future__ import annotations
+
 from scientist_bin_backend.agents.base.schemas import (
     AlgorithmCandidate,
     FinalReport,
@@ -8,6 +9,7 @@ from scientist_bin_backend.agents.base.schemas import (
     ProblemClassification,
     StrategyPlan,
 )
+from scientist_bin_backend.agents.sklearn.graph import _route_decision
 from scientist_bin_backend.agents.sklearn.schemas import SklearnStrategyPlan
 from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
 
@@ -108,39 +110,41 @@ def test_strip_code_fences_no_fences():
     assert strip_code_fences(text) == 'print("hello")'
 
 
-# --- Route decision tests ---
+# --- Route decision tests (now at agents/sklearn/graph._route_decision) ---
 
 
 def test_route_decision_accept():
     state = {"next_action": "accept"}
-    assert route_decision(state) == "finalize"
+    assert _route_decision(state) == "finalize"
 
 
 def test_route_decision_abort():
     state = {"next_action": "abort"}
-    assert route_decision(state) == "finalize"
+    assert _route_decision(state) == "finalize"
 
 
 def test_route_decision_fix_error():
+    """fix_error now routes to error_research (web search before regenerating)."""
     state = {"next_action": "fix_error"}
-    assert route_decision(state) == "generate_code"
+    assert _route_decision(state) == "error_research"
 
 
 def test_route_decision_refine_params():
     state = {"next_action": "refine_params"}
-    assert route_decision(state) == "generate_code"
+    assert _route_decision(state) == "generate_code"
 
 
 def test_route_decision_try_new_algo():
     state = {"next_action": "try_new_algo"}
-    assert route_decision(state) == "generate_code"
+    assert _route_decision(state) == "generate_code"
 
 
 def test_route_decision_feature_engineer():
     state = {"next_action": "feature_engineer"}
-    assert route_decision(state) == "generate_code"
+    assert _route_decision(state) == "generate_code"
 
 
 def test_route_decision_default_aborts():
+    """With no next_action, defaults to 'abort' which routes to finalize."""
     state = {}
-    assert route_decision(state) == "finalize"
+    assert _route_decision(state) == "finalize"

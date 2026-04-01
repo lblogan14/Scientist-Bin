@@ -1,38 +1,51 @@
 # Sklearn Subagent
 
-Scikit-learn framework subagent that classifies problems, analyzes data, plans experiments, generates training code, executes it in a sandbox, analyzes results, and iterates.
+Scikit-learn framework subagent that iteratively generates training code, executes it in a sandbox, analyzes results, and refines the approach.
 
 ## Flow
 
-```
-START -> classify_problem -> analyze_data -> plan_strategy -> generate_code
-      -> execute_code -> analyze_results -> (route) -> finalize | generate_code
+```mermaid
+graph TD
+    A[START] --> B[generate_code]
+    B --> C[execute_code]
+    C --> D[analyze_results]
+    D -->|refine / new algo / feature eng| B
+    D -->|fix_error| E[error_research]
+    E --> B
+    D -->|accept / abort| F[finalize]
+    F --> G[END]
 ```
 
-The graph is built using `build_ml_graph()` from `agents/base/`, with sklearn-specific `plan_strategy` and `generate_code` nodes.
+The sklearn agent now receives pre-built execution plans and split data from the upstream plan and analyst agents. It focuses purely on the generate-execute-analyze iteration loop.
 
 ### Iteration Loop
 
 After `analyze_results`, the agent decides:
-- **accept** / **abort** -> finalize and produce report
-- **fix_error** -> regenerate code with error context
-- **refine_params** -> adjust hyperparameters (one at a time, IMPROVE pattern)
-- **try_new_algo** -> switch algorithm family
-- **feature_engineer** -> add feature transformations
+- **accept** / **abort** -- finalize and produce report
+- **fix_error** -- web search for error resolution, then regenerate code
+- **refine_params** -- adjust hyperparameters (one at a time, IMPROVE pattern)
+- **try_new_algo** -- switch algorithm family
+- **feature_engineer** -- add feature transformations
 
 Max 5 iterations by default. Deterministic budget limits (wall time, iteration count) stop runaway loops without LLM calls.
 
 ## Nodes
 
-- `planner.py` — Loads matching SKILL.md, searches Google for best practices, produces a structured `SklearnStrategyPlan`.
-- `code_generator.py` — Generates complete, runnable sklearn code using the data profile, strategy, and `===RESULTS===` output convention.
+| Node | LLM Calls | Source | Description |
+|------|-----------|--------|-------------|
+| `generate_code` | 1 | `sklearn/nodes/` | Generates complete sklearn code using execution plan, split data paths, analysis report, and experiment history |
+| `execute_code` | 0 | `base/nodes/` | Sandboxed subprocess execution with timeout enforcement |
+| `analyze_results` | 0-1 | `base/nodes/` | Parses metrics, decides next action, writes to experiment journal |
+| `error_research` | 1 (search) | `sklearn/nodes/` | Uses Google Search grounding to find solutions for execution errors |
+| `finalize` | 1 | `base/nodes/` | Generates final report |
 
-Base nodes (from `agents/base/`):
-- `classify_problem` — 1 LLM call to determine problem type
-- `analyze_data` — Deterministic EDA via subprocess (0 LLM calls)
-- `execute_code` — Sandboxed subprocess execution (0 LLM calls)
-- `analyze_results` — Parse metrics, decide next action, write to experiment journal
-- `finalize` — Generate final report
+## Input (from Plan + Analyst)
+
+- `execution_plan` -- structured plan with algorithms, preprocessing, metrics, success criteria
+- `split_data_paths` -- `{"train": path, "val": path, "test": path}`
+- `analysis_report` -- markdown report from the analyst agent
+- `data_profile` -- structured data profile (shape, columns, dtypes, etc.)
+- `problem_type` -- classification, regression, clustering, etc.
 
 ## Skills
 
@@ -45,15 +58,19 @@ skills/
 └── clustering/SKILL.md       — Unsupervised grouping
 ```
 
-The planner node discovers skills at startup via `discover_skills()`, matches the best skill to the detected problem type, and injects the skill's full body into the planning prompt. This guides algorithm selection, preprocessing, and evaluation strategy.
-
 ## Key Files
 
 | File | Purpose |
 |------|---------|
 | `agent.py` | `SklearnAgent` class wrapping the graph |
-| `graph.py` | Calls `build_ml_graph()` with sklearn-specific overrides |
-| `states.py` | `SklearnState` TypedDict (extends `BaseMLState`) |
-| `schemas.py` | `SklearnStrategyPlan` (extends base `StrategyPlan`) |
+| `graph.py` | StateGraph: `generate_code -> execute_code -> analyze_results` with iteration loop and error research side-path |
+| `states.py` | `SklearnState` TypedDict (execution plan input, iteration tracking, experiment history) |
+| `schemas.py` | Sklearn-specific schemas |
 | `utils.py` | `strip_code_fences()` utility |
-| `prompts/templates.py` | Planner, code generator, and evaluator prompts |
+| `nodes/code_generator.py` | Code generation with retry context and experiment history |
+| `nodes/error_researcher.py` | Web search for error resolution |
+| `prompts/templates.py` | Code generator prompt |
+
+## Model
+
+Uses `gemini-3.1-pro-preview` via `get_agent_model("sklearn")` for code generation. Error research uses Google Search grounding via `search_with_gemini()`.

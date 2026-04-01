@@ -1,27 +1,68 @@
 """StateGraph definition for the scikit-learn subagent.
 
-Uses the base ML graph topology with sklearn-specific plan_strategy
-and generate_code nodes.
+The sklearn agent receives a pre-built execution plan and split data from the
+plan and analyst agents.  Its graph focuses on the generate → execute → analyze
+iteration loop with an error-research side-path.
+
+Flow:
+    generate_code → execute_code → analyze_results
+        → (refine_params | try_new_algo | feature_engineer) → generate_code  (loop)
+        → fix_error → error_research → generate_code  (error path)
+        → (accept | abort) → finalize → END
 """
 
 from __future__ import annotations
 
-from scientist_bin_backend.agents.base.graph import build_ml_graph
+from langgraph.graph import END, START, StateGraph
+
+from scientist_bin_backend.agents.base.nodes.code_executor import execute_code
+from scientist_bin_backend.agents.base.nodes.results_analyzer import (
+    analyze_results,
+    finalize,
+)
 from scientist_bin_backend.agents.sklearn.nodes.code_generator import generate_code
-from scientist_bin_backend.agents.sklearn.nodes.planner import plan_strategy
+from scientist_bin_backend.agents.sklearn.nodes.error_researcher import error_research
 from scientist_bin_backend.agents.sklearn.states import SklearnState
 
 
-def build_sklearn_graph(checkpointer=None):
-    """Build and compile the sklearn subagent graph.
+def _route_decision(state: dict) -> str:
+    """Route based on the analyze_results decision.
 
-    Flow:
-        classify_problem -> analyze_data -> plan_strategy -> generate_code
-        -> execute_code -> analyze_results -> (route) -> finalize | generate_code
+    - accept / abort → finalize
+    - fix_error → error_research (web search before regenerating)
+    - refine_params / try_new_algo / feature_engineer → generate_code
     """
-    return build_ml_graph(
-        plan_strategy_fn=plan_strategy,
-        generate_code_fn=generate_code,
-        state_schema=SklearnState,
-        checkpointer=checkpointer,
+    next_action = state.get("next_action", "abort")
+    if next_action in ("accept", "abort"):
+        return "finalize"
+    if next_action == "fix_error":
+        return "error_research"
+    return "generate_code"
+
+
+def build_sklearn_graph(checkpointer=None):
+    """Build and compile the sklearn subagent graph."""
+    builder = StateGraph(SklearnState)
+
+    builder.add_node("generate_code", generate_code)
+    builder.add_node("execute_code", execute_code)
+    builder.add_node("analyze_results", analyze_results)
+    builder.add_node("error_research", error_research)
+    builder.add_node("finalize", finalize)
+
+    builder.add_edge(START, "generate_code")
+    builder.add_edge("generate_code", "execute_code")
+    builder.add_edge("execute_code", "analyze_results")
+    builder.add_conditional_edges(
+        "analyze_results",
+        _route_decision,
+        {
+            "generate_code": "generate_code",
+            "error_research": "error_research",
+            "finalize": "finalize",
+        },
     )
+    builder.add_edge("error_research", "generate_code")
+    builder.add_edge("finalize", END)
+
+    return builder.compile(checkpointer=checkpointer)

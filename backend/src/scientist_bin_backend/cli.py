@@ -33,8 +33,9 @@ def train(
     data_file: str | None = typer.Option(None, "--data-file", help="Path to dataset file"),
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
+    auto_approve: bool = typer.Option(False, "--auto-approve", help="Skip plan review"),
 ) -> None:
-    """Run training agent locally (no server required)."""
+    """Run full training pipeline locally (no server required)."""
     import asyncio
     import uuid
     from pathlib import Path
@@ -58,6 +59,7 @@ def train(
         data_description=data,
         data_file_path=resolved_data_file,
         framework_preference=framework,
+        auto_approve_plan=auto_approve,
     )
 
     async def run_with_progress() -> "AgentResponse":  # noqa: F821
@@ -95,65 +97,176 @@ def train(
     typer.echo(result.model_dump_json(indent=2))
 
 
-def _print_event(event: "ExperimentEvent") -> None:  # noqa: F821
-    """Format and print an experiment event to the terminal."""
-    data = event.data
-    etype = event.event_type
-
-    if etype == "phase_change":
-        phase = data.get("phase", "?")
-        msg = data.get("message") or data.get("summary", "")
-        if msg:
-            typer.echo(f"  [{phase}] {msg}")
-    elif etype == "agent_activity":
-        action = data.get("action", "?")
-        iteration = data.get("iteration", 0)
-        decision = data.get("decision")
-        if decision:
-            typer.echo(f"  [iter {iteration}] {action} -> {decision}")
-        else:
-            typer.echo(f"  [iter {iteration}] {action}")
-    elif etype == "run_started":
-        timeout = data.get("timeout", "?")
-        est = data.get("estimated_duration")
-        est_str = f", estimated: {est:.0f}s" if est else ""
-        typer.echo(f"  [run] Started (timeout: {timeout}s{est_str})")
-    elif etype == "run_completed":
-        status = data.get("status", "?")
-        wall = data.get("wall_time_seconds", "?")
-        typer.echo(f"  [run] {status} in {wall}s")
-    elif etype == "metric_update":
-        name = data.get("name", "?")
-        value = data.get("value", "?")
-        typer.echo(f"  [metric] {name} = {value}")
-    elif etype == "experiment_done":
-        best = data.get("best_model", "?")
-        metrics = data.get("best_metrics", {})
-        metrics_str = ", ".join(f"{k}={v:.4f}" for k, v in metrics.items())
-        typer.echo(f"  [done] Best model: {best} ({metrics_str})")
-    elif etype == "error":
-        msg = data.get("message", "Unknown error")
-        typer.echo(f"  [error] {msg}")
+# ---------------------------------------------------------------------------
+# Per-agent standalone commands
+# ---------------------------------------------------------------------------
 
 
-def _save_artifacts(
-    experiment_id: str,
-    result: "AgentResponse",  # noqa: F821
-    quiet: bool,
+@app.command()
+def plan(
+    objective: str = typer.Argument(..., help="Training objective description"),
+    data: str = typer.Option("", "--data", help="Data description"),
+    data_file: str | None = typer.Option(None, "--data-file", help="Path to dataset file"),
+    framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
+    auto_approve: bool = typer.Option(False, "--auto-approve", help="Auto-approve plan"),
 ) -> None:
-    """Save model, results JSON, and journal to top-level output directories."""
-    from scientist_bin_backend.utils.artifacts import save_experiment_artifacts
+    """Run only the Plan Agent (query rewrite, research, plan generation)."""
+    import asyncio
+    import json
+    import uuid
 
-    saved = save_experiment_artifacts(experiment_id, result.model_dump())
+    from scientist_bin_backend.agents.plan.agent import PlanAgent
 
-    if not quiet:
-        if "results" in saved:
-            typer.echo(f"  [saved] Results  -> {saved['results']}")
-        if "model" in saved:
-            typer.echo(f"  [saved] Model    -> {saved['model']}")
-        if "journal" in saved:
-            typer.echo(f"  [saved] Journal  -> {saved['journal']}")
-        typer.echo("")
+    agent = PlanAgent()
+    experiment_id = uuid.uuid4().hex[:12]
+
+    async def run() -> dict:
+        return await agent.run(
+            objective=objective,
+            data_description=data,
+            data_file_path=data_file,
+            framework_preference=framework,
+            experiment_id=experiment_id,
+            auto_approve=auto_approve,
+        )
+
+    result = asyncio.run(run())
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@app.command()
+def analyze(
+    data_file: str = typer.Argument(..., help="Path to dataset file"),
+    plan_file: str | None = typer.Option(None, "--plan-file", help="Execution plan JSON file"),
+    objective: str = typer.Option("", "--objective", help="Training objective"),
+) -> None:
+    """Run only the Analyst Agent (data profiling, cleaning, splitting)."""
+    import asyncio
+    import json
+    import uuid
+    from pathlib import Path
+
+    from scientist_bin_backend.agents.analyst.agent import AnalystAgent
+
+    resolved = Path(data_file).resolve()
+    if not resolved.exists():
+        typer.echo(f"Error: Data file not found: {resolved}", err=True)
+        raise typer.Exit(code=1)
+
+    execution_plan = None
+    if plan_file:
+        plan_path = Path(plan_file).resolve()
+        if plan_path.exists():
+            execution_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+
+    agent = AnalystAgent()
+    experiment_id = uuid.uuid4().hex[:12]
+
+    async def run() -> dict:
+        return await agent.run(
+            objective=objective,
+            data_file_path=str(resolved),
+            execution_plan=execution_plan,
+            experiment_id=experiment_id,
+        )
+
+    result = asyncio.run(run())
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@app.command(name="train-sklearn")
+def train_sklearn(
+    objective: str = typer.Argument(..., help="Training objective description"),
+    data_dir: str | None = typer.Option(None, "--data-dir", help="Dir with train/val/test CSVs"),
+    plan_file: str | None = typer.Option(None, "--plan-file", help="Execution plan JSON file"),
+    analysis_file: str | None = typer.Option(None, "--analysis-file", help="Analysis report file"),
+    max_iterations: int = typer.Option(5, "--max-iterations", help="Max training iterations"),
+) -> None:
+    """Run only the Sklearn Agent (code generation, training, iteration)."""
+    import asyncio
+    import json
+    import uuid
+    from pathlib import Path
+
+    from scientist_bin_backend.agents.sklearn.agent import SklearnAgent
+
+    split_data_paths = {}
+    if data_dir:
+        d = Path(data_dir).resolve()
+        split_data_paths = {
+            "train": str(d / "train.csv"),
+            "val": str(d / "val.csv"),
+            "test": str(d / "test.csv"),
+        }
+
+    execution_plan = None
+    if plan_file:
+        plan_path = Path(plan_file).resolve()
+        if plan_path.exists():
+            execution_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+
+    analysis_report = None
+    if analysis_file:
+        analysis_path = Path(analysis_file).resolve()
+        if analysis_path.exists():
+            analysis_report = analysis_path.read_text(encoding="utf-8")
+
+    agent = SklearnAgent()
+    experiment_id = uuid.uuid4().hex[:12]
+
+    async def run() -> dict:
+        return await agent.run(
+            objective=objective,
+            execution_plan=execution_plan,
+            analysis_report=analysis_report,
+            split_data_paths=split_data_paths,
+            max_iterations=max_iterations,
+            experiment_id=experiment_id,
+        )
+
+    result = asyncio.run(run())
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+@app.command()
+def summarize(
+    experiment_id: str = typer.Argument(..., help="Experiment ID to summarize"),
+) -> None:
+    """Run only the Summary Agent (review experiments, select best, generate report)."""
+    import asyncio
+    import json
+    from pathlib import Path
+
+    from scientist_bin_backend.agents.summary.agent import SummaryAgent
+
+    # Load experiment results from the outputs directory
+    _backend_dir = Path(__file__).resolve().parent.parent.parent
+    results_path = _backend_dir / "outputs" / "results" / f"{experiment_id}.json"
+
+    experiment_data: dict = {}
+    if results_path.exists():
+        experiment_data = json.loads(results_path.read_text(encoding="utf-8"))
+
+    agent = SummaryAgent()
+
+    async def run() -> dict:
+        return await agent.run(
+            objective=experiment_data.get("objective", ""),
+            problem_type=experiment_data.get("problem_type"),
+            execution_plan=experiment_data.get("plan"),
+            analysis_report=experiment_data.get("analysis_report"),
+            sklearn_results=experiment_data,
+            experiment_history=experiment_data.get("experiment_history", []),
+            experiment_id=experiment_id,
+        )
+
+    result = asyncio.run(run())
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
+# ---------------------------------------------------------------------------
+# Existing server-interaction commands
+# ---------------------------------------------------------------------------
 
 
 @app.command(name="train-remote")
@@ -249,3 +362,74 @@ def health(
     except httpx.ConnectError:
         typer.echo("Server is not reachable.", err=True)
         raise typer.Exit(code=1)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _print_event(event: "ExperimentEvent") -> None:  # noqa: F821
+    """Format and print an experiment event to the terminal."""
+    data = event.data
+    etype = event.event_type
+
+    if etype == "phase_change":
+        phase = data.get("phase", "?")
+        msg = data.get("message") or data.get("summary", "")
+        if msg:
+            typer.echo(f"  [{phase}] {msg}")
+    elif etype == "agent_activity":
+        action = data.get("action", "?")
+        iteration = data.get("iteration", 0)
+        decision = data.get("decision")
+        if decision:
+            typer.echo(f"  [iter {iteration}] {action} -> {decision}")
+        else:
+            typer.echo(f"  [iter {iteration}] {action}")
+    elif etype == "run_started":
+        timeout = data.get("timeout", "?")
+        est = data.get("estimated_duration")
+        est_str = f", estimated: {est:.0f}s" if est else ""
+        typer.echo(f"  [run] Started (timeout: {timeout}s{est_str})")
+    elif etype == "run_completed":
+        status = data.get("status", "?")
+        wall = data.get("wall_time_seconds", "?")
+        typer.echo(f"  [run] {status} in {wall}s")
+    elif etype == "metric_update":
+        name = data.get("name", "?")
+        value = data.get("value", "?")
+        typer.echo(f"  [metric] {name} = {value}")
+    elif etype == "experiment_done":
+        best = data.get("best_model", "?")
+        metrics = data.get("best_metrics", {})
+        metrics_str = ", ".join(f"{k}={v:.4f}" for k, v in metrics.items())
+        typer.echo(f"  [done] Best model: {best} ({metrics_str})")
+    elif etype == "plan_completed":
+        approved = data.get("plan_approved", False)
+        typer.echo(f"  [plan] Plan {'approved' if approved else 'pending'}")
+    elif etype in ("analysis_completed", "sklearn_completed", "summary_completed"):
+        typer.echo(f"  [{etype}] completed")
+    elif etype == "error":
+        msg = data.get("message", "Unknown error")
+        typer.echo(f"  [error] {msg}")
+
+
+def _save_artifacts(
+    experiment_id: str,
+    result: "AgentResponse",  # noqa: F821
+    quiet: bool,
+) -> None:
+    """Save model, results JSON, and journal to top-level output directories."""
+    from scientist_bin_backend.utils.artifacts import save_experiment_artifacts
+
+    saved = save_experiment_artifacts(experiment_id, result.model_dump())
+
+    if not quiet:
+        if "results" in saved:
+            typer.echo(f"  [saved] Results  -> {saved['results']}")
+        if "model" in saved:
+            typer.echo(f"  [saved] Model    -> {saved['model']}")
+        if "journal" in saved:
+            typer.echo(f"  [saved] Journal  -> {saved['journal']}")
+        typer.echo("")

@@ -1,28 +1,25 @@
 # Base Agent Module
 
-Reusable graph topology and shared infrastructure for all ML framework subagents.
+Shared nodes, schemas, and state definitions for ML framework subagents.
 
 ## Purpose
 
-Separates the **graph topology** (same for all ML frameworks) from **framework-specific logic** (differs per framework). A new framework subagent only needs to implement two functions (`plan_strategy`, `generate_code`) and gets the full 7-node pipeline for free.
+Provides reusable node functions and Pydantic schemas used by the sklearn subagent (and future framework subagents). The analyst agent has its own data profiling/cleaning nodes, and the plan agent handles strategy planning.
 
-## Graph Topology
+## Shared Nodes (actively used)
 
-```
-classify_problem -> analyze_data -> plan_strategy* -> generate_code*
-    -> execute_code -> analyze_results -> (route) -> finalize | generate_code
-```
-
-`*` = Framework-specific (provided by subagent)
+| Node | File | Used By | Description |
+|------|------|---------|-------------|
+| `execute_code` | `nodes/code_executor.py` | Sklearn, Analyst | Sandboxed subprocess execution (0 LLM calls). Process isolation, timeout enforcement, stdout/stderr capture. |
+| `analyze_results` | `nodes/results_analyzer.py` | Sklearn | Parses metrics from `===RESULTS===` output, decides next action (accept, abort, refine, new algo, feature eng, fix error), writes to experiment journal. |
+| `finalize` | `nodes/results_analyzer.py` | Sklearn | Generates a final report from the best experiment run. |
 
 ## Modules
 
 | File | Purpose |
 |------|---------|
-| `graph.py` | `build_ml_graph()` factory function |
 | `states.py` | `BaseMLState`, `DataProfile`, `ExperimentRecord` TypedDicts |
 | `schemas.py` | `ProblemClassification`, `StrategyPlan`, `IterationDecision`, `FinalReport` |
-| `nodes/data_analyzer.py` | `classify_problem` (1 LLM call), `analyze_data` (0 LLM calls) |
 | `nodes/code_executor.py` | `execute_code` (0 LLM calls, subprocess sandbox) |
-| `nodes/results_analyzer.py` | `analyze_results`, `route_decision`, `finalize` |
-| `prompts/templates.py` | Prompts for classification, results analysis, reflection, final report |
+| `nodes/results_analyzer.py` | `analyze_results`, `finalize` |
+| `prompts/templates.py` | Prompts for results analysis, reflection, final report |

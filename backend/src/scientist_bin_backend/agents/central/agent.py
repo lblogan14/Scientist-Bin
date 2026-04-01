@@ -8,10 +8,14 @@ from scientist_bin_backend.agents.central.utils import build_initial_state
 
 
 class CentralAgent:
-    """Entrypoint for running the full agent pipeline."""
+    """Entrypoint for running the full agent pipeline.
 
-    def __init__(self) -> None:
-        self.graph = build_central_graph()
+    The pipeline is:
+        analyze → route → plan (HITL) → analyst → sklearn → summary → END
+    """
+
+    def __init__(self, checkpointer=None) -> None:
+        self.graph = build_central_graph(checkpointer=checkpointer)
 
     async def run(
         self, request: TrainRequest, *, experiment_id: str | None = None
@@ -24,11 +28,16 @@ class CentralAgent:
         return AgentResponse(
             framework=final_state.get("selected_framework") or "sklearn",
             plan=agent_resp.get("plan"),
+            plan_markdown=final_state.get("plan_markdown"),
             generated_code=agent_resp.get("generated_code"),
             evaluation_results=agent_resp.get("evaluation_results"),
             experiment_history=agent_resp.get("experiment_history", []),
-            data_profile=agent_resp.get("data_profile"),
-            problem_type=agent_resp.get("problem_type"),
+            data_profile=final_state.get("data_profile"),
+            problem_type=final_state.get("problem_type"),
             iterations=agent_resp.get("iterations", 0),
+            analysis_report=final_state.get("analysis_report"),
+            summary_report=final_state.get("summary_report"),
+            best_model=agent_resp.get("best_model"),
+            best_hyperparameters=agent_resp.get("best_hyperparameters"),
             status="failed" if final_state.get("error") else "completed",
         )
