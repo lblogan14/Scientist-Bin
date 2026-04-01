@@ -7,6 +7,7 @@ from scientist_bin_backend.agents.central.schemas import (
     FrameworkSelection,
     TrainRequest,
 )
+from scientist_bin_backend.agents.central.states import PipelineState
 from scientist_bin_backend.agents.central.utils import build_initial_state
 
 # ---------------------------------------------------------------------------
@@ -113,7 +114,7 @@ def test_build_initial_state():
     assert state["data_file_path"] is None
     assert state["selected_framework"] is None
     assert state["messages"] == []
-    # New fields
+    # Pipeline fields
     assert state["execution_plan"] is None
     assert state["plan_approved"] is False
     assert state["plan_markdown"] is None
@@ -124,6 +125,9 @@ def test_build_initial_state():
     assert state["framework_results"] is None
     assert state["summary_report"] is None
     assert state["task_analysis"] is None
+    # New analyst output fields
+    assert state["classification_confidence"] is None
+    assert state["classification_reasoning"] is None
 
 
 def test_build_initial_state_with_data_file():
@@ -158,3 +162,67 @@ def test_build_initial_state_without_experiment_id():
     req = TrainRequest(objective="Test")
     state = build_initial_state(req)
     assert state["experiment_id"] is None
+
+
+# ---------------------------------------------------------------------------
+# PipelineState tests
+# ---------------------------------------------------------------------------
+
+
+def test_pipeline_state_has_classification_fields():
+    """PipelineState includes analyst classification feedback fields."""
+    state: PipelineState = {
+        "messages": [],
+        "objective": "Test",
+        "data_description": "",
+        "data_file_path": None,
+        "framework_preference": None,
+        "selected_framework": None,
+        "task_analysis": None,
+        "plan_approved": False,
+        "experiment_id": None,
+        "error": None,
+        "analysis_report": None,
+        "split_data_paths": None,
+        "problem_type": "classification",
+        "data_profile": None,
+        "classification_confidence": "confirmed",
+        "classification_reasoning": "Target is categorical with 3 classes.",
+        "execution_plan": None,
+        "plan_markdown": None,
+        "framework_results": None,
+        "summary_report": None,
+        "agent_response": None,
+    }
+    assert state["classification_confidence"] == "confirmed"
+    assert state["classification_reasoning"] == "Target is categorical with 3 classes."
+
+
+def test_pipeline_state_classification_overridden():
+    """PipelineState correctly carries overridden classification."""
+    state: PipelineState = {
+        "messages": [],
+        "objective": "Predict price",
+        "data_description": "",
+        "data_file_path": None,
+        "framework_preference": None,
+        "selected_framework": "sklearn",
+        "task_analysis": {"task_type": "classification"},
+        "plan_approved": False,
+        "experiment_id": "test-456",
+        "error": None,
+        "analysis_report": None,
+        "split_data_paths": None,
+        "problem_type": "regression",
+        "data_profile": None,
+        "classification_confidence": "overridden",
+        "classification_reasoning": "Target 'price' is continuous, not categorical.",
+        "execution_plan": None,
+        "plan_markdown": None,
+        "framework_results": None,
+        "summary_report": None,
+        "agent_response": None,
+    }
+    assert state["classification_confidence"] == "overridden"
+    assert state["problem_type"] == "regression"
+    assert state["task_analysis"]["task_type"] == "classification"  # Original was different

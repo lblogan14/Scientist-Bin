@@ -20,9 +20,14 @@ class AnalystState(TypedDict, total=False):
     objective: str
     data_file_path: str | None
     execution_plan: dict | None
+    task_analysis: dict | None  # Upstream TaskAnalysis from central orchestrator
+    data_description: str | None  # Original user dataset description
+    selected_framework: str | None  # Framework chosen by central router
 
     # -- Phase 1: Profiling --
     problem_type: str | None
+    classification_confidence: str | None  # "confirmed" | "refined" | "overridden"
+    classification_reasoning: str | None  # Evidence from data for the decision
     data_profile: dict | None
 
     # -- Phase 2: Cleaning --

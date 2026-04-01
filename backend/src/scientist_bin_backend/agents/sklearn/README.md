@@ -58,11 +58,19 @@ skills/
 └── clustering/SKILL.md       — Unsupervised grouping
 ```
 
+## Examples
+
+`agent.py` should include `EXAMPLES` and a `_run_examples()` entrypoint to validate the agent in isolation:
+
+```bash
+uv run python -m scientist_bin_backend.agents.sklearn.agent
+```
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `agent.py` | `SklearnAgent` class wrapping the graph |
+| `agent.py` | `SklearnAgent` class wrapping the graph (add `EXAMPLES` + `_run_examples()`) |
 | `graph.py` | StateGraph: `generate_code -> execute_code -> analyze_results` with iteration loop and error research side-path |
 | `states.py` | `SklearnState` TypedDict (execution plan input, iteration tracking, experiment history) |
 | `schemas.py` | Sklearn-specific schemas |

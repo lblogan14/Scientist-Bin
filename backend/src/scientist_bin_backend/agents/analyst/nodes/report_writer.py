@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def _resolve_output_dir(experiment_id: str) -> Path:
     """Resolve the data output directory for an experiment."""
-    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
     return backend_root / "outputs" / "runs" / experiment_id / "data"
 
 
@@ -138,10 +138,21 @@ async def write_report(state: AnalystState) -> dict:
             ),
         )
 
+    # --- Build classification context ---
+    confidence = state.get("classification_confidence", "confirmed")
+    reasoning = state.get("classification_reasoning", "")
+    classification_context = f"Confidence: {confidence}\nReasoning: {reasoning}"
+    if confidence in ("refined", "overridden"):
+        classification_context += (
+            f"\nNote: The upstream orchestrator's classification was {confidence}. "
+            "Include this in the report."
+        )
+
     # --- Build the report prompt ---
     prompt = REPORT_PROMPT.format(
         objective=objective,
         problem_type=problem_type,
+        classification_context=classification_context,
         data_profile=_format_profile(data_profile),
         cleaning_summary=_format_cleaning_summary(cleaning_output),
         split_summary=_format_split_summary(split_output),

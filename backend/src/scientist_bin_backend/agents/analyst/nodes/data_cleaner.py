@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def _resolve_output_dir(experiment_id: str) -> Path:
     """Resolve the data output directory for an experiment."""
-    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
     return backend_root / "outputs" / "runs" / experiment_id / "data"
 
 
@@ -74,8 +74,10 @@ async def clean_data(state: AnalystState) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     cleaned_path = output_dir / "cleaned.csv"
 
-    # --- Build cleaning prompt from data profile ---
+    # --- Build cleaning prompt from data profile + upstream context ---
     profile = data_profile or {}
+    task_analysis = state.get("task_analysis") or {}
+    selected_framework = state.get("selected_framework") or "sklearn"
     data_sample = _read_data_sample(data_file_path)
 
     prompt = CLEANING_PROMPT.format(
@@ -83,6 +85,7 @@ async def clean_data(state: AnalystState) -> dict:
         problem_type=problem_type,
         data_file_path=str(Path(data_file_path).resolve()),
         output_path=str(cleaned_path.resolve()),
+        selected_framework=selected_framework,
         shape=profile.get("shape", "unknown"),
         columns=profile.get("column_names", []),
         dtypes=profile.get("dtypes", {}),
@@ -91,6 +94,9 @@ async def clean_data(state: AnalystState) -> dict:
         categorical_columns=profile.get("categorical_columns", []),
         target_column=profile.get("target_column", "unknown"),
         data_quality_issues=profile.get("data_quality_issues", []),
+        key_considerations=", ".join(task_analysis.get("key_considerations", [])) or "None",
+        recommended_approach=task_analysis.get("recommended_approach", "None"),
+        complexity_estimate=task_analysis.get("complexity_estimate", "unknown"),
         data_sample=data_sample,
     )
 

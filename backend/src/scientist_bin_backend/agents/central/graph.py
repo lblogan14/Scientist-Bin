@@ -45,6 +45,9 @@ async def _analyst_delegate(state: PipelineState) -> dict:
         objective=state["objective"],
         data_file_path=state.get("data_file_path"),
         experiment_id=experiment_id,
+        task_analysis=state.get("task_analysis"),
+        data_description=state.get("data_description"),
+        selected_framework=state.get("selected_framework"),
     )
 
     if experiment_id:
@@ -52,7 +55,10 @@ async def _analyst_delegate(state: PipelineState) -> dict:
             experiment_id,
             ExperimentEvent(
                 event_type="analysis_completed",
-                data={"has_report": bool(result.get("analysis_report"))},
+                data={
+                    "has_report": bool(result.get("analysis_report")),
+                    "classification_confidence": result.get("classification_confidence"),
+                },
             ),
         )
 
@@ -61,6 +67,8 @@ async def _analyst_delegate(state: PipelineState) -> dict:
         "split_data_paths": result.get("split_data_paths"),
         "problem_type": result.get("problem_type"),
         "data_profile": result.get("data_profile"),
+        "classification_confidence": result.get("classification_confidence"),
+        "classification_reasoning": result.get("classification_reasoning"),
     }
 
 

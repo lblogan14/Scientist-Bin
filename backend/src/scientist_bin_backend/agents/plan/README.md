@@ -45,11 +45,19 @@ The plan review uses LangGraph's `interrupt()` mechanism:
 | `RewrittenQuery` | Structured output: enhanced objective, key requirements, constraints |
 | `ExecutionPlan` | Structured output: approach summary, problem type, algorithms, preprocessing, metrics, success criteria, split strategy |
 
+## Examples
+
+`agent.py` should include `EXAMPLES` and a `_run_examples()` entrypoint to validate the agent in isolation:
+
+```bash
+uv run python -m scientist_bin_backend.agents.plan.agent
+```
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `agent.py` | `PlanAgent` class wrapping the graph |
+| `agent.py` | `PlanAgent` class wrapping the graph (add `EXAMPLES` + `_run_examples()`) |
 | `graph.py` | StateGraph: `rewrite_query -> research -> write_plan -> review_plan` with revision loop |
 | `states.py` | `PlanState` TypedDict with query rewriting, research, plan, and HITL fields |
 | `schemas.py` | `RewrittenQuery`, `ExecutionPlan` Pydantic models |

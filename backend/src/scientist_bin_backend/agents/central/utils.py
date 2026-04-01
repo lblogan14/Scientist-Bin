@@ -26,6 +26,8 @@ def build_initial_state(
         split_data_paths=None,
         problem_type=None,
         data_profile=None,
+        classification_confidence=None,
+        classification_reasoning=None,
         execution_plan=None,
         plan_markdown=None,
         framework_results=None,

@@ -23,7 +23,7 @@ from scientist_bin_backend.utils.llm import get_agent_model
 logger = logging.getLogger(__name__)
 
 # Resolve output directory relative to the backend root
-_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 _OUTPUTS_DIR = _BACKEND_DIR / "outputs"
 
 

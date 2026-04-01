@@ -40,6 +40,8 @@ class PipelineState(CentralState):
     split_data_paths: dict | None
     problem_type: str | None
     data_profile: dict | None
+    classification_confidence: str | None  # "confirmed" | "refined" | "overridden"
+    classification_reasoning: str | None
     # Plan agent outputs
     execution_plan: dict | None
     plan_markdown: str | None

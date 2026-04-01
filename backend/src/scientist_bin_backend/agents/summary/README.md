@@ -48,11 +48,19 @@ A linear 3-node pipeline that synthesizes all upstream results into a final repo
 | `BestModelSelection` | Best model pick with reasoning and primary metric |
 | `SummaryReport` | Full report: title, dataset overview, methodology, comparison table, analysis, conclusions, recommendations, reproducibility notes |
 
+## Examples
+
+`agent.py` should include `EXAMPLES` and a `_run_examples()` entrypoint to validate the agent in isolation:
+
+```bash
+uv run python -m scientist_bin_backend.agents.summary.agent
+```
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `agent.py` | `SummaryAgent` class wrapping the graph |
+| `agent.py` | `SummaryAgent` class wrapping the graph (add `EXAMPLES` + `_run_examples()`) |
 | `graph.py` | StateGraph: `review_experiments -> select_best -> generate_report` |
 | `states.py` | `SummaryState` TypedDict with input context, analysis, and output fields |
 | `schemas.py` | `ModelRanking`, `ModelRankingList`, `BestModelSelection`, `SummaryReport` |

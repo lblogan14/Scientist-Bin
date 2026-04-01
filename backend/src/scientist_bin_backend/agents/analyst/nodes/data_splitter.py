@@ -21,8 +21,35 @@ logger = logging.getLogger(__name__)
 
 def _resolve_output_dir(experiment_id: str) -> Path:
     """Resolve the data output directory for an experiment."""
-    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
     return backend_root / "outputs" / "runs" / experiment_id / "data"
+
+
+def _compute_split_ratios(
+    task_analysis: dict | None,
+    data_profile: dict | None,
+) -> tuple[float, float]:
+    """Compute split ratios based on task context.
+
+    Returns (initial_test_size, second_split_ratio) for the two-stage split.
+    Default: (0.30, 0.50) gives 70/15/15.
+    High complexity: (0.40, 0.50) gives 60/20/20.
+    Tiny dataset (<200 rows): (0.20, 0.50) gives 80/10/10.
+    Guard: never allocate less than 60% to training.
+    """
+    # Check dataset size from data_profile first (most concrete signal)
+    if data_profile:
+        shape = data_profile.get("shape")
+        if isinstance(shape, list) and len(shape) >= 1 and shape[0] > 0 and shape[0] < 200:
+            return 0.20, 0.50  # 80/10/10 for tiny datasets
+
+    # Check complexity from task_analysis
+    if task_analysis:
+        complexity = task_analysis.get("complexity_estimate", "medium")
+        if complexity == "high":
+            return 0.40, 0.50  # 60/20/20 for high complexity
+
+    return 0.30, 0.50  # Default 70/15/15
 
 
 def _build_split_script(
@@ -30,6 +57,8 @@ def _build_split_script(
     output_dir: str,
     target_column: str | None,
     problem_type: str,
+    initial_test_size: float = 0.30,
+    second_split_ratio: float = 0.50,
 ) -> str:
     """Build a self-contained Python script for train/val/test splitting."""
     return f'''\
@@ -60,15 +89,15 @@ try:
         if min_class_count >= 2:
             stratify_col = df[TARGET_COLUMN]
 
-    # First split: 70% train, 30% temp (val + test)
+    # First split: train vs temp (val + test)
     train_df, temp_df = train_test_split(
         df,
-        test_size=0.30,
+        test_size={initial_test_size},
         random_state=42,
         stratify=stratify_col,
     )
 
-    # Second split: split temp into 50/50 -> 15% val, 15% test
+    # Second split: split temp into val and test
     stratify_temp = None
     if stratify_col is not None and TARGET_COLUMN in temp_df.columns:
         temp_value_counts = temp_df[TARGET_COLUMN].value_counts()
@@ -77,7 +106,7 @@ try:
 
     val_df, test_df = train_test_split(
         temp_df,
-        test_size=0.50,
+        test_size={second_split_ratio},
         random_state=42,
         stratify=stratify_temp,
     )
@@ -157,6 +186,10 @@ async def split_data(state: AnalystState) -> dict:
     if not target_column and data_profile:
         target_column = data_profile.get("target_column")
 
+    # --- Compute adaptive split ratios ---
+    task_analysis = state.get("task_analysis")
+    initial_test_size, second_split_ratio = _compute_split_ratios(task_analysis, data_profile)
+
     # --- Build and execute the split script ---
     output_dir = _resolve_output_dir(experiment_id)
     split_code = _build_split_script(
@@ -164,6 +197,8 @@ async def split_data(state: AnalystState) -> dict:
         output_dir=str(output_dir.resolve()),
         target_column=target_column,
         problem_type=problem_type,
+        initial_test_size=initial_test_size,
+        second_split_ratio=second_split_ratio,
     )
 
     runner = CodeRunner()
