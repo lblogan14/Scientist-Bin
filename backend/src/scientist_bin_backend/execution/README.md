@@ -18,7 +18,7 @@ Code execution infrastructure for sandboxed ML training.
 
 1. Generated code is wrapped with a `MetricsReporter` harness (provides `report_metric()` function)
 2. Written to an isolated run directory under `outputs/runs/{experiment_id}/{run_id}/`
-3. Executed via `asyncio.create_subprocess_exec` with sanitized environment (no API keys)
+3. Executed via `asyncio.create_subprocess_exec` with sanitized environment (no API keys). On Windows, falls back to `subprocess.run()` in a thread if the event loop does not support async subprocesses.
 4. Stdout, stderr, and metrics captured in real-time
 5. Results parsed from `===RESULTS===` JSON marker in stdout
 6. Artifacts collected from the `artifacts/` subdirectory

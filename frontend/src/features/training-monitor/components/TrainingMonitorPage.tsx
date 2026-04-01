@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { HTTPError } from "ky";
@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { listExperiments } from "@/lib/api-client";
+import type { AgentActivity, ProgressEvent } from "@/types/api";
 import { isExperimentError } from "@/types/api";
 import { ErrorDisplay } from "../../results/components/ErrorDisplay";
 import { useTrainingStatus } from "../hooks/use-training-status";
@@ -56,6 +57,55 @@ export default function TrainingMonitorPage() {
 
   const { activities, logLines, metrics, isConnected, isDone } =
     useExperimentEvents(experimentId, !isNotFound);
+
+  // Use SSE activities when live, fall back to stored progress_events.
+  // This hook must be before any early returns to satisfy React's rules of hooks.
+  const storedEvents = experiment?.progress_events;
+  const displayActivities = useMemo(() => {
+    if (activities.length > 0) return activities;
+    if (!storedEvents?.length) return [];
+
+    return storedEvents
+      .filter(
+        (e: ProgressEvent) =>
+          e.event_type !== "metric_update" && e.event_type !== "log_output",
+      )
+      .map((e: ProgressEvent): AgentActivity => {
+        const data = e.data;
+        let action: string = e.event_type;
+        let details: string | undefined;
+
+        if (e.event_type === "phase_change") {
+          action = `Phase: ${data.phase ?? "unknown"}`;
+          details = data.message as string | undefined;
+        } else if (e.event_type === "agent_activity") {
+          action = (data.action as string) ?? "activity";
+          details = data.decision as string | undefined;
+        } else if (e.event_type === "run_started") {
+          action = "Training started";
+          details = `Run ${data.run_id}`;
+        } else if (e.event_type === "run_completed") {
+          action = `Run ${data.status}`;
+          details = `${data.wall_time_seconds}s`;
+        } else if (e.event_type === "experiment_done") {
+          action = "Experiment complete";
+          details = data.best_model
+            ? `Best model: ${data.best_model}`
+            : undefined;
+        } else if (e.event_type === "error") {
+          action = "Error";
+          details = data.message as string | undefined;
+        }
+
+        return {
+          agent: "sklearn",
+          action,
+          timestamp: e.timestamp,
+          details,
+          data,
+        };
+      });
+  }, [activities, storedEvents]);
 
   useEffect(() => {
     if (isDone && experimentId) {
@@ -116,7 +166,7 @@ export default function TrainingMonitorPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Training Monitor</h2>
+        <h2 className="text-2xl font-bold">Training</h2>
         {isConnected && (
           <span className="flex items-center gap-2 text-sm text-green-600">
             <span className="size-2 animate-pulse rounded-full bg-green-500" />
@@ -132,7 +182,7 @@ export default function TrainingMonitorPage() {
       )}
       <div className="grid gap-6 lg:grid-cols-2">
         <ProgressDisplay experiment={experiment} />
-        <AgentActivityLog activities={activities} />
+        <AgentActivityLog activities={displayActivities} />
       </div>
       {metrics.size > 0 && <MetricsStream metrics={metrics} />}
       <ConsoleOutput logs={logLines} />

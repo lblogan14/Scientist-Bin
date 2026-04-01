@@ -75,7 +75,7 @@ export function ModelComparisonTable({ models }: ModelComparisonTableProps) {
               <TableHead key={name}>{name}</TableHead>
             ))}
             <TableHead>Time (s)</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -112,7 +112,7 @@ export function ModelComparisonTable({ models }: ModelComparisonTableProps) {
                   to={`/results?id=${record.experimentId}`}
                   className="text-primary text-sm hover:underline"
                 >
-                  View
+                  Results
                 </Link>
               </TableCell>
             </TableRow>

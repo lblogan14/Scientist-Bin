@@ -77,13 +77,17 @@ backend/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/v1/train` | Submit training request (runs agent in background) |
+| `POST` | `/api/v1/train` | Submit training request (validates data file, runs agent in background, saves artifacts) |
 | `GET` | `/api/v1/experiments` | List all experiments |
 | `GET` | `/api/v1/experiments/{id}` | Get experiment details |
 | `GET` | `/api/v1/experiments/{id}/events` | SSE stream of real-time events |
 | `GET` | `/api/v1/experiments/{id}/journal` | Agent decision journal |
+| `GET` | `/api/v1/experiments/{id}/artifacts/model` | Download trained model (.joblib) |
+| `GET` | `/api/v1/experiments/{id}/artifacts/results` | Download results JSON |
 | `DELETE` | `/api/v1/experiments/{id}` | Delete experiment |
 | `GET` | `/api/v1/health` | Health check |
+
+Data file paths in train requests are resolved relative to `backend/data/` by default (e.g., `iris_data/Iris.csv`). Invalid paths are rejected with HTTP 400 before the agent starts.
 
 ## CLI
 

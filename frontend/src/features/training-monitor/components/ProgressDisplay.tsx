@@ -47,8 +47,9 @@ export function ProgressDisplay({ experiment }: ProgressDisplayProps) {
         {/* Pipeline phase steps */}
         <div className="flex items-center gap-1">
           {PIPELINE_PHASES.map((phase, idx) => {
-            const isCompleted = idx < currentPhaseIdx;
-            const isCurrent = idx === currentPhaseIdx;
+            const allDone = experiment.phase === "done" || experiment.status === "completed";
+            const isCompleted = allDone || idx < currentPhaseIdx;
+            const isCurrent = !allDone && idx === currentPhaseIdx;
 
             return (
               <div key={phase.key} className="flex items-center gap-1">
@@ -66,7 +67,7 @@ export function ProgressDisplay({ experiment }: ProgressDisplayProps) {
                     <Circle className="text-muted-foreground size-4" />
                   )}
                   <span
-                    className={`text-xs ${isCurrent ? "text-primary font-medium" : "text-muted-foreground"}`}
+                    className={`text-xs ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-primary" : "text-muted-foreground"}`}
                   >
                     {phase.label}
                   </span>
