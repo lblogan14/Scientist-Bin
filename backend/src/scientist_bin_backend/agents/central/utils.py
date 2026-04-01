@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from scientist_bin_backend.agents.central.nodes.router import SUPPORTED_FRAMEWORKS
 from scientist_bin_backend.agents.central.schemas import TrainRequest
 from scientist_bin_backend.agents.central.states import CentralState
-
-SUPPORTED_FRAMEWORKS = {"sklearn"}
 
 
 def build_initial_state(request: TrainRequest, *, experiment_id: str | None = None) -> CentralState:

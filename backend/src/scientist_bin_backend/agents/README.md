@@ -46,7 +46,7 @@ graph TD
     Central -->|objective, framework| Plan
     Plan -->|execution_plan, plan_markdown| Analyst
     Analyst -->|split_data_paths, data_profile,<br/>analysis_report| Sklearn
-    Sklearn -->|experiment_history,<br/>best_run, generated_code| Summary
+    Sklearn -->|experiment_history,<br/>best_experiment, generated_code| Summary
     Summary -->|summary_report,<br/>best_model, best_metrics| Result["Final Result"]
 ```
 

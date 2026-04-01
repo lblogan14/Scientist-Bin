@@ -213,15 +213,6 @@ async def analyze_results(state: dict) -> dict:
     }
 
 
-def route_decision(state: dict) -> str:
-    """Deterministic routing based on analyze_results output."""
-    next_action = state.get("next_action", "abort")
-    if next_action in ("accept", "abort"):
-        return "finalize"
-    # All iteration actions route back to code generation
-    return "generate_code"
-
-
 async def finalize(state: dict) -> dict:
     """Produce the final report. Uses 1 LLM call.
 

@@ -46,7 +46,7 @@ class SklearnState(TypedDict, total=False):
 
     # -- Runs & Iteration --
     experiment_history: Annotated[list[dict], operator.add]
-    best_run: dict | None
+    best_experiment: dict | None
     current_iteration: int
     max_iterations: int
     next_action: str | None

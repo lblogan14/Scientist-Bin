@@ -37,7 +37,7 @@ class SklearnAgent:
             experiment_id: Unique experiment identifier.
 
         Returns:
-            Dict with experiment_history, best_run, generated_code, iterations, etc.
+            Dict with experiment_history, evaluation_results, generated_code, iterations, etc.
         """
         experiment_id = experiment_id or uuid.uuid4().hex[:12]
 
@@ -68,7 +68,7 @@ class SklearnAgent:
             "estimated_duration_seconds": None,
             "dynamic_timeout": None,
             "experiment_history": [],
-            "best_run": None,
+            "best_experiment": None,
             "current_iteration": 0,
             "max_iterations": max_iterations,
             "next_action": None,
@@ -89,7 +89,7 @@ class SklearnAgent:
         return {
             "plan": result.get("strategy"),
             "generated_code": result.get("generated_code"),
-            "evaluation_results": result.get("best_run") or result.get("best_experiment"),
+            "evaluation_results": result.get("best_experiment"),
             "experiment_history": result.get("experiment_history", []),
             "data_profile": result.get("data_profile"),
             "problem_type": result.get("problem_type"),
