@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from scientist_bin_backend.agents.plan.graph import build_plan_graph
 from scientist_bin_backend.utils.naming import generate_experiment_id
+
+logger = logging.getLogger(__name__)
 
 
 class PlanAgent:
@@ -194,20 +198,20 @@ EXAMPLES: list[tuple[str, str, dict | None, dict | None, str | None, str | None]
 
 
 async def _run_examples() -> None:
-    """Run the plan pipeline on each example and print results."""
+    """Run the plan pipeline on each example and log results."""
     separator = "=" * 72
 
     for i, (objective, data_desc, task_analysis, data_profile, problem_type, fw) in enumerate(
         EXAMPLES, 1
     ):
-        print(f"\n{separator}")
-        print(f"  EXAMPLE {i}: {objective[:60]}")
-        print(f"  Problem type: {problem_type}")
+        logger.info("\n%s", separator)
+        logger.info("  EXAMPLE %d: %s", i, objective[:60])
+        logger.info("  Problem type: %s", problem_type)
         if task_analysis:
-            print(f"  Complexity: {task_analysis.get('complexity_estimate', '?')}")
+            logger.info("  Complexity: %s", task_analysis.get("complexity_estimate", "?"))
         else:
-            print("  No upstream task_analysis")
-        print(separator)
+            logger.info("  No upstream task_analysis")
+        logger.info(separator)
 
         agent = PlanAgent()
         result = await agent.run(
@@ -221,23 +225,22 @@ async def _run_examples() -> None:
         )
 
         plan = result.get("execution_plan") or {}
-        print(f"\n  Approach: {plan.get('approach_summary', 'N/A')[:120]}")
-        print(f"  Algorithms: {plan.get('algorithms_to_try', [])}")
-        print(f"  Metrics: {plan.get('evaluation_metrics', [])}")
-        print(f"  CV: {plan.get('cv_strategy', 'N/A')}")
-        print(f"  Tuning: {plan.get('hyperparameter_tuning_approach', 'N/A')[:100]}")
-        print(f"  Success criteria: {plan.get('success_criteria', {})}")
-        print(f"  Plan approved: {result.get('plan_approved')}")
+        logger.info("  Approach: %s", plan.get("approach_summary", "N/A")[:120])
+        logger.info("  Algorithms: %s", plan.get("algorithms_to_try", []))
+        logger.info("  Metrics: %s", plan.get("evaluation_metrics", []))
+        logger.info("  CV: %s", plan.get("cv_strategy", "N/A"))
+        logger.info("  Tuning: %s", plan.get("hyperparameter_tuning_approach", "N/A")[:100])
+        logger.info("  Success criteria: %s", plan.get("success_criteria", {}))
+        logger.info("  Plan approved: %s", result.get("plan_approved"))
 
         md = result.get("plan_markdown")
         if md:
             lines = md.strip().splitlines()[:10]
-            print("\n  Plan preview:\n    " + "\n    ".join(lines))
-
-        print()
+            logger.info("  Plan preview:\n    %s", "\n    ".join(lines))
 
 
 if __name__ == "__main__":
     import asyncio
 
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     asyncio.run(_run_examples())

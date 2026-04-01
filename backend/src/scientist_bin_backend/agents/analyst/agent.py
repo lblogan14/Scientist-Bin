@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from scientist_bin_backend.agents.analyst.graph import build_analyst_graph
 from scientist_bin_backend.utils.naming import generate_experiment_id
+
+logger = logging.getLogger(__name__)
 
 
 class AnalystAgent:
@@ -167,7 +171,7 @@ EXAMPLES: list[tuple[str, str | None, dict | None, str | None]] = [
 
 
 async def _run_examples() -> None:
-    """Run the analyst pipeline on each example and print results."""
+    """Run the analyst pipeline on each example and log results."""
     import json
     from pathlib import Path
 
@@ -175,14 +179,14 @@ async def _run_examples() -> None:
     separator = "=" * 72
 
     for i, (objective, data_file, task_analysis, framework) in enumerate(EXAMPLES, 1):
-        print(f"\n{separator}")
-        print(f"  EXAMPLE {i}: {objective[:60]}")
+        logger.info("\n%s", separator)
+        logger.info("  EXAMPLE %d: %s", i, objective[:60])
         if task_analysis:
-            print(f"  Upstream task_type: {task_analysis['task_type']}")
-            print(f"  Complexity: {task_analysis.get('complexity_estimate', '?')}")
+            logger.info("  Upstream task_type: %s", task_analysis["task_type"])
+            logger.info("  Complexity: %s", task_analysis.get("complexity_estimate", "?"))
         else:
-            print("  Standalone mode (no upstream task_analysis)")
-        print(separator)
+            logger.info("  Standalone mode (no upstream task_analysis)")
+        logger.info(separator)
 
         # Resolve data file path relative to backend root
         resolved_path = None
@@ -197,29 +201,27 @@ async def _run_examples() -> None:
             selected_framework=framework,
         )
 
-        print(f"\n  Problem type: {result.get('problem_type')}")
-        print(f"  Classification confidence: {result.get('classification_confidence')}")
-        print(f"  Reasoning: {result.get('classification_reasoning', '')[:120]}")
+        logger.info("  Problem type: %s", result.get("problem_type"))
+        logger.info("  Classification confidence: %s", result.get("classification_confidence"))
+        logger.info("  Reasoning: %s", result.get("classification_reasoning", "")[:120])
 
         profile = result.get("data_profile")
         if profile:
-            print(f"  Data shape: {profile.get('shape')}")
-            print(f"  Target column: {profile.get('target_column')}")
+            logger.info("  Data shape: %s", profile.get("shape"))
+            logger.info("  Target column: %s", profile.get("target_column"))
 
         splits = result.get("split_data_paths")
         if splits:
-            print(f"  Split paths: {json.dumps(splits, indent=4)}")
+            logger.info("  Split paths: %s", json.dumps(splits, indent=4))
 
         report = result.get("analysis_report")
         if report:
-            # Print just the first few lines of the report
             lines = report.strip().splitlines()[:8]
-            print("\n  Report preview:\n    " + "\n    ".join(lines))
-
-        print()
+            logger.info("  Report preview:\n    %s", "\n    ".join(lines))
 
 
 if __name__ == "__main__":
     import asyncio
 
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     asyncio.run(_run_examples())

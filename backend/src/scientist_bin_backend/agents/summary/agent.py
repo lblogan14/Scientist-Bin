@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 
 from scientist_bin_backend.agents.summary.graph import build_summary_graph
 from scientist_bin_backend.utils.naming import generate_experiment_id
+
+logger = logging.getLogger(__name__)
 
 
 class SummaryAgent:
@@ -190,17 +193,20 @@ EXAMPLES = [
 async def _run_examples() -> None:
     agent = SummaryAgent()
     for i, example in enumerate(EXAMPLES, 1):
-        print(f"\n{'=' * 60}")
-        print(f"Example {i}: {example['objective']}")
-        print(f"{'=' * 60}")
+        logger.info("=" * 60)
+        logger.info("Example %d: %s", i, example["objective"])
+        logger.info("=" * 60)
         result = await agent.run(**example)
-        print(f"Best model: {result['best_model']}")
-        print(f"Best metrics: {result['best_metrics']}")
-        print(f"Selection reasoning: {result['selection_reasoning']}")
-        print("\nReport preview (first 500 chars):")
+        logger.info("Best model: %s", result["best_model"])
+        logger.info("Best metrics: %s", result["best_metrics"])
+        logger.info("Selection reasoning: %s", result["selection_reasoning"])
         report = result.get("summary_report", "")
-        print(report[:500] if report else "No report generated")
+        logger.info(
+            "Report preview (first 500 chars):\n%s",
+            report[:500] if report else "No report generated",
+        )
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     asyncio.run(_run_examples())

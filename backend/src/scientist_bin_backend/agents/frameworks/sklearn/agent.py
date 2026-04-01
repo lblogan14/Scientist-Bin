@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from scientist_bin_backend.agents.base.agent import BaseFrameworkAgent
 from scientist_bin_backend.agents.base.graph import build_framework_graph
 from scientist_bin_backend.agents.frameworks.sklearn.nodes.code_generator import (
@@ -11,6 +13,8 @@ from scientist_bin_backend.agents.frameworks.sklearn.nodes.error_researcher impo
     error_research,
 )
 from scientist_bin_backend.agents.frameworks.sklearn.states import SklearnState
+
+logger = logging.getLogger(__name__)
 
 
 class SklearnAgent(BaseFrameworkAgent):
@@ -71,16 +75,17 @@ async def _run_examples() -> None:
 
     agent = SklearnAgent()
     for ex in EXAMPLES:
-        print(f"\n{'=' * 60}")
-        print(f"Example: {ex['name']}")
-        print(f"Objective: {ex['objective']}")
-        print(f"Plan: {json.dumps(ex['execution_plan'], indent=2)}")
-        print(f"{'=' * 60}")
-        print("(Skipping execution -- requires split data files on disk)")
-        print(f"Agent framework: {agent.framework_name}")
+        logger.info("=" * 60)
+        logger.info("Example: %s", ex["name"])
+        logger.info("Objective: %s", ex["objective"])
+        logger.info("Plan:\n%s", json.dumps(ex["execution_plan"], indent=2))
+        logger.info("=" * 60)
+        logger.info("(Skipping execution -- requires split data files on disk)")
+        logger.info("Agent framework: %s", agent.framework_name)
 
 
 if __name__ == "__main__":
     import asyncio
 
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     asyncio.run(_run_examples())

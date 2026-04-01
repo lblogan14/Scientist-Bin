@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+
 from scientist_bin_backend.agents.central.graph import build_central_graph
 from scientist_bin_backend.agents.central.schemas import AgentResponse, TrainRequest
 from scientist_bin_backend.agents.central.utils import build_initial_state
+
+logger = logging.getLogger(__name__)
 
 
 class CentralAgent:
@@ -92,7 +96,7 @@ EXAMPLES = [
 
 
 async def _run_examples() -> None:
-    """Run analyze + route on each example and print results."""
+    """Run analyze + route on each example and log results."""
     import json
 
     from scientist_bin_backend.agents.central.nodes.analyzer import analyze
@@ -102,35 +106,34 @@ async def _run_examples() -> None:
     separator = "=" * 72
 
     for i, request in enumerate(EXAMPLES, 1):
-        print(f"\n{separator}")
-        print(f"  EXAMPLE {i}: {request.objective[:60]}")
+        logger.info("\n%s", separator)
+        logger.info("  EXAMPLE %d: %s", i, request.objective[:60])
         if request.framework_preference:
-            print(f"  Framework preference: {request.framework_preference}")
-        print(separator)
+            logger.info("  Framework preference: %s", request.framework_preference)
+        logger.info(separator)
 
         state = build_initial_state(request)
 
         # --- Step 1: Analyze ---
-        print("\n--- Analyzer Output ---")
+        logger.info("--- Analyzer Output ---")
         analysis_update = await analyze(state)
         task_analysis = analysis_update["task_analysis"]
-        print(json.dumps(task_analysis, indent=2))
+        logger.info("%s", json.dumps(task_analysis, indent=2))
 
         # Apply the analysis update to state for the router
         state = {**state, **analysis_update}
 
         # --- Step 2: Route ---
-        print("\n--- Router Output ---")
+        logger.info("--- Router Output ---")
         route_update = await route(state)
         selected = route_update.get("selected_framework")
         msg = route_update["messages"][0].content
-        print(f"Selected framework: {selected}")
-        print(f"Reasoning: {msg}")
-
-        print()
+        logger.info("Selected framework: %s", selected)
+        logger.info("Reasoning: %s", msg)
 
 
 if __name__ == "__main__":
     import asyncio
 
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     asyncio.run(_run_examples())
