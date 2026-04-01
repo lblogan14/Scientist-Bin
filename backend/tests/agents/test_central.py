@@ -124,8 +124,9 @@ def test_build_initial_state():
     assert state["split_data_paths"] is None
     assert state["problem_type"] is None
     assert state["data_profile"] is None
-    assert state["sklearn_results"] is None
+    assert state["framework_results"] is None
     assert state["summary_report"] is None
+    assert state["task_analysis"] is None
 
 
 def test_build_initial_state_with_data_file():

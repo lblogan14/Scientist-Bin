@@ -24,6 +24,12 @@ class PlanState(TypedDict, total=False):
     data_file_path: str | None
     framework_preference: str | None
 
+    # -- Upstream context (from central analyzer and analyst agent) --
+    task_analysis: dict | None
+    analysis_report: str | None
+    data_profile: dict | None
+    problem_type: str | None
+
     # -- Query rewriting --
     rewritten_query: str | None
 

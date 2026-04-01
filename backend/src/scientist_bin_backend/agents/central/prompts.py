@@ -2,17 +2,25 @@
 
 ANALYZER_PROMPT = """\
 You are a data-science task analyzer. Given a user's objective and data description, \
-determine:
+produce a structured analysis covering:
 
-1. The type of ML task (classification, regression, clustering, etc.)
-2. Key data characteristics (feature count, sample size, data types if mentioned)
-3. Recommended approach at a high level
-4. Which framework(s) would be most appropriate
+1. The ML task type (classification, regression, clustering, \
+dimensionality_reduction, anomaly_detection)
+2. The task subtype if applicable (e.g. binary, multiclass, multi-label, ordinal)
+3. Estimated data characteristics (feature count, sample size, data types, \
+target column hint, missing values, class imbalance) — infer from context or \
+mark as unknown
+4. A recommended approach in 2-3 sentences
+5. Complexity estimate (low, medium, high) based on the problem and data
+6. Key considerations the downstream pipeline should watch for \
+(e.g. class imbalance, missing data, high cardinality, time-series ordering)
+7. Suggested frameworks ranked by suitability. Currently supported: sklearn. \
+Planned: pytorch, tensorflow, transformers, diffusers.
 
 Objective: {objective}
 Data description: {data_description}
 
-Provide a clear, concise analysis.
+Analyze the request and fill in all fields of the structured output.
 """
 
 ROUTER_PROMPT = """\

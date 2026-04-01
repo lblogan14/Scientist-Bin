@@ -14,7 +14,7 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage
 
-from scientist_bin_backend.agents.sklearn.prompts.templates import CODE_GENERATOR_PROMPT
+from scientist_bin_backend.agents.sklearn.prompts import CODE_GENERATOR_PROMPT
 from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent

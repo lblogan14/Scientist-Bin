@@ -82,9 +82,7 @@ def test_agent_models_registry_values_are_strings():
 
 def test_get_chat_model_default(mock_settings):
     """get_chat_model without explicit model uses settings.gemini_model."""
-    with patch(
-        "scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI"
-    ) as mock_cls:
+    with patch("scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI") as mock_cls:
         get_chat_model(settings=mock_settings)
         mock_cls.assert_called_once_with(
             model=mock_settings.gemini_model,
@@ -94,9 +92,7 @@ def test_get_chat_model_default(mock_settings):
 
 def test_get_chat_model_explicit_model(mock_settings):
     """get_chat_model with explicit model overrides settings.gemini_model."""
-    with patch(
-        "scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI"
-    ) as mock_cls:
+    with patch("scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI") as mock_cls:
         get_chat_model(settings=mock_settings, model="gemini-3.1-pro-preview")
         mock_cls.assert_called_once_with(
             model="gemini-3.1-pro-preview",
@@ -111,9 +107,7 @@ def test_get_chat_model_explicit_model(mock_settings):
 
 def test_get_agent_model_known_agent(mock_settings):
     """get_agent_model looks up the model from the AGENT_MODELS registry."""
-    with patch(
-        "scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI"
-    ) as mock_cls:
+    with patch("scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI") as mock_cls:
         get_agent_model("plan", settings=mock_settings)
         mock_cls.assert_called_once_with(
             model=AGENT_MODELS["plan"],
@@ -123,9 +117,7 @@ def test_get_agent_model_known_agent(mock_settings):
 
 def test_get_agent_model_unknown_agent_falls_back(mock_settings):
     """Unknown agent name falls back to settings.gemini_model."""
-    with patch(
-        "scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI"
-    ) as mock_cls:
+    with patch("scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI") as mock_cls:
         get_agent_model("unknown_agent", settings=mock_settings)
         mock_cls.assert_called_once_with(
             model=mock_settings.gemini_model,
@@ -135,9 +127,7 @@ def test_get_agent_model_unknown_agent_falls_back(mock_settings):
 
 def test_get_agent_model_central_uses_flash(mock_settings):
     """Central agent uses the flash model."""
-    with patch(
-        "scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI"
-    ) as mock_cls:
+    with patch("scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI") as mock_cls:
         get_agent_model("central", settings=mock_settings)
         mock_cls.assert_called_once_with(
             model=AGENT_MODELS["central"],
@@ -149,9 +139,7 @@ def test_get_agent_model_central_uses_flash(mock_settings):
 
 def test_get_agent_model_sklearn_uses_pro(mock_settings):
     """Sklearn agent uses the pro model."""
-    with patch(
-        "scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI"
-    ) as mock_cls:
+    with patch("scientist_bin_backend.utils.llm.ChatGoogleGenerativeAI") as mock_cls:
         get_agent_model("sklearn", settings=mock_settings)
         mock_cls.assert_called_once_with(
             model=AGENT_MODELS["sklearn"],

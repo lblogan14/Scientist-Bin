@@ -12,7 +12,7 @@ import logging
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import interrupt
 
-from scientist_bin_backend.agents.plan.prompts.templates import PLAN_REVISER_PROMPT
+from scientist_bin_backend.agents.plan.prompts import PLAN_REVISER_PROMPT
 from scientist_bin_backend.agents.plan.schemas import ExecutionPlan
 from scientist_bin_backend.agents.plan.states import PlanState
 from scientist_bin_backend.events.bus import event_bus

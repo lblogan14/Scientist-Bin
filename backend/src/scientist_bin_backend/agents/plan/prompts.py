@@ -28,6 +28,13 @@ choice of algorithms, preprocessing, and evaluation strategy.
 == Framework Preference ==
 {framework_preference}
 
+{analysis_context}
+
+If upstream analysis or data profile is provided above, use the actual data \
+characteristics to make concrete, grounded recommendations. Validate and enrich \
+the analysis rather than re-deriving from scratch. If no upstream context is \
+available, perform the full analysis from the objective and data description.
+
 Produce a structured rewrite with an enhanced objective, key requirements, \
 and constraints.
 """
@@ -48,6 +55,13 @@ generate and run code, so it must be precise, complete, and unambiguous.
 
 == Framework Preference ==
 {framework_preference}
+
+{data_context}
+
+Use the actual data characteristics above (column types, distributions, missing \
+values, class balance) to make concrete, grounded recommendations for preprocessing, \
+algorithms, and evaluation. If no data analysis is available, infer from the \
+objective and data description.
 
 Based on all of the above, produce a structured execution plan covering:
 

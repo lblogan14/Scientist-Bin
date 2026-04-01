@@ -27,6 +27,10 @@ class PlanAgent:
         experiment_id: str | None = None,
         auto_approve: bool = False,
         max_revisions: int = 3,
+        task_analysis: dict | None = None,
+        analysis_report: str | None = None,
+        data_profile: dict | None = None,
+        problem_type: str | None = None,
     ) -> dict:
         """Execute the full planning pipeline and return results.
 
@@ -40,6 +44,10 @@ class PlanAgent:
                 the plan automatically.
             max_revisions: Maximum number of plan revisions before
                 auto-approving.
+            task_analysis: Structured analysis from the central agent.
+            analysis_report: Data analysis report from the analyst agent.
+            data_profile: Data profile dict from the analyst agent.
+            problem_type: ML problem type from the analyst agent.
 
         Returns:
             A dict with ``execution_plan``, ``plan_markdown``,
@@ -53,6 +61,10 @@ class PlanAgent:
             "data_description": data_description,
             "data_file_path": data_file_path,
             "framework_preference": framework_preference,
+            "task_analysis": task_analysis,
+            "analysis_report": analysis_report,
+            "data_profile": data_profile,
+            "problem_type": problem_type,
             "rewritten_query": None,
             "search_results": None,
             "execution_plan": None,

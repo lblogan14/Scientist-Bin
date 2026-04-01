@@ -12,7 +12,7 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage
 
-from scientist_bin_backend.agents.analyst.prompts.templates import CLASSIFY_PROBLEM_PROMPT
+from scientist_bin_backend.agents.analyst.prompts import CLASSIFY_PROBLEM_PROMPT
 from scientist_bin_backend.agents.analyst.states import AnalystState
 from scientist_bin_backend.agents.base.schemas import ProblemClassification
 from scientist_bin_backend.events.bus import event_bus

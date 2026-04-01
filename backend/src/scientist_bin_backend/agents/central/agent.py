@@ -11,7 +11,7 @@ class CentralAgent:
     """Entrypoint for running the full agent pipeline.
 
     The pipeline is:
-        analyze → route → plan (HITL) → analyst → sklearn → summary → END
+        analyze → route → analyst → plan (HITL) → framework → summary → END
     """
 
     def __init__(self, checkpointer=None) -> None:

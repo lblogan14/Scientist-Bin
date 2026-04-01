@@ -11,7 +11,7 @@ import logging
 
 from langchain_core.messages import HumanMessage
 
-from scientist_bin_backend.agents.summary.prompts.templates import (
+from scientist_bin_backend.agents.summary.prompts import (
     EXPERIMENT_REVIEW_PROMPT,
 )
 from scientist_bin_backend.agents.summary.schemas import ModelRankingList

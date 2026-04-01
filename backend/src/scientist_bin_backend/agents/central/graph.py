@@ -1,18 +1,24 @@
 """StateGraph definition for the central orchestrator agent.
 
 The central agent orchestrates the full 5-agent pipeline:
-    analyze → route → plan → analyst → sklearn → summary → END
+    analyze → route → analyst → plan (HITL) → framework → summary → END
 """
 
 from __future__ import annotations
 
+import importlib
 import logging
 
 from langgraph.graph import END, START, StateGraph
 
 from scientist_bin_backend.agents.central.nodes.analyzer import analyze
-from scientist_bin_backend.agents.central.nodes.router import route, select_subagent
-from scientist_bin_backend.agents.central.states import CentralState
+from scientist_bin_backend.agents.central.nodes.router import (
+    FRAMEWORK_REGISTRY,
+    SUPPORTED_FRAMEWORKS,
+    route,
+    select_subagent,
+)
+from scientist_bin_backend.agents.central.states import PipelineState
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 
@@ -24,7 +30,45 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-async def _plan_delegate(state: CentralState) -> dict:
+async def _analyst_delegate(state: PipelineState) -> dict:
+    """Delegate to the analyst agent."""
+    from scientist_bin_backend.agents.analyst.agent import AnalystAgent
+
+    experiment_id = state.get("experiment_id")
+    if experiment_id:
+        await event_bus.emit(
+            experiment_id,
+            ExperimentEvent(
+                event_type="phase_change",
+                data={"phase": "data_analysis", "message": "Starting analyst agent"},
+            ),
+        )
+
+    agent = AnalystAgent()
+    result = await agent.run(
+        objective=state["objective"],
+        data_file_path=state.get("data_file_path"),
+        experiment_id=experiment_id,
+    )
+
+    if experiment_id:
+        await event_bus.emit(
+            experiment_id,
+            ExperimentEvent(
+                event_type="analysis_completed",
+                data={"has_report": bool(result.get("analysis_report"))},
+            ),
+        )
+
+    return {
+        "analysis_report": result.get("analysis_report"),
+        "split_data_paths": result.get("split_data_paths"),
+        "problem_type": result.get("problem_type"),
+        "data_profile": result.get("data_profile"),
+    }
+
+
+async def _plan_delegate(state: PipelineState) -> dict:
     """Delegate to the plan agent."""
     from scientist_bin_backend.agents.plan.agent import PlanAgent
 
@@ -46,6 +90,10 @@ async def _plan_delegate(state: CentralState) -> dict:
         framework_preference=state.get("selected_framework"),
         experiment_id=experiment_id,
         auto_approve=state.get("plan_approved", False),
+        task_analysis=state.get("task_analysis"),
+        analysis_report=state.get("analysis_report"),
+        data_profile=state.get("data_profile"),
+        problem_type=state.get("problem_type"),
     )
 
     if experiment_id:
@@ -64,9 +112,17 @@ async def _plan_delegate(state: CentralState) -> dict:
     }
 
 
-async def _analyst_delegate(state: CentralState) -> dict:
-    """Delegate to the analyst agent."""
-    from scientist_bin_backend.agents.analyst.agent import AnalystAgent
+async def _framework_delegate(state: PipelineState) -> dict:
+    """Delegate to the selected framework agent (generic)."""
+    framework = (state.get("selected_framework") or "sklearn").lower()
+    agent_path = FRAMEWORK_REGISTRY.get(framework)
+
+    if not agent_path:
+        return {"error": f"Unsupported framework: {framework}"}
+
+    module_path, class_name = agent_path.rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    agent_cls = getattr(module, class_name)
 
     experiment_id = state.get("experiment_id")
     if experiment_id:
@@ -74,50 +130,11 @@ async def _analyst_delegate(state: CentralState) -> dict:
             experiment_id,
             ExperimentEvent(
                 event_type="phase_change",
-                data={"phase": "data_analysis", "message": "Starting analyst agent"},
+                data={"phase": "execution", "message": f"Starting {framework} agent"},
             ),
         )
 
-    agent = AnalystAgent()
-    result = await agent.run(
-        objective=state["objective"],
-        data_file_path=state.get("data_file_path"),
-        execution_plan=state.get("execution_plan"),
-        experiment_id=experiment_id,
-    )
-
-    if experiment_id:
-        await event_bus.emit(
-            experiment_id,
-            ExperimentEvent(
-                event_type="analysis_completed",
-                data={"has_report": bool(result.get("analysis_report"))},
-            ),
-        )
-
-    return {
-        "analysis_report": result.get("analysis_report"),
-        "split_data_paths": result.get("split_data_paths"),
-        "problem_type": result.get("problem_type"),
-        "data_profile": result.get("data_profile"),
-    }
-
-
-async def _sklearn_delegate(state: CentralState) -> dict:
-    """Delegate to the sklearn subagent."""
-    from scientist_bin_backend.agents.sklearn.agent import SklearnAgent
-
-    experiment_id = state.get("experiment_id")
-    if experiment_id:
-        await event_bus.emit(
-            experiment_id,
-            ExperimentEvent(
-                event_type="phase_change",
-                data={"phase": "execution", "message": "Starting sklearn agent"},
-            ),
-        )
-
-    agent = SklearnAgent()
+    agent = agent_cls()
     result = await agent.run(
         objective=state["objective"],
         execution_plan=state.get("execution_plan"),
@@ -132,14 +149,18 @@ async def _sklearn_delegate(state: CentralState) -> dict:
         await event_bus.emit(
             experiment_id,
             ExperimentEvent(
-                event_type="sklearn_completed", data={"iterations": result.get("iterations", 0)}
+                event_type="framework_completed",
+                data={
+                    "framework": framework,
+                    "iterations": result.get("iterations", 0),
+                },
             ),
         )
 
-    return {"sklearn_results": result}
+    return {"framework_results": result}
 
 
-async def _summary_delegate(state: CentralState) -> dict:
+async def _summary_delegate(state: PipelineState) -> dict:
     """Delegate to the summary agent."""
     from scientist_bin_backend.agents.summary.agent import SummaryAgent
 
@@ -153,15 +174,15 @@ async def _summary_delegate(state: CentralState) -> dict:
             ),
         )
 
-    sklearn_results = state.get("sklearn_results") or {}
+    framework_results = state.get("framework_results") or {}
     agent = SummaryAgent()
     result = await agent.run(
         objective=state["objective"],
         problem_type=state.get("problem_type"),
         execution_plan=state.get("execution_plan"),
         analysis_report=state.get("analysis_report"),
-        sklearn_results=sklearn_results,
-        experiment_history=sklearn_results.get("experiment_history", []),
+        sklearn_results=framework_results,
+        experiment_history=framework_results.get("experiment_history", []),
         experiment_id=experiment_id,
     )
 
@@ -176,7 +197,7 @@ async def _summary_delegate(state: CentralState) -> dict:
     return {
         "summary_report": result.get("summary_report"),
         "agent_response": {
-            **sklearn_results,
+            **framework_results,
             "summary_report": result.get("summary_report"),
             "best_model": result.get("best_model"),
             "best_hyperparameters": result.get("best_hyperparameters"),
@@ -194,22 +215,29 @@ async def _summary_delegate(state: CentralState) -> dict:
 
 
 def build_central_graph(checkpointer=None):
-    """Build and compile the central orchestrator graph."""
-    builder = StateGraph(CentralState)
+    """Build and compile the central orchestrator graph.
+
+    Pipeline: analyze → route → analyst → plan (HITL) → framework → summary → END
+    """
+    builder = StateGraph(PipelineState)
 
     builder.add_node("analyze", analyze)
     builder.add_node("route", route)
-    builder.add_node("plan", _plan_delegate)
     builder.add_node("analyst", _analyst_delegate)
-    builder.add_node("sklearn", _sklearn_delegate)
+    builder.add_node("plan", _plan_delegate)
+    builder.add_node("framework", _framework_delegate)
     builder.add_node("summary", _summary_delegate)
 
     builder.add_edge(START, "analyze")
     builder.add_edge("analyze", "route")
-    builder.add_conditional_edges("route", select_subagent, {"sklearn": "plan", END: END})
-    builder.add_edge("plan", "analyst")
-    builder.add_edge("analyst", "sklearn")
-    builder.add_edge("sklearn", "summary")
+    builder.add_conditional_edges(
+        "route",
+        select_subagent,
+        {fw: "analyst" for fw in SUPPORTED_FRAMEWORKS} | {END: END},
+    )
+    builder.add_edge("analyst", "plan")
+    builder.add_edge("plan", "framework")
+    builder.add_edge("framework", "summary")
     builder.add_edge("summary", END)
 
     return builder.compile(checkpointer=checkpointer)

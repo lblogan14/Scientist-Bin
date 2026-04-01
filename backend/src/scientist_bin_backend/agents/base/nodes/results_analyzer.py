@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage
 
-from scientist_bin_backend.agents.base.prompts.templates import (
+from scientist_bin_backend.agents.base.prompts import (
     FINAL_REPORT_PROMPT,
     REFLECTION_PROMPT,
     RESULTS_ANALYZER_PROMPT,
