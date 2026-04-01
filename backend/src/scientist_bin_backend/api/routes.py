@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+import traceback
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -12,6 +14,8 @@ from pydantic import BaseModel
 from scientist_bin_backend.api.experiments import Run, experiment_store
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -108,6 +112,35 @@ async def _sync_events_to_store(experiment_id: str) -> None:
             experiment_store.append_events(experiment_id, [event_dict])
 
 
+def _resolve_data_file_path(raw_path: str | None) -> str | None:
+    """Resolve a user-provided data file path to an absolute path.
+
+    Tries (in order):
+    1. The path as given (absolute or relative to CWD)
+    2. Relative to the backend/ directory
+    3. Relative to the project root (parent of backend/)
+    """
+    if not raw_path:
+        return None
+
+    from pathlib import Path
+
+    p = Path(raw_path)
+    if p.is_file():
+        return str(p.resolve())
+
+    backend_dir = Path(__file__).resolve().parent.parent.parent.parent
+    project_root = backend_dir.parent
+
+    for base in (backend_dir, project_root):
+        candidate = base / raw_path
+        if candidate.is_file():
+            return str(candidate.resolve())
+
+    # Return the original; downstream code will handle missing files
+    return raw_path
+
+
 async def _run_training(
     experiment_id: str,
     objective: str,
@@ -116,7 +149,13 @@ async def _run_training(
     framework: str | None,
 ) -> None:
     """Run the central agent and update the experiment with results."""
-    experiment_store.update(experiment_id, status="running", phase="initializing")
+    data_file_path = _resolve_data_file_path(data_file_path)
+    experiment_store.update(
+        experiment_id,
+        status="running",
+        phase="initializing",
+        data_file_path=data_file_path,
+    )
 
     # Mirror events into the experiment store so polling clients stay current
     sync_task = asyncio.create_task(_sync_events_to_store(experiment_id))
@@ -142,17 +181,20 @@ async def _run_training(
             result=result.model_dump(),
         )
     except Exception as exc:
+        tb = traceback.format_exc()
+        error_msg = str(exc) or f"{type(exc).__name__}: {tb.splitlines()[-1]}"
+        logger.error("Experiment %s failed: %s\n%s", experiment_id, error_msg, tb)
         experiment_store.update(
             experiment_id,
             status="failed",
             phase="error",
-            result={"error": str(exc)},
+            result={"error": error_msg, "traceback": tb},
         )
         await event_bus.emit(
             experiment_id,
             ExperimentEvent(
                 event_type="error",
-                data={"message": str(exc), "phase": "error"},
+                data={"message": error_msg, "phase": "error"},
             ),
         )
     finally:

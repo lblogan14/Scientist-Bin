@@ -37,13 +37,13 @@ export function ObjectiveForm() {
   });
 
   const onSubmit = (values: FormValues) => {
+    const fw = values.framework_preference;
     mutate({
       objective: values.objective,
       data_description: values.data_description,
       data_file_path: values.data_file_path || undefined,
-      framework_preference: values.framework_preference as
-        | "sklearn"
-        | undefined,
+      framework_preference:
+        fw && fw !== "auto" ? (fw as "sklearn") : undefined,
     });
   };
 

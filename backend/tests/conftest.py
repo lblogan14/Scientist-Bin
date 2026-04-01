@@ -1,5 +1,6 @@
 """Shared test fixtures."""
 
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -20,11 +21,20 @@ def mock_settings():
 
 
 @pytest.fixture()
-def app(mock_settings):
-    """Create a fresh FastAPI app with mocked settings."""
-    with patch(
-        "scientist_bin_backend.config.settings.get_settings",
-        return_value=mock_settings,
+def app(mock_settings, tmp_path: Path):
+    """Create a fresh FastAPI app with mocked settings and isolated store."""
+    from scientist_bin_backend.api import experiments
+
+    # Use a temp directory so tests start with an empty experiment store
+    fresh_store = experiments.ExperimentStore(store_dir=tmp_path / "experiments")
+
+    with (
+        patch(
+            "scientist_bin_backend.config.settings.get_settings",
+            return_value=mock_settings,
+        ),
+        patch.object(experiments, "experiment_store", fresh_store),
+        patch("scientist_bin_backend.api.routes.experiment_store", fresh_store),
     ):
         from scientist_bin_backend.main import create_app
 
