@@ -37,11 +37,11 @@ def train(
 ) -> None:
     """Run full training pipeline locally (no server required)."""
     import asyncio
-    import uuid
     from pathlib import Path
 
     from scientist_bin_backend.agents.central.agent import CentralAgent
     from scientist_bin_backend.agents.central.schemas import TrainRequest
+    from scientist_bin_backend.utils.naming import generate_experiment_id
 
     # Resolve data file path to absolute and validate before starting the agent
     resolved_data_file = None
@@ -53,7 +53,7 @@ def train(
         resolved_data_file = str(resolved)
 
     agent = CentralAgent()
-    experiment_id = uuid.uuid4().hex[:12]
+    experiment_id = generate_experiment_id(objective)
     request = TrainRequest(
         objective=objective,
         data_description=data,
@@ -113,12 +113,12 @@ def plan(
     """Run only the Plan Agent (query rewrite, research, plan generation)."""
     import asyncio
     import json
-    import uuid
 
     from scientist_bin_backend.agents.plan.agent import PlanAgent
+    from scientist_bin_backend.utils.naming import generate_experiment_id
 
     agent = PlanAgent()
-    experiment_id = uuid.uuid4().hex[:12]
+    experiment_id = generate_experiment_id(objective)
 
     async def run() -> dict:
         return await agent.run(
@@ -143,10 +143,10 @@ def analyze(
     """Run only the Analyst Agent (data profiling, cleaning, splitting)."""
     import asyncio
     import json
-    import uuid
     from pathlib import Path
 
     from scientist_bin_backend.agents.analyst.agent import AnalystAgent
+    from scientist_bin_backend.utils.naming import generate_experiment_id
 
     resolved = Path(data_file).resolve()
     if not resolved.exists():
@@ -160,7 +160,7 @@ def analyze(
             execution_plan = json.loads(plan_path.read_text(encoding="utf-8"))
 
     agent = AnalystAgent()
-    experiment_id = uuid.uuid4().hex[:12]
+    experiment_id = generate_experiment_id(objective)
 
     async def run() -> dict:
         return await agent.run(
@@ -185,10 +185,10 @@ def train_sklearn(
     """Run only the Sklearn Agent (code generation, training, iteration)."""
     import asyncio
     import json
-    import uuid
     from pathlib import Path
 
     from scientist_bin_backend.agents.sklearn.agent import SklearnAgent
+    from scientist_bin_backend.utils.naming import generate_experiment_id
 
     split_data_paths = {}
     if data_dir:
@@ -212,7 +212,7 @@ def train_sklearn(
             analysis_report = analysis_path.read_text(encoding="utf-8")
 
     agent = SklearnAgent()
-    experiment_id = uuid.uuid4().hex[:12]
+    experiment_id = generate_experiment_id(objective)
 
     async def run() -> dict:
         return await agent.run(

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
-
 from scientist_bin_backend.agents.analyst.graph import build_analyst_graph
+from scientist_bin_backend.utils.naming import generate_experiment_id
 
 
 class AnalystAgent:
@@ -39,7 +38,7 @@ class AnalystAgent:
             problem_type, cleaned_data_path, classification_confidence,
             and classification_reasoning.
         """
-        experiment_id = experiment_id or uuid.uuid4().hex[:12]
+        experiment_id = experiment_id or generate_experiment_id(objective)
 
         initial_state = {
             "messages": [],

@@ -11,6 +11,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from scientist_bin_backend.utils.naming import generate_experiment_id
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -155,6 +157,7 @@ class ExperimentStore:
         framework: str | None = None,
     ) -> Experiment:
         experiment = Experiment(
+            id=generate_experiment_id(objective),
             objective=objective,
             data_description=data_description,
             data_file_path=data_file_path,

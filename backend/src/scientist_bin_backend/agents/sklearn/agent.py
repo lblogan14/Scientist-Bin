@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
-
 from scientist_bin_backend.agents.sklearn.graph import build_sklearn_graph
+from scientist_bin_backend.utils.naming import generate_experiment_id
 
 
 class SklearnAgent:
@@ -39,7 +38,7 @@ class SklearnAgent:
         Returns:
             Dict with experiment_history, evaluation_results, generated_code, iterations, etc.
         """
-        experiment_id = experiment_id or uuid.uuid4().hex[:12]
+        experiment_id = experiment_id or generate_experiment_id(objective)
 
         # Derive strategy fields from execution plan
         candidate_algorithms: list[str] = []

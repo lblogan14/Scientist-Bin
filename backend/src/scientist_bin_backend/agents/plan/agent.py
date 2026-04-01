@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
-
 from scientist_bin_backend.agents.plan.graph import build_plan_graph
+from scientist_bin_backend.utils.naming import generate_experiment_id
 
 
 class PlanAgent:
@@ -53,7 +52,7 @@ class PlanAgent:
             A dict with ``execution_plan``, ``plan_markdown``,
             ``plan_approved``, ``rewritten_query``, and ``search_results``.
         """
-        experiment_id = experiment_id or uuid.uuid4().hex[:12]
+        experiment_id = experiment_id or generate_experiment_id(objective)
 
         initial_state = {
             "messages": [],

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
-
 from scientist_bin_backend.agents.summary.graph import build_summary_graph
+from scientist_bin_backend.utils.naming import generate_experiment_id
 
 
 class SummaryAgent:
@@ -40,7 +39,7 @@ class SummaryAgent:
             Dict with summary_report, best_model, best_hyperparameters,
             best_metrics, and model_comparison.
         """
-        experiment_id = experiment_id or uuid.uuid4().hex[:12]
+        experiment_id = experiment_id or generate_experiment_id(objective)
 
         initial_state = {
             "messages": [],
