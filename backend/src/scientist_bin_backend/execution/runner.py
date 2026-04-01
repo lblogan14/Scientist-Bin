@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import subprocess
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -114,30 +115,10 @@ class CodeRunner:
         )
 
         try:
-            process = await asyncio.create_subprocess_exec(
-                self.python_path,
-                str(script_path),
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=str(run_dir),
-                env=env,
+            returncode, stdout_bytes, stderr_bytes, status = await self._run_subprocess(
+                config, script_path, run_dir, env
             )
-            self._active_processes[config.run_id] = process
-
-            try:
-                stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                    process.communicate(), timeout=config.timeout_seconds
-                )
-                status: Literal["completed", "failed", "timeout"] = (
-                    "completed" if process.returncode == 0 else "failed"
-                )
-            except TimeoutError:
-                process.kill()
-                stdout_bytes, stderr_bytes = await process.communicate()
-                status = "timeout"
-
         finally:
-            self._active_processes.pop(config.run_id, None)
             stop_event.set()
             # Give the watcher a moment to finish its final read
             await asyncio.sleep(0.1)
@@ -153,7 +134,7 @@ class CodeRunner:
         (run_dir / "completion.json").write_text(
             json.dumps(
                 {
-                    "exit_code": process.returncode,
+                    "exit_code": returncode,
                     "status": status,
                     "wall_time_seconds": round(wall_time, 3),
                 },
@@ -173,7 +154,7 @@ class CodeRunner:
 
         return RunResult(
             run_id=config.run_id,
-            exit_code=process.returncode or 0,
+            exit_code=returncode or 0,
             stdout=stdout,
             stderr=stderr,
             metrics=metrics,
@@ -182,6 +163,82 @@ class CodeRunner:
             wall_time_seconds=round(wall_time, 3),
             status=status,
         )
+
+    async def _run_subprocess(
+        self,
+        config: RunConfig,
+        script_path: Path,
+        run_dir: Path,
+        env: dict[str, str],
+    ) -> tuple[int, bytes, bytes, Literal["completed", "failed", "timeout"]]:
+        """Run the subprocess, falling back to sync execution on Windows if needed."""
+        try:
+            return await self._run_subprocess_async(config, script_path, run_dir, env)
+        except NotImplementedError:
+            # Windows event loop doesn't support async subprocess (e.g. SelectorEventLoop).
+            # Fall back to sync subprocess in a thread.
+            return await self._run_subprocess_sync(config, script_path, run_dir, env)
+
+    async def _run_subprocess_async(
+        self,
+        config: RunConfig,
+        script_path: Path,
+        run_dir: Path,
+        env: dict[str, str],
+    ) -> tuple[int, bytes, bytes, Literal["completed", "failed", "timeout"]]:
+        """Run subprocess using asyncio.create_subprocess_exec."""
+        process = await asyncio.create_subprocess_exec(
+            self.python_path,
+            str(script_path),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=str(run_dir),
+            env=env,
+        )
+        self._active_processes[config.run_id] = process
+
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                process.communicate(), timeout=config.timeout_seconds
+            )
+            status: Literal["completed", "failed", "timeout"] = (
+                "completed" if process.returncode == 0 else "failed"
+            )
+        except TimeoutError:
+            process.kill()
+            stdout_bytes, stderr_bytes = await process.communicate()
+            status = "timeout"
+        finally:
+            self._active_processes.pop(config.run_id, None)
+
+        return process.returncode or 0, stdout_bytes, stderr_bytes, status
+
+    async def _run_subprocess_sync(
+        self,
+        config: RunConfig,
+        script_path: Path,
+        run_dir: Path,
+        env: dict[str, str],
+    ) -> tuple[int, bytes, bytes, Literal["completed", "failed", "timeout"]]:
+        """Run subprocess using subprocess.run in a thread (fallback for Windows)."""
+
+        def _run() -> tuple[int, bytes, bytes, Literal["completed", "failed", "timeout"]]:
+            try:
+                result = subprocess.run(
+                    [self.python_path, str(script_path)],
+                    capture_output=True,
+                    cwd=str(run_dir),
+                    env=env,
+                    timeout=config.timeout_seconds,
+                )
+                run_status: Literal["completed", "failed", "timeout"] = (
+                    "completed" if result.returncode == 0 else "failed"
+                )
+                return result.returncode, result.stdout, result.stderr, run_status
+            except subprocess.TimeoutExpired as exc:
+                return 1, exc.stdout or b"", exc.stderr or b"", "timeout"
+
+        return await asyncio.to_thread(_run)
 
     async def kill(self, run_id: str) -> None:
         """Kill an active subprocess."""

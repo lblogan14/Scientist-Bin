@@ -1,5 +1,6 @@
 import { CheckCircle, FlaskConical, TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { isExperimentError } from "@/types/api";
 import { useExperiments } from "../hooks/use-experiments";
 
 export function DashboardStats() {
@@ -16,7 +17,11 @@ export function DashboardStats() {
   if (completedCount > 0) {
     const accuracies: number[] = [];
     for (const exp of completed) {
-      const history = exp.result?.experiment_history ?? [];
+      const result = exp.result;
+      const history =
+        result && !isExperimentError(result)
+          ? result.experiment_history ?? []
+          : [];
       for (const record of history) {
         const acc = record.metrics?.accuracy;
         if (acc != null) {

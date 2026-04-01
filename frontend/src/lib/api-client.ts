@@ -8,7 +8,7 @@ import type {
 
 const api = ky.create({
   prefixUrl: "/api/v1",
-  timeout: 30_000,
+  timeout: 120_000,
 });
 
 export async function submitTrainRequest(
@@ -47,4 +47,12 @@ export function createExperimentEventSource(
   experimentId: string,
 ): EventSource {
   return new EventSource(`/api/v1/experiments/${experimentId}/events`);
+}
+
+export function getModelDownloadUrl(experimentId: string): string {
+  return `/api/v1/experiments/${experimentId}/artifacts/model`;
+}
+
+export function getResultsDownloadUrl(experimentId: string): string {
+  return `/api/v1/experiments/${experimentId}/artifacts/results`;
 }

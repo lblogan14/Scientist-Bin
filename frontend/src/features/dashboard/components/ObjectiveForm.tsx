@@ -81,11 +81,12 @@ export function ObjectiveForm() {
             <Label htmlFor="data_file_path">Dataset File Path (optional)</Label>
             <Input
               id="data_file_path"
-              placeholder="e.g. 'data/iris_data/Iris.csv'"
+              placeholder="e.g. 'iris_data/Iris.csv'"
               {...register("data_file_path")}
             />
             <p className="text-muted-foreground text-xs">
-              Path to a CSV file on the server. The agent will run EDA and train models on this data.
+              Path relative to <code className="text-xs">backend/data/</code>.
+              The agent will run EDA and train models on this data.
             </p>
           </div>
 

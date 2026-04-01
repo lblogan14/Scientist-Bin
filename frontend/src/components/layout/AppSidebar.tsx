@@ -1,4 +1,4 @@
-import { NavLink } from "react-router";
+import { Link, useLocation } from "react-router";
 import {
   Activity,
   BarChart3,
@@ -27,6 +27,8 @@ const navItems = [
 ];
 
 export function AppSidebar() {
+  const { pathname } = useLocation();
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
@@ -38,22 +40,22 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.to}
-                      end={item.to === "/"}
-                      className={({ isActive }) =>
-                        isActive ? "bg-sidebar-accent font-medium" : ""
-                      }
-                    >
-                      <item.icon className="size-4" />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const active =
+                  item.to === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.to);
+                return (
+                  <SidebarMenuItem key={item.to}>
+                    <SidebarMenuButton asChild isActive={active}>
+                      <Link to={item.to}>
+                        <item.icon className="size-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

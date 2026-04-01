@@ -6,9 +6,10 @@ import asyncio
 import logging
 import traceback
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from scientist_bin_backend.api.experiments import Run, experiment_store
@@ -18,6 +19,9 @@ from scientist_bin_backend.events.types import ExperimentEvent
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1")
+
+# outputs/ is always relative to the backend package root
+_OUTPUTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "outputs"
 
 
 # ---------------------------------------------------------------------------
@@ -115,29 +119,32 @@ async def _sync_events_to_store(experiment_id: str) -> None:
 def _resolve_data_file_path(raw_path: str | None) -> str | None:
     """Resolve a user-provided data file path to an absolute path.
 
-    Tries (in order):
-    1. The path as given (absolute or relative to CWD)
-    2. Relative to the backend/ directory
-    3. Relative to the project root (parent of backend/)
+    Paths are resolved relative to ``backend/data/`` by default, which is the
+    canonical location for datasets.  The full resolution order is:
+
+    1. ``backend/data/<raw_path>`` — the recommended convention
+    2. ``backend/<raw_path>`` — backwards-compatible with older paths
+    3. ``<project_root>/<raw_path>``
+    4. The path as given (absolute or relative to CWD)
     """
     if not raw_path:
         return None
 
-    from pathlib import Path
-
-    p = Path(raw_path)
-    if p.is_file():
-        return str(p.resolve())
-
     backend_dir = Path(__file__).resolve().parent.parent.parent.parent
     project_root = backend_dir.parent
+    data_dir = backend_dir / "data"
 
-    for base in (backend_dir, project_root):
+    for base in (data_dir, backend_dir, project_root):
         candidate = base / raw_path
         if candidate.is_file():
             return str(candidate.resolve())
 
-    # Return the original; downstream code will handle missing files
+    # Try the path as-is (absolute or relative to CWD)
+    p = Path(raw_path)
+    if p.is_file():
+        return str(p.resolve())
+
+    # Return the original; validation in create_train() will reject it
     return raw_path
 
 
@@ -172,14 +179,23 @@ async def _run_training(
             framework_preference=framework,
         )
         result = await agent.run(request, experiment_id=experiment_id)
+        result_dict = result.model_dump()
         experiment_store.update(
             experiment_id,
             status="completed",
             phase="done",
             framework=result.framework,
             iteration_count=result.iterations,
-            result=result.model_dump(),
+            result=result_dict,
         )
+
+        # Save artifacts (model, results JSON, journal) like the CLI does
+        try:
+            from scientist_bin_backend.utils.artifacts import save_experiment_artifacts
+
+            save_experiment_artifacts(experiment_id, result_dict)
+        except Exception:
+            logger.exception("Failed to save artifacts for %s", experiment_id)
     except Exception as exc:
         tb = traceback.format_exc()
         error_msg = str(exc) or f"{type(exc).__name__}: {tb.splitlines()[-1]}"
@@ -214,10 +230,21 @@ async def _run_training(
 @router.post("/train")
 async def create_train(body: TrainRequestBody, background_tasks: BackgroundTasks) -> dict:
     """Submit a new training request."""
+    # Validate data file path upfront (matches CLI behavior)
+    resolved_data_file = _resolve_data_file_path(body.data_file_path)
+    if body.data_file_path and resolved_data_file:
+        from pathlib import Path
+
+        if not Path(resolved_data_file).is_file():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Data file not found: {body.data_file_path}",
+            )
+
     experiment = experiment_store.create(
         objective=body.objective,
         data_description=body.data_description,
-        data_file_path=body.data_file_path,
+        data_file_path=resolved_data_file,
         framework=body.framework_preference,
     )
     background_tasks.add_task(
@@ -225,7 +252,7 @@ async def create_train(body: TrainRequestBody, background_tasks: BackgroundTasks
         experiment.id,
         body.objective,
         body.data_description,
-        body.data_file_path,
+        resolved_data_file,
         body.framework_preference,
     )
     return experiment.model_dump(mode="json")
@@ -280,6 +307,42 @@ async def get_journal(experiment_id: str) -> list[dict]:
 
     journal = get_journal_for_experiment(experiment_id)
     return journal.read_all()
+
+
+@router.get("/experiments/{experiment_id}/artifacts/model")
+async def download_model(experiment_id: str) -> FileResponse:
+    """Download the trained model (.joblib) for an experiment."""
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    model_path = _OUTPUTS_DIR / "models" / f"{experiment_id}.joblib"
+    if not model_path.is_file():
+        raise HTTPException(status_code=404, detail="Model artifact not found")
+
+    return FileResponse(
+        path=model_path,
+        filename=f"{experiment_id}.joblib",
+        media_type="application/octet-stream",
+    )
+
+
+@router.get("/experiments/{experiment_id}/artifacts/results")
+async def download_results(experiment_id: str) -> FileResponse:
+    """Download the results JSON for an experiment."""
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    results_path = _OUTPUTS_DIR / "results" / f"{experiment_id}.json"
+    if not results_path.is_file():
+        raise HTTPException(status_code=404, detail="Results artifact not found")
+
+    return FileResponse(
+        path=results_path,
+        filename=f"{experiment_id}.json",
+        media_type="application/json",
+    )
 
 
 @router.delete("/experiments/{experiment_id}")

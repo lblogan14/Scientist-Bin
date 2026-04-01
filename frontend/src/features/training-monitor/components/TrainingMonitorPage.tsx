@@ -7,6 +7,8 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { Button } from "@/components/ui/button";
 import { listExperiments } from "@/lib/api-client";
+import { isExperimentError } from "@/types/api";
+import { ErrorDisplay } from "../../results/components/ErrorDisplay";
 import { useTrainingStatus } from "../hooks/use-training-status";
 import { useExperimentEvents } from "../hooks/use-experiment-events";
 import { ProgressDisplay } from "./ProgressDisplay";
@@ -108,6 +110,9 @@ export default function TrainingMonitorPage() {
 
   if (!experiment) return null;
 
+  const hasFailed =
+    experiment.status === "failed" && isExperimentError(experiment.result);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -119,6 +124,12 @@ export default function TrainingMonitorPage() {
           </span>
         )}
       </div>
+      {hasFailed && isExperimentError(experiment.result) && (
+        <ErrorDisplay
+          error={experiment.result.error}
+          traceback={experiment.result.traceback}
+        />
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
         <ProgressDisplay experiment={experiment} />
         <AgentActivityLog activities={activities} />

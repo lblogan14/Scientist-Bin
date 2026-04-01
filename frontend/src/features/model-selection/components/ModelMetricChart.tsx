@@ -1,5 +1,5 @@
 import { GroupedBarChart } from "@/components/charts/GroupedBarChart";
-import type { Experiment } from "@/types/api";
+import { type Experiment, type ExperimentRecord, isExperimentError } from "@/types/api";
 
 interface ModelMetricChartProps {
   models: Experiment[];
@@ -13,11 +13,13 @@ export function ModelMetricChart({ models }: ModelMetricChartProps) {
   const allMetricNames = new Set<string>();
 
   for (const model of models) {
-    const history = model.result?.experiment_history ?? [];
+    const r = model.result;
+    const history: ExperimentRecord[] =
+      r && !isExperimentError(r) ? r.experiment_history ?? [] : [];
     if (history.length === 0) continue;
 
     // Find best record by first metric value
-    const best = history.reduce((a, b) => {
+    const best = history.reduce((a: ExperimentRecord, b: ExperimentRecord) => {
       const aVal = Object.values(a.metrics)[0] ?? 0;
       const bVal = Object.values(b.metrics)[0] ?? 0;
       return bVal > aVal ? b : a;

@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Experiment, ExperimentRecord } from "@/types/api";
+import { type Experiment, type ExperimentRecord, isExperimentError } from "@/types/api";
 
 interface ModelComparisonTableProps {
   models: Experiment[];
@@ -21,7 +21,8 @@ export function ModelComparisonTable({ models }: ModelComparisonTableProps) {
     objective: string;
   })[] = [];
   for (const model of models) {
-    const history = model.result?.experiment_history ?? [];
+    const r = model.result;
+    const history = r && !isExperimentError(r) ? r.experiment_history ?? [] : [];
     if (history.length > 0) {
       for (const record of history) {
         allRecords.push({

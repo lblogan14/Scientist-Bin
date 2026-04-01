@@ -22,6 +22,7 @@ def serve(
         host=host,
         port=port,
         reload=reload,
+        reload_excludes=["data/*", "outputs/*"] if reload else None,
     )
 
 
@@ -141,51 +142,17 @@ def _save_artifacts(
     quiet: bool,
 ) -> None:
     """Save model, results JSON, and journal to top-level output directories."""
-    import json
-    import shutil
-    from pathlib import Path
+    from scientist_bin_backend.utils.artifacts import save_experiment_artifacts
 
-    # outputs/ is always relative to the backend package root
-    outputs_dir = Path(__file__).resolve().parent.parent.parent / "outputs"
-    runs_dir = outputs_dir / "runs" / experiment_id
-    models_dir = outputs_dir / "models"
-    results_dir = outputs_dir / "results"
-    logs_dir = outputs_dir / "logs"
-
-    # Save result JSON
-    results_dir.mkdir(parents=True, exist_ok=True)
-    result_path = results_dir / f"{experiment_id}.json"
-    result_path.write_text(
-        json.dumps(result.model_dump(), indent=2, default=str),
-        encoding="utf-8",
-    )
-    if not quiet:
-        typer.echo(f"  [saved] Results  -> {result_path}")
-
-    # Copy best model from run artifacts
-    if runs_dir.exists():
-        # Find the most recent best_model.joblib across all run subdirectories
-        model_files = sorted(
-            runs_dir.glob("*/artifacts/best_model.joblib"),
-            key=lambda p: p.stat().st_mtime,
-        )
-        if model_files:
-            models_dir.mkdir(parents=True, exist_ok=True)
-            dest = models_dir / f"{experiment_id}.joblib"
-            shutil.copy2(model_files[-1], dest)
-            if not quiet:
-                typer.echo(f"  [saved] Model    -> {dest}")
-
-        # Copy journal
-        journal_src = runs_dir / "journal.jsonl"
-        if journal_src.exists():
-            logs_dir.mkdir(parents=True, exist_ok=True)
-            dest = logs_dir / f"{experiment_id}.jsonl"
-            shutil.copy2(journal_src, dest)
-            if not quiet:
-                typer.echo(f"  [saved] Journal  -> {dest}")
+    saved = save_experiment_artifacts(experiment_id, result.model_dump())
 
     if not quiet:
+        if "results" in saved:
+            typer.echo(f"  [saved] Results  -> {saved['results']}")
+        if "model" in saved:
+            typer.echo(f"  [saved] Model    -> {saved['model']}")
+        if "journal" in saved:
+            typer.echo(f"  [saved] Journal  -> {saved['journal']}")
         typer.echo("")
 
 

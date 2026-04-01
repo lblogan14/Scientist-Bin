@@ -58,7 +58,7 @@ export interface Experiment {
   best_run_id: string | null;
   iteration_count: number;
   progress_events: ProgressEvent[];
-  result: ExperimentResult | null;
+  result: ExperimentResult | ExperimentError | null;
   created_at: string;
   updated_at: string;
 }
@@ -91,6 +91,21 @@ export interface ProgressEvent {
   event_type: ProgressEventType;
   timestamp: string;
   data: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Error types (from failed experiments)
+// ---------------------------------------------------------------------------
+
+export interface ExperimentError {
+  error: string;
+  traceback?: string;
+}
+
+export function isExperimentError(
+  result: ExperimentResult | ExperimentError | null,
+): result is ExperimentError {
+  return result !== null && "error" in result;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { MetricScatterChart } from "@/components/charts/MetricScatterChart";
-import type { Experiment, ExperimentRecord } from "@/types/api";
+import { type Experiment, type ExperimentRecord, isExperimentError } from "@/types/api";
 
 interface ModelTradeoffScatterProps {
   models: Experiment[];
@@ -9,7 +9,10 @@ export function ModelTradeoffScatter({ models }: ModelTradeoffScatterProps) {
   // Flatten all experiment histories
   const allRecords: (ExperimentRecord & { objective: string })[] = [];
   for (const model of models) {
-    for (const record of model.result?.experiment_history ?? []) {
+    const r = model.result;
+    const history: ExperimentRecord[] =
+      r && !isExperimentError(r) ? r.experiment_history ?? [] : [];
+    for (const record of history) {
       allRecords.push({ ...record, objective: model.objective });
     }
   }
