@@ -31,16 +31,16 @@ The system uses a 5-agent pipeline orchestrated by the central agent:
 ```mermaid
 graph TD
     A[Central Agent] -- "analyze + route" --> B{Framework<br/>Supported?}
-    B -->|sklearn| C[Plan Agent]
+    B -->|sklearn| C[Analyst Agent]
     B -->|unsupported| Z[END]
-    C -- "execution plan<br/>(HITL review)" --> D[Analyst Agent]
-    D -- "split data + report" --> E[Sklearn Agent]
+    C -- "split data + report" --> D[Plan Agent]
+    D -- "execution plan<br/>(HITL review)" --> E[Framework Agent]
     E -- "experiment results" --> F[Summary Agent]
     F -- "final report +<br/>best model" --> Z
 
     style A fill:#4a9eff,color:#fff
-    style C fill:#ff9f43,color:#fff
-    style D fill:#26de81,color:#fff
+    style C fill:#26de81,color:#fff
+    style D fill:#ff9f43,color:#fff
     style E fill:#a55eea,color:#fff
     style F fill:#fd9644,color:#fff
 ```
@@ -50,16 +50,16 @@ graph TD
 ```
 Central Agent (orchestrator)
   |
-  +-- analyze (determine task type)
-  +-- route (select framework)
-  |
-  Plan Agent (HITL)
-  |  rewrite_query -> research -> write_plan -> review_plan (human approval loop)
+  +-- analyze (structured TaskAnalysis)
+  +-- route (deterministic-first framework selection)
   |
   Analyst Agent
   |  profile_data -> clean_data -> split_data -> write_report
   |
-  Sklearn Agent (iterative)
+  Plan Agent (HITL) — receives real data characteristics from analyst
+  |  rewrite_query -> research -> write_plan -> review_plan (human approval loop)
+  |
+  Framework Agent (e.g. Sklearn, iterative)
   |  generate_code -> execute_code -> analyze_results
   |     -> (refine / new algo / feature eng) -> generate_code  (loop)
   |     -> fix_error -> error_research -> generate_code       (error path)
@@ -74,8 +74,8 @@ Central Agent (orchestrator)
 | Agent | Model | Purpose |
 |-------|-------|---------|
 | Central | `gemini-3-flash-preview` | Fast routing and analysis |
-| Plan | `gemini-3.1-pro-preview` | Detailed research and planning |
 | Analyst | `gemini-3.1-pro-preview` | Data profiling, cleaning, splitting |
+| Plan | `gemini-3.1-pro-preview` | Detailed research and planning |
 | Sklearn | `gemini-3.1-pro-preview` | Code generation and error research |
 | Summary | `gemini-3-flash-preview` | Experiment review and report generation |
 
@@ -155,15 +155,15 @@ The `train` command prints real-time progress as all five agents run:
   Objective:  Classify iris species
   Data file:  C:\...\data\iris_data\Iris.csv
 
-  [plan] Rewriting query...
-  [plan] Researching best practices...
-  [plan] Execution plan generated (classification, 3 algorithms)
-  [plan] Plan auto-approved
   [analyst] Profiling data...
   [analyst] Classified as classification
   [analyst] Cleaning data (150 -> 150 rows)
   [analyst] Data split (stratified): train=105, val=22, test=23
   [analyst] Analysis report generated
+  [plan] Rewriting query...
+  [plan] Researching best practices...
+  [plan] Execution plan generated (classification, 3 algorithms)
+  [plan] Plan auto-approved
   [sklearn] generate_code (iter 0)
   [sklearn] run started (timeout: 60s)
   [sklearn] run completed in 3.6s
@@ -216,7 +216,7 @@ uv run ruff format .          # Format
 
 ## Adding a New Framework Subagent
 
-1. Create `agents/myframework/` with `graph.py`, `agent.py`, `states.py`, `schemas.py`, `nodes/`, `prompts/`
+1. Create `agents/myframework/` with `graph.py`, `agent.py`, `states.py`, `schemas.py`, `nodes/`, `prompts.py`
 2. Implement code generation and execution nodes (the plan and analyst agents provide the execution plan and split data)
 3. Add SKILL.md files under `skills/` per problem type if desired
-4. Register in `agents/central/nodes/router.py` (`SUPPORTED_FRAMEWORKS`) and add a delegate node in `agents/central/graph.py`
+4. Add one entry to `FRAMEWORK_REGISTRY` in `agents/central/nodes/router.py` mapping the framework name to the fully-qualified agent class path

@@ -69,7 +69,7 @@ skills/
 | `utils.py` | `strip_code_fences()` utility |
 | `nodes/code_generator.py` | Code generation with retry context and experiment history |
 | `nodes/error_researcher.py` | Web search for error resolution |
-| `prompts/templates.py` | Code generator prompt |
+| `prompts.py` | Code generator prompt |
 
 ## Model
 

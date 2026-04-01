@@ -26,12 +26,11 @@ A linear 4-node pipeline that transforms raw data into clean, split datasets rea
 
 ## Input/Output
 
-**Input (from Central/Plan):**
+**Input (from Central):**
 - `objective` -- the ML task description
 - `data_file_path` -- path to the raw CSV data file
-- `execution_plan` -- structured plan from the plan agent (provides target column, problem type hints)
 
-**Output (to Sklearn):**
+**Output (to Plan):**
 - `analysis_report` -- comprehensive markdown report
 - `split_data_paths` -- `{"train": path, "val": path, "test": path}`
 - `data_profile` -- structured data profile dict (shape, columns, dtypes, missing values, etc.)
@@ -57,7 +56,7 @@ A linear 4-node pipeline that transforms raw data into clean, split datasets rea
 | `nodes/data_cleaner.py` | LLM-generated cleaning script execution |
 | `nodes/data_splitter.py` | Deterministic train/val/test splitting |
 | `nodes/report_writer.py` | LLM-generated analysis report |
-| `prompts/templates.py` | Classification, cleaning, and report prompts |
+| `prompts.py` | Classification, cleaning, and report prompts |
 
 ## Model
 

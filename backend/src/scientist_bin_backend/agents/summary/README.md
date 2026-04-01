@@ -59,7 +59,7 @@ A linear 3-node pipeline that synthesizes all upstream results into a final repo
 | `nodes/experiment_reviewer.py` | Experiment history analysis and model ranking |
 | `nodes/model_selector.py` | Best model selection with reasoning |
 | `nodes/report_generator.py` | Comprehensive markdown report generation, saved to `outputs/runs/{id}/summary/report.md` |
-| `prompts/templates.py` | Experiment review, model selection, and report generation prompts |
+| `prompts.py` | Experiment review, model selection, and report generation prompts |
 
 ## Model
 

@@ -57,7 +57,7 @@ The plan review uses LangGraph's `interrupt()` mechanism:
 | `nodes/researcher.py` | Web research node (Google Search grounding) |
 | `nodes/plan_writer.py` | Plan generation node + `_plan_to_markdown()` |
 | `nodes/plan_reviewer.py` | HITL review node, revision node, `check_approval()` router |
-| `prompts/templates.py` | Query rewriter, plan writer, and plan reviser prompts |
+| `prompts.py` | Query rewriter, plan writer, and plan reviser prompts |
 
 ## Model
 

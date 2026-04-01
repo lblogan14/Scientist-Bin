@@ -22,4 +22,4 @@ Provides reusable node functions and Pydantic schemas used by the sklearn subage
 | `schemas.py` | `ProblemClassification`, `StrategyPlan`, `IterationDecision`, `FinalReport` |
 | `nodes/code_executor.py` | `execute_code` (0 LLM calls, subprocess sandbox) |
 | `nodes/results_analyzer.py` | `analyze_results`, `finalize` |
-| `prompts/templates.py` | Prompts for results analysis, reflection, final report |
+| `prompts.py` | Prompts for results analysis, reflection, final report |
