@@ -5,42 +5,16 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
-class RewrittenQuery(BaseModel):
-    """Structured output from the query rewriter node.
-
-    Enriches the user's raw objective with ML-specific details,
-    explicit requirements, and constraints inferred from context.
-    """
-
-    enhanced_objective: str = Field(
-        ...,
-        description=(
-            "A clear, detailed restatement of the user's objective "
-            "enriched with ML-specific terminology and scope"
-        ),
-    )
-    key_requirements: list[str] = Field(
-        default_factory=list,
-        description=(
-            "Explicit requirements extracted or inferred from the objective "
-            "(e.g., 'multi-class classification', 'handle missing values', "
-            "'interpretable model preferred')"
-        ),
-    )
-    constraints: list[str] = Field(
-        default_factory=list,
-        description=(
-            "Constraints on the solution (e.g., 'must run under 5 minutes', "
-            "'no deep learning', 'scikit-learn only')"
-        ),
-    )
-
-
 class ExecutionPlan(BaseModel):
     """Structured output from the plan writer node.
 
-    A comprehensive execution plan covering every stage of the ML pipeline,
-    from data preprocessing through model evaluation.
+    A comprehensive execution plan covering algorithm selection, sklearn
+    pipeline preprocessing, feature engineering, evaluation strategy, and
+    hyperparameter tuning.
+
+    Note: Data cleaning and train/val/test splitting are handled by the
+    upstream analyst agent. This plan focuses on what the sklearn agent
+    controls inside the training pipeline.
     """
 
     approach_summary: str = Field(
@@ -65,12 +39,13 @@ class ExecutionPlan(BaseModel):
             "(e.g., ['LogisticRegression', 'RandomForestClassifier', 'GradientBoostingClassifier'])"
         ),
     )
-    preprocessing_steps: list[str] = Field(
+    pipeline_preprocessing_steps: list[str] = Field(
         default_factory=list,
         description=(
-            "Ordered preprocessing steps "
-            "(e.g., 'drop ID column', 'impute missing numerics with median', "
-            "'one-hot encode categoricals', 'standard-scale numeric features')"
+            "Ordered sklearn-pipeline-level preprocessing steps that run inside "
+            "the training pipeline (e.g., 'StandardScaler on numeric features', "
+            "'OneHotEncoder on categorical features', 'ColumnTransformer to combine'). "
+            "These are NOT data-cleaning steps — the analyst agent handles cleaning."
         ),
     )
     feature_engineering_steps: list[str] = Field(
@@ -102,10 +77,11 @@ class ExecutionPlan(BaseModel):
             "(e.g., {'accuracy': 0.90, 'f1_weighted': 0.85})"
         ),
     )
-    data_split_strategy: str = Field(
-        default="stratified 70/15/15",
+    hyperparameter_tuning_approach: str = Field(
+        default="GridSearchCV for small search spaces, RandomizedSearchCV for large ones",
         description=(
-            "How to split the data into train/validation/test sets "
-            "(e.g., 'stratified 70/15/15', '80/20 random', 'time-based 70/15/15')"
+            "Strategy for hyperparameter tuning per algorithm "
+            "(e.g., 'GridSearchCV for LogisticRegression, "
+            "RandomizedSearchCV with 50 iterations for ensemble methods')"
         ),
     )

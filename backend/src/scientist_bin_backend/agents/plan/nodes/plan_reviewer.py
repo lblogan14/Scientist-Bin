@@ -12,6 +12,7 @@ import logging
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import interrupt
 
+from scientist_bin_backend.agents.plan.nodes._context import build_upstream_context
 from scientist_bin_backend.agents.plan.prompts import PLAN_REVISER_PROMPT
 from scientist_bin_backend.agents.plan.schemas import ExecutionPlan
 from scientist_bin_backend.agents.plan.states import PlanState
@@ -118,11 +119,13 @@ async def revise_plan(state: PlanState) -> dict:
     """
     plan_markdown = state.get("plan_markdown", "")
     human_feedback = state.get("human_feedback", "")
-    rewritten_query = state.get("rewritten_query", "")
+    objective = state.get("objective", "")
     data_description = state.get("data_description", "")
     experiment_id = state.get("experiment_id")
 
     logger.info("Revising plan based on feedback: %s", human_feedback[:100])
+
+    upstream_context = build_upstream_context(state)
 
     llm = get_agent_model("plan")
     structured_llm = llm.with_structured_output(ExecutionPlan)
@@ -130,8 +133,9 @@ async def revise_plan(state: PlanState) -> dict:
     prompt = PLAN_REVISER_PROMPT.format(
         plan_markdown=plan_markdown,
         human_feedback=human_feedback,
-        rewritten_query=rewritten_query,
+        objective=objective,
         data_description=data_description,
+        upstream_context=upstream_context,
     )
 
     revised_plan: ExecutionPlan = await structured_llm.ainvoke([HumanMessage(content=prompt)])

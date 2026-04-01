@@ -7,7 +7,7 @@ from scientist_bin_backend.utils.naming import generate_experiment_id
 
 
 class PlanAgent:
-    """Runs the planning pipeline: rewrite -> research -> plan -> review.
+    """Runs the planning pipeline: research -> plan -> review -> save.
 
     The review step uses ``interrupt()`` for human-in-the-loop approval.
     When ``auto_approve=True`` the interrupt is skipped and the plan is
@@ -50,7 +50,7 @@ class PlanAgent:
 
         Returns:
             A dict with ``execution_plan``, ``plan_markdown``,
-            ``plan_approved``, ``rewritten_query``, and ``search_results``.
+            ``plan_approved``, and ``search_results``.
         """
         experiment_id = experiment_id or generate_experiment_id(objective)
 
@@ -64,7 +64,6 @@ class PlanAgent:
             "analysis_report": analysis_report,
             "data_profile": data_profile,
             "problem_type": problem_type,
-            "rewritten_query": None,
             "search_results": None,
             "execution_plan": None,
             "plan_markdown": None,
@@ -82,6 +81,163 @@ class PlanAgent:
             "execution_plan": result.get("execution_plan"),
             "plan_markdown": result.get("plan_markdown"),
             "plan_approved": result.get("plan_approved", False),
-            "rewritten_query": result.get("rewritten_query"),
             "search_results": result.get("search_results"),
         }
+
+
+# ---------------------------------------------------------------------------
+# Example use cases — run with: uv run python -m scientist_bin_backend.agents.plan.agent
+# ---------------------------------------------------------------------------
+
+# Each tuple: (objective, data_description, task_analysis, data_profile, problem_type, framework)
+EXAMPLES: list[tuple[str, str, dict | None, dict | None, str | None, str | None]] = [
+    # 1. Full pipeline context: all upstream signals available
+    (
+        "Classify iris species from petal and sepal measurements",
+        "Fisher's Iris dataset with 150 samples and 4 numeric features",
+        {
+            "task_type": "classification",
+            "task_subtype": "multiclass",
+            "data_characteristics": {
+                "estimated_features": "4",
+                "estimated_samples": "150",
+                "data_types": ["numeric"],
+                "target_column_hint": "Species",
+                "has_missing_values": False,
+                "has_class_imbalance": False,
+            },
+            "recommended_approach": (
+                "Start with logistic regression and random forest. "
+                "Use stratified k-fold cross-validation."
+            ),
+            "complexity_estimate": "low",
+            "key_considerations": ["small dataset", "balanced classes"],
+            "suggested_frameworks": ["sklearn"],
+        },
+        {
+            "shape": [150, 5],
+            "column_names": [
+                "SepalLengthCm",
+                "SepalWidthCm",
+                "PetalLengthCm",
+                "PetalWidthCm",
+                "Species",
+            ],
+            "numeric_columns": [
+                "SepalLengthCm",
+                "SepalWidthCm",
+                "PetalLengthCm",
+                "PetalWidthCm",
+            ],
+            "categorical_columns": [],
+            "target_column": "Species",
+            "missing_counts": {},
+            "class_distribution": {
+                "Iris-setosa": 50,
+                "Iris-versicolor": 50,
+                "Iris-virginica": 50,
+            },
+            "data_quality_issues": [],
+        },
+        "classification",
+        "sklearn",
+    ),
+    # 2. Minimal context: objective + problem type only (standalone CLI)
+    (
+        "Predict house prices from property features",
+        "Tabular housing dataset with numeric and categorical features",
+        None,
+        None,
+        "regression",
+        "sklearn",
+    ),
+    # 3. High complexity: imbalanced binary classification
+    (
+        "Detect fraudulent credit card transactions",
+        "Large transaction dataset with severe class imbalance",
+        {
+            "task_type": "classification",
+            "task_subtype": "binary",
+            "data_characteristics": {
+                "estimated_features": "30",
+                "estimated_samples": "284807",
+                "data_types": ["numeric"],
+                "target_column_hint": "Class",
+                "has_missing_values": False,
+                "has_class_imbalance": True,
+            },
+            "recommended_approach": (
+                "Use imbalance-aware metrics (F1, ROC-AUC). Consider class weights."
+            ),
+            "complexity_estimate": "high",
+            "key_considerations": [
+                "severe class imbalance",
+                "threshold tuning",
+                "cost-sensitive learning",
+            ],
+            "suggested_frameworks": ["sklearn"],
+        },
+        {
+            "shape": [284807, 31],
+            "column_names": [f"V{i}" for i in range(1, 29)] + ["Time", "Amount", "Class"],
+            "numeric_columns": [f"V{i}" for i in range(1, 29)] + ["Time", "Amount"],
+            "categorical_columns": [],
+            "target_column": "Class",
+            "missing_counts": {},
+            "class_distribution": {"0": 284315, "1": 492},
+            "data_quality_issues": ["severe class imbalance (0.17% positive)"],
+        },
+        "classification",
+        "sklearn",
+    ),
+]
+
+
+async def _run_examples() -> None:
+    """Run the plan pipeline on each example and print results."""
+    separator = "=" * 72
+
+    for i, (objective, data_desc, task_analysis, data_profile, problem_type, fw) in enumerate(
+        EXAMPLES, 1
+    ):
+        print(f"\n{separator}")
+        print(f"  EXAMPLE {i}: {objective[:60]}")
+        print(f"  Problem type: {problem_type}")
+        if task_analysis:
+            print(f"  Complexity: {task_analysis.get('complexity_estimate', '?')}")
+        else:
+            print("  No upstream task_analysis")
+        print(separator)
+
+        agent = PlanAgent()
+        result = await agent.run(
+            objective=objective,
+            data_description=data_desc,
+            framework_preference=fw,
+            auto_approve=True,
+            task_analysis=task_analysis,
+            data_profile=data_profile,
+            problem_type=problem_type,
+        )
+
+        plan = result.get("execution_plan") or {}
+        print(f"\n  Approach: {plan.get('approach_summary', 'N/A')[:120]}")
+        print(f"  Algorithms: {plan.get('algorithms_to_try', [])}")
+        print(f"  Metrics: {plan.get('evaluation_metrics', [])}")
+        print(f"  CV: {plan.get('cv_strategy', 'N/A')}")
+        print(f"  Tuning: {plan.get('hyperparameter_tuning_approach', 'N/A')[:100]}")
+        print(f"  Success criteria: {plan.get('success_criteria', {})}")
+        print(f"  Plan approved: {result.get('plan_approved')}")
+
+        md = result.get("plan_markdown")
+        if md:
+            lines = md.strip().splitlines()[:10]
+            print("\n  Plan preview:\n    " + "\n    ".join(lines))
+
+        print()
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(_run_examples())

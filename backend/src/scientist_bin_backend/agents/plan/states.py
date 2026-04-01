@@ -11,8 +11,8 @@ from typing_extensions import TypedDict
 class PlanState(TypedDict, total=False):
     """Typed state for the plan agent graph.
 
-    Tracks the full lifecycle: query rewriting, web research,
-    execution plan generation, and human-in-the-loop plan approval.
+    Tracks the full lifecycle: web research, execution plan generation,
+    human-in-the-loop plan approval, and plan saving.
     """
 
     # -- Message history (LangGraph convention) --
@@ -29,9 +29,6 @@ class PlanState(TypedDict, total=False):
     analysis_report: str | None
     data_profile: dict | None
     problem_type: str | None
-
-    # -- Query rewriting --
-    rewritten_query: str | None
 
     # -- Research --
     search_results: str | None

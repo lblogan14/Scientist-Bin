@@ -1,23 +1,10 @@
 """Prompt templates for the plan agent."""
 
-QUERY_REWRITER_PROMPT = """\
-You are an expert machine learning engineer who specialises in translating \
-user objectives into precise, actionable ML problem statements.
-
-Given a user's objective, data description, and optional framework preference, \
-produce an enriched query that:
-
-1. Clarifies the ML problem type (classification, regression, clustering, etc.)
-2. Identifies implicit requirements the user may not have stated explicitly \
-   (e.g., handling class imbalance, dealing with high cardinality categoricals, \
-   time-series ordering constraints)
-3. Infers practical constraints from the context (dataset size considerations, \
-   computational budget, interpretability needs)
-4. Adds ML-specific details that will guide downstream planning (appropriate \
-   loss functions, relevant evaluation metrics, data leakage risks)
-
-Be thorough but concise. Focus on information that directly impacts the \
-choice of algorithms, preprocessing, and evaluation strategy.
+PLAN_WRITER_PROMPT = """\
+You are a senior data scientist creating a detailed execution plan for an \
+ML experiment. Your plan will be handed to an automated agent that will \
+generate and run scikit-learn code, so it must be precise, complete, and \
+unambiguous.
 
 == User Objective ==
 {objective}
@@ -25,43 +12,25 @@ choice of algorithms, preprocessing, and evaluation strategy.
 == Data Description ==
 {data_description}
 
-== Framework Preference ==
+== Framework ==
 {framework_preference}
-
-{analysis_context}
-
-If upstream analysis or data profile is provided above, use the actual data \
-characteristics to make concrete, grounded recommendations. Validate and enrich \
-the analysis rather than re-deriving from scratch. If no upstream context is \
-available, perform the full analysis from the objective and data description.
-
-Produce a structured rewrite with an enhanced objective, key requirements, \
-and constraints.
-"""
-
-PLAN_WRITER_PROMPT = """\
-You are a senior data scientist creating a detailed execution plan for an \
-ML experiment. Your plan will be handed to an automated agent that will \
-generate and run code, so it must be precise, complete, and unambiguous.
-
-== Enhanced Objective ==
-{rewritten_query}
 
 == Web Research Results ==
 {search_results}
 
-== Data Description ==
-{data_description}
+{upstream_context}
 
-== Framework Preference ==
-{framework_preference}
+IMPORTANT: The data has already been cleaned and split into train/val/test \
+sets by the analyst agent. Your preprocessing steps should focus on \
+sklearn-pipeline-level transforms (StandardScaler, OneHotEncoder, \
+ColumnTransformer, etc.) that run inside the training pipeline — NOT on \
+data cleaning tasks like deduplication, missing value imputation, or column \
+dropping, which have already been handled.
 
-{data_context}
-
-Use the actual data characteristics above (column types, distributions, missing \
-values, class balance) to make concrete, grounded recommendations for preprocessing, \
-algorithms, and evaluation. If no data analysis is available, infer from the \
-objective and data description.
+Use the actual data characteristics above (column types, distributions, \
+missing values, class balance) to make concrete, grounded recommendations \
+for pipeline preprocessing, algorithms, and evaluation. If no data analysis \
+is available, infer from the objective and data description.
 
 Based on all of the above, produce a structured execution plan covering:
 
@@ -71,17 +40,18 @@ Based on all of the above, produce a structured execution plan covering:
 - Identify the target column if applicable
 - Summarise the approach in 2-3 sentences
 
-### 2. Data Preprocessing
-- List every preprocessing step in execution order
-- Be specific: name the sklearn transformers to use (e.g., SimpleImputer, \
-  StandardScaler, OneHotEncoder, OrdinalEncoder, LabelEncoder)
-- Address missing values, outliers, encoding, scaling
+### 2. Pipeline Preprocessing
+- List sklearn-pipeline-level preprocessing steps in execution order
+- Be specific: name the sklearn transformers to use (e.g., StandardScaler, \
+  OneHotEncoder, OrdinalEncoder, ColumnTransformer)
 - Specify which columns or column types each step applies to
+- Remember: the analyst has already cleaned the data (handled missing values, \
+  dropped irrelevant columns, encoded labels) — focus on pipeline transforms
 
 ### 3. Feature Engineering
 - List concrete feature engineering steps
-- Include interaction features, polynomial features, binning, or domain-specific \
-  transformations where appropriate
+- Include interaction features, polynomial features, binning, or \
+  domain-specific transformations where appropriate
 - Only suggest steps that are likely to improve model performance for this \
   specific problem
 
@@ -95,12 +65,11 @@ Based on all of the above, produce a structured execution plan covering:
 - Choose metrics appropriate for the problem type and any class imbalance
 - Define a cross-validation strategy (number of folds, stratification)
 - Set realistic success criteria (metric thresholds)
-- Specify the data split strategy (train/validation/test ratios)
 
 ### 6. Hyperparameter Tuning
-- For each algorithm, suggest whether to use GridSearchCV or \
+- For each algorithm, specify whether to use GridSearchCV or \
   RandomizedSearchCV based on the search space size
-- The downstream agent will define specific parameter grids
+- Summarise the overall tuning approach in one sentence
 
 Be practical and grounded. Prefer proven approaches over exotic ones. \
 If the data is small, avoid overly complex models. If interpretability \
@@ -118,11 +87,13 @@ that you must address.
 == Human Feedback ==
 {human_feedback}
 
-== Original Enhanced Objective ==
-{rewritten_query}
+== Original Objective ==
+{objective}
 
 == Data Description ==
 {data_description}
+
+{upstream_context}
 
 Revise the execution plan to address the feedback. Rules:
 

@@ -110,7 +110,7 @@ def plan(
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
     auto_approve: bool = typer.Option(False, "--auto-approve", help="Auto-approve plan"),
 ) -> None:
-    """Run only the Plan Agent (query rewrite, research, plan generation)."""
+    """Run only the Plan Agent (research, plan generation, HITL review)."""
     import asyncio
     import json
 

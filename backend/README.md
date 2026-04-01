@@ -57,7 +57,7 @@ Central Agent (orchestrator)
   |  profile_data -> clean_data -> split_data -> write_report
   |
   Plan Agent (HITL) — receives real data characteristics from analyst
-  |  rewrite_query -> research -> write_plan -> review_plan (human approval loop)
+  |  research -> write_plan -> review_plan (human approval loop) -> save_plan
   |
   Framework Agent (e.g. Sklearn, iterative)
   |  generate_code -> execute_code -> analyze_results
@@ -101,7 +101,7 @@ backend/
 │   ├── agents/
 │   │   ├── base/                  # Shared nodes (code_executor, results_analyzer) and schemas
 │   │   ├── central/               # Orchestrator (analyze -> route -> delegate pipeline)
-│   │   ├── plan/                  # Plan agent (query rewrite, research, HITL review)
+│   │   ├── plan/                  # Plan agent (research, execution plan, HITL review)
 │   │   ├── analyst/               # Analyst agent (profile, clean, split, report)
 │   │   ├── sklearn/               # Sklearn agent (generate -> execute -> analyze loop)
 │   │   └── summary/               # Summary agent (review, select, report)
@@ -160,7 +160,6 @@ The `train` command prints real-time progress as all five agents run:
   [analyst] Cleaning data (150 -> 150 rows)
   [analyst] Data split (stratified): train=105, val=22, test=23
   [analyst] Analysis report generated
-  [plan] Rewriting query...
   [plan] Researching best practices...
   [plan] Execution plan generated (classification, 3 algorithms)
   [plan] Plan auto-approved

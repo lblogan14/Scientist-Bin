@@ -59,8 +59,9 @@ Analyst Agent
       | + classification_confidence, classification_reasoning
       v
 Plan Agent
-  query_rewriter --> uses task_analysis + data_profile + problem_type
-  plan_writer    --> uses analysis_report + data_profile + search_results
+  research    --> web search using problem_type + data_profile context
+  write_plan  --> uses analysis_report + data_profile + search_results
+  save_plan   --> persists execution_plan.json to disk
 ```
 
 ## Examples

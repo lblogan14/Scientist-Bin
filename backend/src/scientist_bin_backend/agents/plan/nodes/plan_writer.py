@@ -1,6 +1,6 @@
 """Plan writer node — generates a structured ML execution plan.
 
-Uses the rewritten query, search results, and data context to produce
+Uses the objective, search results, and upstream context to produce
 both a structured ExecutionPlan and a human-readable markdown version.
 """
 
@@ -10,6 +10,7 @@ import logging
 
 from langchain_core.messages import AIMessage, HumanMessage
 
+from scientist_bin_backend.agents.plan.nodes._context import build_upstream_context
 from scientist_bin_backend.agents.plan.prompts import PLAN_WRITER_PROMPT
 from scientist_bin_backend.agents.plan.schemas import ExecutionPlan
 from scientist_bin_backend.agents.plan.states import PlanState
@@ -34,7 +35,6 @@ def _plan_to_markdown(plan: ExecutionPlan) -> str:
     lines.append(f"- **Problem type:** {plan.problem_type}")
     if plan.target_column:
         lines.append(f"- **Target column:** {plan.target_column}")
-    lines.append(f"- **Data split:** {plan.data_split_strategy}")
     lines.append(f"- **Cross-validation:** {plan.cv_strategy}")
     lines.append("")
 
@@ -43,9 +43,9 @@ def _plan_to_markdown(plan: ExecutionPlan) -> str:
         lines.append(f"{i}. {algo}")
     lines.append("")
 
-    if plan.preprocessing_steps:
-        lines.append("## Preprocessing Steps")
-        for i, step in enumerate(plan.preprocessing_steps, 1):
+    if plan.pipeline_preprocessing_steps:
+        lines.append("## Pipeline Preprocessing")
+        for i, step in enumerate(plan.pipeline_preprocessing_steps, 1):
             lines.append(f"{i}. {step}")
         lines.append("")
 
@@ -66,46 +66,11 @@ def _plan_to_markdown(plan: ExecutionPlan) -> str:
             lines.append(f"- **{metric}** >= {threshold}")
         lines.append("")
 
+    lines.append("## Hyperparameter Tuning")
+    lines.append(plan.hyperparameter_tuning_approach)
+    lines.append("")
+
     return "\n".join(lines)
-
-
-def _build_data_context(state: PlanState) -> str:
-    """Build a data context string from analyst outputs for the plan writer."""
-    parts: list[str] = []
-
-    data_profile = state.get("data_profile")
-    if data_profile:
-        parts.append("== Actual Data Profile ==")
-        parts.append(f"Shape: {data_profile.get('shape', 'unknown')}")
-        parts.append(f"Columns: {data_profile.get('column_names', [])}")
-        parts.append(f"Numeric columns: {data_profile.get('numeric_columns', [])}")
-        parts.append(f"Categorical columns: {data_profile.get('categorical_columns', [])}")
-        parts.append(f"Target column: {data_profile.get('target_column', 'unknown')}")
-        missing = data_profile.get("missing_counts", {})
-        if missing:
-            import json
-
-            parts.append(f"Missing values: {json.dumps(missing)}")
-        class_dist = data_profile.get("class_distribution")
-        if class_dist:
-            import json
-
-            parts.append(f"Class distribution: {json.dumps(class_dist)}")
-        issues = data_profile.get("data_quality_issues", [])
-        if issues:
-            parts.append(f"Quality issues: {issues}")
-
-    analysis_report = state.get("analysis_report")
-    if analysis_report:
-        parts.append("")
-        parts.append("== Data Analysis Report (from analyst agent) ==")
-        parts.append(analysis_report[:3000])
-
-    problem_type = state.get("problem_type")
-    if problem_type:
-        parts.append(f"\nConfirmed problem type: {problem_type}")
-
-    return "\n".join(parts) if parts else "No data analysis available."
 
 
 async def write_plan(state: PlanState) -> dict:
@@ -114,26 +79,25 @@ async def write_plan(state: PlanState) -> dict:
     Produces both a structured ``ExecutionPlan`` (for machine consumption)
     and a markdown rendering (for human review via HITL).
     """
-    rewritten_query = state.get("rewritten_query", "")
+    objective = state.get("objective", "")
     search_results = state.get("search_results", "")
     data_description = state.get("data_description", "")
-    framework_preference = state.get("framework_preference") or "no preference"
+    framework_preference = state.get("framework_preference") or "scikit-learn"
     experiment_id = state.get("experiment_id")
 
     logger.info("Writing execution plan")
 
-    # Build data context from analyst outputs
-    data_context = _build_data_context(state)
+    upstream_context = build_upstream_context(state)
 
     llm = get_agent_model("plan")
     structured_llm = llm.with_structured_output(ExecutionPlan)
 
     prompt = PLAN_WRITER_PROMPT.format(
-        rewritten_query=rewritten_query,
+        objective=objective,
         search_results=search_results,
         data_description=data_description,
         framework_preference=framework_preference,
-        data_context=data_context,
+        upstream_context=upstream_context,
     )
 
     plan: ExecutionPlan = await structured_llm.ainvoke([HumanMessage(content=prompt)])
@@ -145,7 +109,7 @@ async def write_plan(state: PlanState) -> dict:
         "Plan generated: %s (%d algorithms, %d preprocessing steps)",
         plan.problem_type,
         len(plan.algorithms_to_try),
-        len(plan.preprocessing_steps),
+        len(plan.pipeline_preprocessing_steps),
     )
 
     if experiment_id:

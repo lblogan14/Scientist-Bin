@@ -19,28 +19,63 @@ from scientist_bin_backend.utils.llm import search_with_gemini
 logger = logging.getLogger(__name__)
 
 
+def _build_search_query(state: PlanState) -> str:
+    """Build a targeted search query from upstream context.
+
+    Uses the objective, validated problem type, real data characteristics,
+    and framework preference to formulate a precise search query.
+    """
+    objective = state.get("objective", "")
+    problem_type = state.get("problem_type") or "unknown"
+    framework = state.get("framework_preference") or "scikit-learn"
+    data_profile = state.get("data_profile") or {}
+    task_analysis = state.get("task_analysis") or {}
+
+    # Extract key data characteristics for the search
+    shape = data_profile.get("shape", "unknown")
+    n_numeric = len(data_profile.get("numeric_columns", []))
+    n_categorical = len(data_profile.get("categorical_columns", []))
+    target = data_profile.get("target_column", "unknown")
+    class_dist = data_profile.get("class_distribution")
+    considerations = task_analysis.get("key_considerations", [])
+
+    parts = [
+        f"Best practices for {problem_type} using {framework}:",
+        f"Objective: {objective[:300]}",
+        f"Dataset: {shape} shape, {n_numeric} numeric features, "
+        f"{n_categorical} categorical features",
+        f"Target: {target}",
+    ]
+
+    if class_dist:
+        parts.append(f"Class distribution: {class_dist}")
+
+    if considerations:
+        parts.append(f"Key considerations: {', '.join(considerations[:5])}")
+
+    parts.append(
+        "Focus on: algorithm selection and comparison, "
+        "sklearn pipeline preprocessing best practices, "
+        "evaluation metrics, cross-validation strategy, "
+        "hyperparameter tuning approach, and common pitfalls."
+    )
+
+    return "\n".join(parts)
+
+
 async def research(state: PlanState) -> dict:
     """Search the web for best practices relevant to the ML problem.
 
-    Uses the rewritten query to formulate targeted search queries,
-    then combines results into a single context string for plan generation.
+    Builds a targeted search query from upstream context (objective,
+    problem type, data profile, framework) and uses Google Search
+    grounding to find practical ML guidance.
     """
-    rewritten_query = state.get("rewritten_query", "")
     objective = state.get("objective", "")
-    data_description = state.get("data_description", "")
-    framework_preference = state.get("framework_preference") or "scikit-learn"
     experiment_id = state.get("experiment_id")
 
     logger.info("Researching best practices for: %s", objective[:80])
 
-    # Build a search query that targets practical ML guidance
-    search_query = (
-        f"Best practices and recommended approach for: {rewritten_query[:500]}\n\n"
-        f"Data context: {data_description[:300]}\n"
-        f"Framework: {framework_preference}\n\n"
-        f"Focus on: algorithm selection, preprocessing steps, "
-        f"evaluation metrics, cross-validation strategy, and common pitfalls."
-    )
+    search_query = _build_search_query(state)
 
     try:
         search_results = await search_with_gemini(search_query)

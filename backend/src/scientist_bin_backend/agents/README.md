@@ -23,7 +23,7 @@ agents/
 ├── base/       — Shared nodes (code_executor, results_analyzer) and schemas
 ├── central/    — Orchestrator: analyze -> route -> delegate to 4-agent pipeline
 ├── analyst/    — Data profiling, cleaning, train/val/test splitting, analysis report
-├── plan/       — Query rewriting, web research, execution plan generation, HITL review
+├── plan/       — Web research, execution plan generation, HITL review, plan saving
 ├── sklearn/    — Iterative code generation, execution, and refinement loop
 └── summary/    — Experiment review, best model selection, comprehensive report
 ```

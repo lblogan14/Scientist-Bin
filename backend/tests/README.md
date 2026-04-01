@@ -10,7 +10,7 @@ tests/
 ├── test_api.py                         — REST API endpoint tests
 ├── agents/
 │   ├── test_central.py                 — Central agent schemas and utilities
-│   ├── test_plan.py                    — Plan agent schemas, query rewriter, plan writer
+│   ├── test_plan.py                    — Plan agent schemas, context builder, markdown renderer, routing
 │   ├── test_analyst.py                 — Analyst agent schemas, data profiler, splitter
 │   ├── test_sklearn.py                 — Sklearn schemas, routing, utilities
 │   └── (test_summary.py)              — Summary agent schemas, model ranking (planned)
