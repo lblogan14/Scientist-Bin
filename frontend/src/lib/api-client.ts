@@ -1,8 +1,10 @@
 import ky from "ky";
 import type {
+  ArtifactType,
   Experiment,
   HealthResponse,
   JournalEntry,
+  PaginatedExperiments,
   ReviewRequest,
   TrainRequest,
 } from "@/types/api";
@@ -18,8 +20,28 @@ export async function submitTrainRequest(
   return api.post("train", { json: request }).json<Experiment>();
 }
 
-export async function listExperiments(): Promise<Experiment[]> {
-  return api.get("experiments").json<Experiment[]>();
+export interface ListExperimentsParams {
+  status?: string;
+  framework?: string;
+  search?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export async function listExperiments(
+  params?: ListExperimentsParams,
+): Promise<PaginatedExperiments> {
+  const searchParams: Record<string, string> = {};
+  if (params?.status) searchParams.status = params.status;
+  if (params?.framework) searchParams.framework = params.framework;
+  if (params?.search) searchParams.search = params.search;
+  if (params?.offset !== undefined)
+    searchParams.offset = String(params.offset);
+  if (params?.limit !== undefined) searchParams.limit = String(params.limit);
+
+  return api
+    .get("experiments", { searchParams })
+    .json<PaginatedExperiments>();
 }
 
 export async function getExperiment(id: string): Promise<Experiment> {
@@ -78,10 +100,17 @@ export function createExperimentEventSource(
   return new EventSource(`/api/v1/experiments/${experimentId}/events`);
 }
 
+export function getArtifactDownloadUrl(
+  experimentId: string,
+  artifactType: ArtifactType,
+): string {
+  return `/api/v1/experiments/${experimentId}/artifacts/${artifactType}`;
+}
+
 export function getModelDownloadUrl(experimentId: string): string {
-  return `/api/v1/experiments/${experimentId}/artifacts/model`;
+  return getArtifactDownloadUrl(experimentId, "model");
 }
 
 export function getResultsDownloadUrl(experimentId: string): string {
-  return `/api/v1/experiments/${experimentId}/artifacts/results`;
+  return getArtifactDownloadUrl(experimentId, "results");
 }

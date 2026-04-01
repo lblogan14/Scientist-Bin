@@ -19,7 +19,8 @@ interface ExperimentListProps {
 export function ExperimentList({ selectedId, onSelect }: ExperimentListProps) {
   const { data: experiments, isLoading } = useQuery({
     queryKey: ["experiments"],
-    queryFn: listExperiments,
+    queryFn: () => listExperiments(),
+    select: (data) => data.experiments,
   });
 
   if (isLoading) return <LoadingSpinner />;

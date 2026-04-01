@@ -33,7 +33,7 @@ export default function ResultsPage() {
   const { data: latestExperiment } = useQuery({
     queryKey: ["experiments", "latest-result"],
     queryFn: async () => {
-      const all = await listExperiments();
+      const { experiments: all } = await listExperiments();
       return (
         all.find(
           (e) => e.status === "completed" || e.status === "failed",

@@ -38,7 +38,17 @@ export type ProgressEventType =
   | "plan_completed"
   | "analysis_completed"
   | "sklearn_completed"
+  | "framework_completed"
   | "summary_completed";
+
+export type ArtifactType =
+  | "model"
+  | "results"
+  | "analysis"
+  | "summary"
+  | "plan"
+  | "charts"
+  | "journal";
 
 // ---------------------------------------------------------------------------
 // Request types
@@ -79,6 +89,13 @@ export interface Experiment {
   split_data_paths: Record<string, string> | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PaginatedExperiments {
+  experiments: Experiment[];
+  total: number;
+  offset: number;
+  limit: number;
 }
 
 export interface Run {

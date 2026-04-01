@@ -180,6 +180,26 @@ class ExperimentStore:
                 reverse=True,
             )
 
+    def list_filtered(
+        self,
+        status: str | None = None,
+        framework: str | None = None,
+        search: str | None = None,
+    ) -> list[Experiment]:
+        """List experiments with optional filtering, most recent first."""
+        with self._lock:
+            results = list(self._experiments.values())
+
+        if status:
+            results = [e for e in results if e.status == status]
+        if framework:
+            results = [e for e in results if e.framework == framework]
+        if search:
+            search_lower = search.lower()
+            results = [e for e in results if search_lower in e.objective.lower()]
+
+        return sorted(results, key=lambda e: e.created_at, reverse=True)
+
     def update(self, experiment_id: str, **kwargs: object) -> Experiment | None:
         with self._lock:
             exp = self._experiments.get(experiment_id)

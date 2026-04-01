@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 from langchain_core.messages import HumanMessage
-from langgraph.graph import END
 
 from scientist_bin_backend.agents.central.prompts import ROUTER_PROMPT
 from scientist_bin_backend.agents.central.schemas import FrameworkSelection
@@ -70,5 +69,6 @@ def select_subagent(state: CentralState) -> str:
     """Routing function for conditional edges — returns the next node name."""
     framework = (state.get("selected_framework") or "").lower()
     if framework in SUPPORTED_FRAMEWORKS:
-        return "analyst"
-    return END
+        return framework
+    # Fallback to first supported framework rather than silently ending the pipeline
+    return next(iter(SUPPORTED_FRAMEWORKS))

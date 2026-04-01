@@ -23,6 +23,10 @@ router = APIRouter(prefix="/api/v1")
 # outputs/ is always relative to the backend package root
 _OUTPUTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "outputs"
 
+# Active HITL sessions: experiment_id -> asyncio.Event for review feedback
+_review_events: dict[str, asyncio.Event] = {}
+_review_feedback: dict[str, str] = {}
+
 
 # ---------------------------------------------------------------------------
 # Request / response schemas
@@ -46,8 +50,11 @@ class ReviewBody(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-async def _sync_events_to_store(experiment_id: str) -> None:
-    """Subscribe to experiment events and mirror phase/progress into the store.
+async def _sync_events_from_queue(
+    experiment_id: str,
+    queue: asyncio.Queue,
+) -> None:
+    """Consume events from a pre-registered queue and mirror them into the store.
 
     Runs as a concurrent task alongside the agent so that polling clients
     (GET /experiments/{id}) see up-to-date phase and progress_events without
@@ -56,7 +63,7 @@ async def _sync_events_to_store(experiment_id: str) -> None:
     # Track the current run being assembled from events
     _current_run_id: str | None = None
 
-    async for event in event_bus.subscribe(experiment_id):
+    async for event in event_bus.consume(experiment_id, queue):
         event_dict = event.model_dump(mode="json")
 
         if event.event_type == "phase_change":
@@ -114,7 +121,16 @@ async def _sync_events_to_store(experiment_id: str) -> None:
             experiment_store.append_events(experiment_id, [event_dict])
 
         elif event.event_type == "experiment_done":
-            experiment_store.update(experiment_id, phase="done")
+            updates: dict = {"phase": "done"}
+            best_model = event.data.get("best_model")
+            if best_model:
+                exp = experiment_store.get(experiment_id)
+                if exp:
+                    for run in exp.runs:
+                        if run.algorithm == best_model:
+                            updates["best_run_id"] = run.id
+                            break
+            experiment_store.update(experiment_id, **updates)
             experiment_store.append_events(experiment_id, [event_dict])
 
         elif event.event_type == "plan_completed":
@@ -189,7 +205,19 @@ async def _run_training(
     framework: str | None,
     auto_approve_plan: bool = False,
 ) -> None:
-    """Run the central agent and update the experiment with results."""
+    """Run the central agent and update the experiment with results.
+
+    When ``auto_approve_plan`` is ``False``, the plan agent will call
+    ``interrupt()`` and the graph pauses. This function waits for the
+    ``/review`` endpoint to supply feedback, then resumes the graph.
+    """
+    from langgraph.checkpoint.memory import MemorySaver
+    from langgraph.types import Command
+
+    from scientist_bin_backend.agents.central.agent import CentralAgent
+    from scientist_bin_backend.agents.central.schemas import AgentResponse, TrainRequest
+    from scientist_bin_backend.agents.central.utils import build_initial_state
+
     data_file_path = _resolve_data_file_path(data_file_path)
     experiment_store.update(
         experiment_id,
@@ -198,14 +226,17 @@ async def _run_training(
         data_file_path=data_file_path,
     )
 
-    # Mirror events into the experiment store so polling clients stay current
-    sync_task = asyncio.create_task(_sync_events_to_store(experiment_id))
+    # Pre-register the event queue BEFORE the agent starts so no early events
+    # are lost (fixes the race where subscribe() happened after agent.run()).
+    sync_queue = event_bus.pre_register(experiment_id)
+    sync_task = asyncio.create_task(_sync_events_from_queue(experiment_id, sync_queue))
 
     try:
-        from scientist_bin_backend.agents.central.agent import CentralAgent
-        from scientist_bin_backend.agents.central.schemas import TrainRequest
+        checkpointer = MemorySaver()
+        agent = CentralAgent(checkpointer=checkpointer)
+        graph = agent.graph
+        config = {"configurable": {"thread_id": experiment_id}}
 
-        agent = CentralAgent()
         request = TrainRequest(
             objective=objective,
             data_description=data_description,
@@ -213,7 +244,50 @@ async def _run_training(
             framework_preference=framework,
             auto_approve_plan=auto_approve_plan,
         )
-        result = await agent.run(request, experiment_id=experiment_id)
+        initial_state = build_initial_state(request, experiment_id=experiment_id)
+
+        # Run graph — may pause at interrupt() if auto_approve is False
+        state = await graph.ainvoke(initial_state, config=config)
+
+        # Handle HITL: loop while the graph is interrupted (plan review)
+        snapshot = await graph.aget_state(config)
+        while snapshot.next:
+            # Graph is paused at interrupt — wait for review feedback
+            review_event = asyncio.Event()
+            _review_events[experiment_id] = review_event
+
+            try:
+                await review_event.wait()
+            finally:
+                _review_events.pop(experiment_id, None)
+
+            feedback = _review_feedback.pop(experiment_id, "approve")
+
+            # Resume the graph with the reviewer's feedback
+            state = await graph.ainvoke(Command(resume=feedback), config=config)
+            snapshot = await graph.aget_state(config)
+
+        # Build the AgentResponse from final state
+        agent_resp = state.get("agent_response") or {}
+        result = AgentResponse(
+            framework=state.get("selected_framework") or "sklearn",
+            plan=agent_resp.get("plan"),
+            plan_markdown=state.get("plan_markdown"),
+            generated_code=agent_resp.get("generated_code"),
+            evaluation_results=agent_resp.get("evaluation_results"),
+            experiment_history=agent_resp.get("experiment_history", []),
+            data_profile=state.get("data_profile"),
+            problem_type=state.get("problem_type"),
+            iterations=agent_resp.get("iterations", 0),
+            analysis_report=state.get("analysis_report"),
+            summary_report=state.get("summary_report"),
+            best_model=agent_resp.get("best_model"),
+            best_hyperparameters=agent_resp.get("best_hyperparameters"),
+            selection_reasoning=agent_resp.get("selection_reasoning"),
+            report_sections=agent_resp.get("report_sections"),
+            status="failed" if state.get("error") else "completed",
+        )
+
         result_dict = result.model_dump()
         experiment_store.update(
             experiment_id,
@@ -232,8 +306,12 @@ async def _run_training(
             from scientist_bin_backend.utils.artifacts import save_experiment_artifacts
 
             save_experiment_artifacts(experiment_id, result_dict)
-        except Exception:
+        except Exception as save_exc:
             logger.exception("Failed to save artifacts for %s", experiment_id)
+            experiment_store.update(
+                experiment_id,
+                result={**result_dict, "_warnings": [f"Artifact save failed: {save_exc}"]},
+            )
     except Exception as exc:
         tb = traceback.format_exc()
         error_msg = str(exc) or f"{type(exc).__name__}: {tb.splitlines()[-1]}"
@@ -252,6 +330,8 @@ async def _run_training(
             ),
         )
     finally:
+        _review_events.pop(experiment_id, None)
+        _review_feedback.pop(experiment_id, None)
         await event_bus.close(experiment_id)
         sync_task.cancel()
         try:
@@ -298,9 +378,35 @@ async def create_train(body: TrainRequestBody, background_tasks: BackgroundTasks
 
 
 @router.get("/experiments")
-async def list_experiments() -> list[dict]:
-    """List all experiments, most recent first."""
-    return [e.model_dump(mode="json") for e in experiment_store.list_all()]
+async def list_experiments(
+    status: str | None = None,
+    framework: str | None = None,
+    search: str | None = None,
+    offset: int = 0,
+    limit: int = 50,
+) -> dict:
+    """List experiments with optional filtering and pagination.
+
+    Query parameters:
+        status: Filter by experiment status (pending, running, completed, failed).
+        framework: Filter by ML framework (sklearn, pytorch, ...).
+        search: Search within the objective text (case-insensitive).
+        offset: Number of results to skip (default 0).
+        limit: Maximum number of results to return (default 50).
+    """
+    experiments = experiment_store.list_filtered(
+        status=status,
+        framework=framework,
+        search=search,
+    )
+    total = len(experiments)
+    page = experiments[offset : offset + limit]
+    return {
+        "experiments": [e.model_dump(mode="json") for e in page],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
 
 
 @router.get("/experiments/{experiment_id}")
@@ -335,6 +441,30 @@ async def stream_events(experiment_id: str) -> StreamingResponse:
     )
 
 
+@router.post("/experiments/{experiment_id}/review")
+async def submit_plan_review(experiment_id: str, body: ReviewBody) -> dict:
+    """Submit plan review feedback for a waiting experiment.
+
+    When a training experiment is paused at the plan review step, call
+    this endpoint with ``{"feedback": "approve"}`` to accept the plan,
+    or provide revision instructions to trigger a plan update.
+    """
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    review_event = _review_events.get(experiment_id)
+    if review_event is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Experiment is not waiting for plan review",
+        )
+
+    _review_feedback[experiment_id] = body.feedback
+    review_event.set()
+    return {"status": "review_submitted", "feedback": body.feedback}
+
+
 @router.get("/experiments/{experiment_id}/journal")
 async def get_journal(experiment_id: str) -> list[dict]:
     """Get the experiment journal (append-only decision/reasoning log)."""
@@ -348,40 +478,50 @@ async def get_journal(experiment_id: str) -> list[dict]:
     return journal.read_all()
 
 
-@router.get("/experiments/{experiment_id}/artifacts/model")
-async def download_model(experiment_id: str) -> FileResponse:
-    """Download the trained model (.joblib) for an experiment."""
+# ---------------------------------------------------------------------------
+# Artifact download endpoints
+# ---------------------------------------------------------------------------
+
+_ARTIFACT_MAP: dict[str, tuple[str, str, str]] = {
+    # key: (directory relative to _OUTPUTS_DIR, filename pattern, media_type)
+    "model": ("models", "{id}.joblib", "application/octet-stream"),
+    "results": ("results", "{id}.json", "application/json"),
+    "analysis": ("results", "{id}_analysis.md", "text/markdown"),
+    "summary": ("results", "{id}_summary.md", "text/markdown"),
+    "plan": ("results", "{id}_plan.json", "application/json"),
+    "charts": ("results", "{id}_charts.json", "application/json"),
+    "journal": ("logs", "{id}.jsonl", "application/x-ndjson"),
+}
+
+
+@router.get("/experiments/{experiment_id}/artifacts/{artifact_type}")
+async def download_artifact(experiment_id: str, artifact_type: str) -> FileResponse:
+    """Download an experiment artifact by type.
+
+    Supported types: model, results, analysis, summary, plan, charts, journal.
+    """
     experiment = experiment_store.get(experiment_id)
     if experiment is None:
         raise HTTPException(status_code=404, detail="Experiment not found")
 
-    model_path = _OUTPUTS_DIR / "models" / f"{experiment_id}.joblib"
-    if not model_path.is_file():
-        raise HTTPException(status_code=404, detail="Model artifact not found")
+    spec = _ARTIFACT_MAP.get(artifact_type)
+    if spec is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown artifact type: {artifact_type}. Supported: {', '.join(_ARTIFACT_MAP)}",
+        )
 
-    return FileResponse(
-        path=model_path,
-        filename=f"{experiment_id}.joblib",
-        media_type="application/octet-stream",
-    )
+    subdir, pattern, media_type = spec
+    filename = pattern.format(id=experiment_id)
+    path = _OUTPUTS_DIR / subdir / filename
 
+    if not path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"{artifact_type.title()} artifact not found",
+        )
 
-@router.get("/experiments/{experiment_id}/artifacts/results")
-async def download_results(experiment_id: str) -> FileResponse:
-    """Download the results JSON for an experiment."""
-    experiment = experiment_store.get(experiment_id)
-    if experiment is None:
-        raise HTTPException(status_code=404, detail="Experiment not found")
-
-    results_path = _OUTPUTS_DIR / "results" / f"{experiment_id}.json"
-    if not results_path.is_file():
-        raise HTTPException(status_code=404, detail="Results artifact not found")
-
-    return FileResponse(
-        path=results_path,
-        filename=f"{experiment_id}.json",
-        media_type="application/json",
-    )
+    return FileResponse(path=path, filename=filename, media_type=media_type)
 
 
 @router.delete("/experiments/{experiment_id}")

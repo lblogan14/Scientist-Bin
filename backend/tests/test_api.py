@@ -21,7 +21,11 @@ def test_root(client):
 def test_list_experiments_empty(client):
     response = client.get("/api/v1/experiments")
     assert response.status_code == 200
-    assert response.json() == []
+    data = response.json()
+    assert data["experiments"] == []
+    assert data["total"] == 0
+    assert data["offset"] == 0
+    assert data["limit"] == 50
 
 
 def test_create_and_get_experiment(client):
@@ -190,3 +194,156 @@ def test_get_summary_empty(client):
     resp = client.get(f"/api/v1/experiments/{exp_id}/summary")
     assert resp.status_code == 200
     assert resp.json() == {"summary_report": None}
+
+
+# ---------------------------------------------------------------------------
+# Plan review endpoint tests
+# ---------------------------------------------------------------------------
+
+
+def test_submit_plan_review_nonexistent(client):
+    """Submitting review for a nonexistent experiment returns 404."""
+    resp = client.post(
+        "/api/v1/experiments/does-not-exist/review",
+        json={"feedback": "approve"},
+    )
+    assert resp.status_code == 404
+
+
+def test_submit_plan_review_not_waiting(client):
+    """Submitting review when experiment is not waiting returns 409."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test review"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    resp = client.post(
+        f"/api/v1/experiments/{exp_id}/review",
+        json={"feedback": "approve"},
+    )
+    assert resp.status_code == 409
+    assert "not waiting" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Filtering and pagination tests
+# ---------------------------------------------------------------------------
+
+
+def _create_experiments(client, objectives: list[tuple[str, str | None]]):
+    """Helper to create multiple experiments. Returns list of experiment dicts."""
+    exps = []
+    for objective, framework in objectives:
+        with patch(
+            "scientist_bin_backend.api.routes._run_training",
+            new_callable=AsyncMock,
+        ):
+            body: dict = {"objective": objective}
+            if framework:
+                body["framework_preference"] = framework
+            resp = client.post("/api/v1/train", json=body)
+        exps.append(resp.json())
+    return exps
+
+
+def test_list_experiments_pagination(client):
+    """Verify offset and limit work correctly."""
+    _create_experiments(client, [
+        ("Exp A", None),
+        ("Exp B", None),
+        ("Exp C", None),
+    ])
+
+    # Default: all 3
+    resp = client.get("/api/v1/experiments")
+    data = resp.json()
+    assert data["total"] == 3
+
+    # Limit to 2
+    resp = client.get("/api/v1/experiments", params={"limit": 2})
+    data = resp.json()
+    assert len(data["experiments"]) == 2
+    assert data["total"] == 3
+
+    # Offset 2
+    resp = client.get("/api/v1/experiments", params={"offset": 2, "limit": 10})
+    data = resp.json()
+    assert len(data["experiments"]) == 1
+
+
+def test_list_experiments_filter_by_status(client):
+    """Filter by experiment status."""
+    _create_experiments(client, [("Status test", None)])
+
+    # New experiments are "pending" by default
+    resp = client.get("/api/v1/experiments", params={"status": "pending"})
+    data = resp.json()
+    assert data["total"] >= 1
+
+    resp = client.get("/api/v1/experiments", params={"status": "completed"})
+    data = resp.json()
+    assert data["total"] == 0
+
+
+def test_list_experiments_search(client):
+    """Search in objective text."""
+    _create_experiments(client, [
+        ("Classify iris species", None),
+        ("Predict house prices", None),
+    ])
+
+    resp = client.get("/api/v1/experiments", params={"search": "iris"})
+    data = resp.json()
+    assert data["total"] >= 1
+    for exp in data["experiments"]:
+        assert "iris" in exp["objective"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Artifact download endpoint tests
+# ---------------------------------------------------------------------------
+
+
+def test_download_artifact_nonexistent_experiment(client):
+    """Downloading artifact for nonexistent experiment returns 404."""
+    resp = client.get("/api/v1/experiments/does-not-exist/artifacts/model")
+    assert resp.status_code == 404
+
+
+def test_download_artifact_unknown_type(client):
+    """Downloading an unknown artifact type returns 400."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test artifact"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    resp = client.get(f"/api/v1/experiments/{exp_id}/artifacts/unknown_type")
+    assert resp.status_code == 400
+    assert "Unknown artifact type" in resp.json()["detail"]
+
+
+def test_download_artifact_not_found(client):
+    """Downloading artifact that doesn't exist on disk returns 404."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test artifact missing"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    for artifact_type in ["model", "results", "analysis", "summary", "plan", "charts", "journal"]:
+        resp = client.get(f"/api/v1/experiments/{exp_id}/artifacts/{artifact_type}")
+        assert resp.status_code == 404, f"Expected 404 for {artifact_type}"
