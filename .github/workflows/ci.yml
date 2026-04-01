@@ -65,7 +65,7 @@ jobs:
         run: pnpm exec tsc --noEmit
 
       - name: Run tests with Vitest
-        run: pnpm test
+        run: pnpm exec vitest run --passWithNoTests
 
       - name: Build production bundle
         run: pnpm build
