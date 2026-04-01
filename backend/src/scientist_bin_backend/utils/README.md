@@ -42,3 +42,4 @@ Saved artifacts:
 - `outputs/results/<id>_analysis.md` -- analysis report from the analyst agent
 - `outputs/results/<id>_summary.md` -- summary report from the summary agent
 - `outputs/results/<id>_plan.json` -- execution plan from the plan agent
+- `outputs/results/<id>_charts.json` -- structured chart data for frontend visualization

@@ -255,7 +255,7 @@ def summarize(
             problem_type=experiment_data.get("problem_type"),
             execution_plan=experiment_data.get("plan"),
             analysis_report=experiment_data.get("analysis_report"),
-            sklearn_results=experiment_data,
+            framework_results=experiment_data,
             experiment_history=experiment_data.get("experiment_history", []),
             experiment_id=experiment_id,
         )

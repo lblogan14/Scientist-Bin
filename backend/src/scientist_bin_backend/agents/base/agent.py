@@ -129,4 +129,5 @@ class BaseFrameworkAgent(ABC):
             "hyperparameters_summary": result.get("hyperparameters_summary", []),
             "test_metrics": result.get("test_metrics"),
             "test_evaluation_code": result.get("test_evaluation_code"),
+            "test_diagnostics": result.get("test_diagnostics"),
         }

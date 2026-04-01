@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from scientist_bin_backend.agents.summary.graph import build_summary_graph
 from scientist_bin_backend.utils.naming import generate_experiment_id
 
@@ -18,10 +20,15 @@ class SummaryAgent:
         problem_type: str | None = None,
         execution_plan: dict | None = None,
         analysis_report: str | None = None,
-        sklearn_results: dict | None = None,
+        data_profile: dict | None = None,
+        plan_markdown: str | None = None,
+        split_data_paths: dict | None = None,
+        framework_results: dict | None = None,
         experiment_history: list[dict] | None = None,
-        runs: list[dict] | None = None,
         test_metrics: dict | None = None,
+        test_diagnostics: dict | None = None,
+        generated_code: str | None = None,
+        test_evaluation_code: str | None = None,
         experiment_id: str | None = None,
     ) -> dict:
         """Execute the full summary pipeline and return results.
@@ -29,35 +36,55 @@ class SummaryAgent:
         Args:
             objective: The original ML objective.
             problem_type: Detected problem type (classification, regression, etc.).
-            execution_plan: The strategy plan used by the framework subagent.
-            analysis_report: Data analysis / EDA report text.
-            sklearn_results: Full results dict from the framework subagent.
+            execution_plan: The strategy plan from the plan agent.
+            analysis_report: Markdown EDA report from the analyst agent.
+            data_profile: Structured data profile from the analyst agent.
+            plan_markdown: Human-readable execution plan.
+            split_data_paths: ``{"train": path, "val": path, "test": path}``.
+            framework_results: Full results dict from the framework agent.
             experiment_history: List of per-iteration experiment records.
-            runs: List of raw run detail dicts.
             test_metrics: Metrics from held-out test set evaluation.
+            test_diagnostics: Enriched test results (confusion_matrix, etc.).
+            generated_code: Final generated training code (for reproducibility).
+            test_evaluation_code: Test evaluation code (for reproducibility).
             experiment_id: Experiment identifier (generated if not provided).
 
         Returns:
             Dict with summary_report, best_model, best_hyperparameters,
-            best_metrics, and model_comparison.
+            best_metrics, model_rankings, selection_reasoning, and
+            report_sections.
         """
         experiment_id = experiment_id or generate_experiment_id(objective)
 
         initial_state = {
             "messages": [],
+            # Input from upstream agents
             "objective": objective,
             "problem_type": problem_type,
-            "execution_plan": execution_plan,
             "analysis_report": analysis_report,
-            "sklearn_results": sklearn_results,
+            "data_profile": data_profile,
+            "split_data_paths": split_data_paths,
+            "execution_plan": execution_plan,
+            "plan_markdown": plan_markdown,
+            "framework_results": framework_results,
             "experiment_history": experiment_history or [],
-            "runs": runs or [],
             "test_metrics": test_metrics,
+            "test_diagnostics": test_diagnostics,
+            "generated_code": generated_code,
+            "test_evaluation_code": test_evaluation_code,
+            # Intermediate (populated by nodes)
+            "summary_context": None,
+            "diagnostics": None,
+            # Analysis (populated by review_and_rank)
+            "model_rankings": [],
             "best_model": None,
             "best_hyperparameters": None,
             "best_metrics": None,
-            "model_comparison": [],
+            "selection_reasoning": None,
+            # Output
             "summary_report": None,
+            "report_sections": None,
+            # Control
             "experiment_id": experiment_id,
             "error": None,
         }
@@ -69,5 +96,111 @@ class SummaryAgent:
             "best_model": result.get("best_model"),
             "best_hyperparameters": result.get("best_hyperparameters"),
             "best_metrics": result.get("best_metrics"),
-            "model_comparison": result.get("model_comparison", []),
+            "model_rankings": result.get("model_rankings", []),
+            "selection_reasoning": result.get("selection_reasoning"),
+            "report_sections": result.get("report_sections"),
         }
+
+
+# ---------------------------------------------------------------------------
+# Standalone validation
+# ---------------------------------------------------------------------------
+
+EXAMPLES = [
+    {
+        "objective": "Classify iris species based on petal and sepal measurements",
+        "problem_type": "classification",
+        "execution_plan": {
+            "approach_summary": "Train classifiers with cross-validation",
+            "algorithms_to_try": ["LogisticRegression", "RandomForestClassifier"],
+            "evaluation_metrics": ["accuracy", "f1_weighted"],
+            "cv_strategy": "5-fold stratified",
+            "success_criteria": {"val_accuracy": 0.90},
+        },
+        "analysis_report": "Dataset: 150 samples, 4 features, 3 classes (balanced).",
+        "data_profile": {
+            "shape": [150, 5],
+            "column_names": [
+                "sepal_length",
+                "sepal_width",
+                "petal_length",
+                "petal_width",
+                "species",
+            ],
+            "target_column": "species",
+            "class_distribution": {"setosa": 50, "versicolor": 50, "virginica": 50},
+        },
+        "experiment_history": [
+            {
+                "iteration": 1,
+                "algorithm": "LogisticRegression",
+                "hyperparameters": {"C": 1.0, "solver": "lbfgs"},
+                "metrics": {
+                    "train_accuracy": 0.97,
+                    "val_accuracy": 0.95,
+                    "train_f1_weighted": 0.97,
+                    "val_f1_weighted": 0.95,
+                },
+                "training_time_seconds": 0.5,
+                "cv_fold_scores": {
+                    "accuracy": [0.93, 0.96, 0.95, 0.94, 0.97],
+                },
+                "feature_importances": [
+                    {"feature": "petal_length", "importance": 0.45},
+                    {"feature": "petal_width", "importance": 0.42},
+                    {"feature": "sepal_length", "importance": 0.08},
+                    {"feature": "sepal_width", "importance": 0.05},
+                ],
+                "confusion_matrix": {
+                    "labels": ["setosa", "versicolor", "virginica"],
+                    "matrix": [[10, 0, 0], [0, 9, 1], [0, 1, 9]],
+                },
+            },
+            {
+                "iteration": 2,
+                "algorithm": "RandomForestClassifier",
+                "hyperparameters": {"n_estimators": 100, "max_depth": 5},
+                "metrics": {
+                    "train_accuracy": 1.0,
+                    "val_accuracy": 0.96,
+                    "train_f1_weighted": 1.0,
+                    "val_f1_weighted": 0.96,
+                },
+                "training_time_seconds": 2.1,
+                "cv_fold_scores": {
+                    "accuracy": [0.95, 0.97, 0.96, 0.95, 0.97],
+                },
+                "feature_importances": [
+                    {"feature": "petal_width", "importance": 0.48},
+                    {"feature": "petal_length", "importance": 0.44},
+                    {"feature": "sepal_length", "importance": 0.05},
+                    {"feature": "sepal_width", "importance": 0.03},
+                ],
+                "confusion_matrix": {
+                    "labels": ["setosa", "versicolor", "virginica"],
+                    "matrix": [[10, 0, 0], [0, 10, 0], [0, 1, 9]],
+                },
+            },
+        ],
+        "test_metrics": {"test_accuracy": 0.93, "test_f1_weighted": 0.93},
+    },
+]
+
+
+async def _run_examples() -> None:
+    agent = SummaryAgent()
+    for i, example in enumerate(EXAMPLES, 1):
+        print(f"\n{'=' * 60}")
+        print(f"Example {i}: {example['objective']}")
+        print(f"{'=' * 60}")
+        result = await agent.run(**example)
+        print(f"Best model: {result['best_model']}")
+        print(f"Best metrics: {result['best_metrics']}")
+        print(f"Selection reasoning: {result['selection_reasoning']}")
+        print("\nReport preview (first 500 chars):")
+        report = result.get("summary_report", "")
+        print(report[:500] if report else "No report generated")
+
+
+if __name__ == "__main__":
+    asyncio.run(_run_examples())

@@ -1,10 +1,11 @@
 """Prompt templates for the summary agent."""
 
-EXPERIMENT_REVIEW_PROMPT = """\
+REVIEW_AND_RANK_PROMPT = """\
 You are an expert data scientist reviewing a series of machine learning experiments.
 
-Your task is to analyze the experiment history and produce a ranked list of all models
-that were trained, from best to worst.
+Your task is to:
+1. Rank ALL models from best to worst
+2. Select the single best model and explain your reasoning
 
 == Objective ==
 {objective}
@@ -21,8 +22,11 @@ that were trained, from best to worst.
 == Experiment History ==
 {experiment_history}
 
-== Run Details ==
-{runs}
+== Pre-Computed Diagnostics ==
+{diagnostics_summary}
+
+== Test Set Metrics ==
+{test_metrics}
 
 For each model in the experiment history, provide:
 1. A rank (1 = best overall model)
@@ -36,44 +40,25 @@ For each model in the experiment history, provide:
 9. Key weaknesses (e.g., overfitting, slow training, poor on minority classes)
 
 Rank models primarily by their validation metrics (not training metrics, to avoid
-rewarding overfitting). Consider the problem type when choosing which metric matters
-most:
+rewarding overfitting). Use the pre-computed diagnostics to inform your ranking:
+- CV stability (low variance across folds is better)
+- Overfitting risk (prefer models with small train-val gap)
+- Pareto optimality (performance vs training time trade-off)
+
+Consider the problem type when choosing which metric matters most:
 - Classification: prioritize F1-score or accuracy (depending on class balance)
 - Regression: prioritize RMSE or R² score
 - Clustering: prioritize silhouette score or similar
 
+After ranking, select the single best model and provide:
+- The algorithm name and its best hyperparameters
+- The primary metric name and value that determined the ranking
+- Detailed reasoning considering: predictive performance, generalization (train-val gap),
+  training efficiency, simplicity/interpretability, and robustness (CV stability)
+- If two models are very close in performance, prefer the simpler one (Occam's razor)
+
 If a run failed or produced no metrics, still include it with an explanation in the
 weaknesses field.
-
-Be thorough and objective in your analysis.
-"""
-
-MODEL_SELECTION_PROMPT = """\
-You are an expert data scientist selecting the best model from a ranked comparison.
-
-== Objective ==
-{objective}
-
-== Problem Type ==
-{problem_type}
-
-== Model Rankings ==
-{model_comparison}
-
-Based on the ranked model comparison above, select the single best model.
-
-Provide:
-1. The algorithm name
-2. Its best hyperparameters
-3. The primary metric name and value that determined the ranking
-4. Detailed reasoning for why this model is the best choice, considering:
-   - Predictive performance (validation and test metrics)
-   - Generalization (gap between training and validation performance)
-   - Training efficiency (time and resource usage)
-   - Simplicity and interpretability (prefer simpler models when performance is similar)
-   - Robustness (consistency across folds or evaluation runs)
-
-If two models are very close in performance, prefer the simpler one (Occam's razor).
 """
 
 REPORT_GENERATION_PROMPT = """\
@@ -95,27 +80,55 @@ and reproducing the work.
 == Data Analysis Report ==
 {analysis_report}
 
-== Model Comparison (ranked) ==
-{model_comparison}
+== Data Profile ==
+{data_profile}
+
+== Model Rankings (from best to worst) ==
+{model_rankings}
 
 == Best Model ==
 Algorithm: {best_model}
 Hyperparameters: {best_hyperparameters}
 Metrics: {best_metrics}
+Selection reasoning: {selection_reasoning}
 
-== Full Framework Results ==
-{sklearn_results}
+== Pre-Computed Diagnostics ==
+
+CV Stability Analysis:
+{cv_stability_summary}
+
+Overfitting Analysis:
+{overfit_summary}
+
+Feature Importances:
+{feature_importance_summary}
+
+Confusion Matrix / Error Data:
+{error_data_summary}
+
+Hyperparameter Sensitivity:
+{hyperparam_sensitivity_summary}
+
+Pareto-Optimal Models (performance vs speed):
+{pareto_summary}
 
 == Test Set Metrics (held-out, unseen during training/validation) ==
 {test_metrics}
 
-Write each section in clear, professional markdown:
+== Reproducibility Context ==
+Data paths: {split_data_paths}
+Generated training code length: {code_length} characters
 
-**Title**: A descriptive title for this experiment report.
+Write each section in clear, professional markdown. Use the pre-computed diagnostics
+to ground your analysis in concrete numbers — do not re-compute, just interpret and
+narrate.
+
+**Executive Summary**: A 3-5 sentence TL;DR. State the objective, the best model and
+its key metric, whether success criteria were met, and the main takeaway.
 
 **Dataset Overview**: Describe the dataset — number of samples, features, target
 variable, class distribution (for classification), key statistics. Base this on the
-data analysis report.
+data analysis report and data profile.
 
 **Methodology**: Cover the full pipeline:
 - Problem formulation and approach
@@ -126,21 +139,37 @@ data analysis report.
 - Hyperparameter tuning approach
 
 **Model Comparison Table**: Create a clean markdown table comparing all models.
-Include columns for: Algorithm, Key Hyperparameters, Validation Metric, Training Time.
-Keep it concise but informative.
+Include columns for: Algorithm, Key Hyperparameters, Primary Val Metric, CV Std, \
+Training Time. Keep it concise but informative.
+
+**CV Stability Analysis**: Discuss cross-validation stability using the pre-computed
+diagnostics. Which models were most consistent across folds? Which showed high
+variance? What does this imply for generalization?
 
 **Best Model Analysis**: Deep-dive into the winning model:
 - Architecture and how it works (brief, intuitive explanation)
 - Final hyperparameters and why they work well
 - Performance breakdown across all available metrics
-- Analysis of generalization (train vs. validation gap)
+- Overfitting analysis (train vs validation gap, risk level)
 - Where the model excels and where it struggles
 
-**Hyperparameter Analysis**: Discuss what was learned about hyperparameter sensitivity:
-- Which hyperparameters had the largest impact on performance
+**Feature Importance Analysis**: Based on the extracted feature importances:
+- Which features are most predictive and why?
+- Are there surprising features with high/low importance?
+- Domain interpretation of the top features
+- If no feature importances were extracted, note this and suggest ways to obtain them
+
+**Hyperparameter Analysis**: Based on the hyperparameter sensitivity diagnostics:
+- Which hyperparameters had the largest impact on performance?
 - Optimal ranges discovered
 - Interactions between hyperparameters (if observable)
 - Suggestions for further tuning
+
+**Error Analysis**: Based on confusion matrices (classification) or residual \
+statistics (regression):
+- Classification: which classes are most confused? Are there systematic errors?
+- Regression: are residuals normally distributed? Any patterns in errors?
+- If no error data was extracted, note this and suggest how to obtain it
 
 **Conclusions**: Summarize the key findings:
 - Was the objective achieved?
@@ -155,7 +184,7 @@ Keep it concise but informative.
 
 **Reproducibility Notes**: Explain how to reproduce the results:
 - Required packages and versions
-- Data requirements
+- Data requirements and split strategy
 - Key random seeds and configuration
 - How to load and use the saved model
 """

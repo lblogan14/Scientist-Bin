@@ -99,4 +99,15 @@ def save_experiment_artifacts(
         except Exception:
             logger.exception("Failed to save execution plan for %s", experiment_id)
 
+    # Copy chart data (for frontend visualisation)
+    chart_src = runs_dir / "summary" / "chart_data.json"
+    if chart_src.exists():
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+            dest = results_dir / f"{experiment_id}_charts.json"
+            shutil.copy2(chart_src, dest)
+            saved["charts"] = str(dest)
+        except Exception:
+            logger.exception("Failed to save chart data for %s", experiment_id)
+
     return saved

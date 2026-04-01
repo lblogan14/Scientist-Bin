@@ -32,7 +32,14 @@ class DataProfile(TypedDict, total=False):
 
 
 class ExperimentRecord(TypedDict, total=False):
-    """A single experiment iteration's results."""
+    """A single experiment iteration's results.
+
+    The base fields (iteration through timestamp) are always populated.
+    Enriched diagnostic fields are optional — populated when the generated
+    training code extracts them (e.g. sklearn CV fold scores, feature
+    importances). Framework agents that don't produce a given field simply
+    omit it.
+    """
 
     iteration: int
     algorithm: str
@@ -40,6 +47,13 @@ class ExperimentRecord(TypedDict, total=False):
     metrics: dict[str, float]
     training_time_seconds: float
     timestamp: str
+
+    # -- Enriched diagnostic fields (optional) --
+    cv_fold_scores: dict[str, list[float]] | None  # e.g. {"accuracy": [0.95, 0.96, ...]}
+    cv_results_top_n: list[dict] | None  # Top-N param combos from search
+    feature_importances: list[dict] | None  # [{feature, importance}, ...]
+    confusion_matrix: dict | None  # {labels: [...], matrix: [[...]]}
+    residual_stats: dict | None  # Regression: {mean, std, max_abs, percentiles}
 
 
 class BaseMLState(TypedDict, total=False):
@@ -93,6 +107,7 @@ class BaseMLState(TypedDict, total=False):
     # -- Test evaluation (held-out test set) --
     test_metrics: dict | None
     test_evaluation_code: str | None
+    test_diagnostics: dict | None  # Enriched test results (confusion_matrix, residual_stats)
 
     # -- Error research (web search) --
     search_results: str | None

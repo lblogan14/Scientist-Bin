@@ -96,7 +96,7 @@ backend/
 │   └── runs/                      # Raw per-run execution artifacts
 │       └── <id>/
 │           ├── data/              # Cleaned CSV, split CSVs, analysis report
-│           └── summary/           # Summary report markdown
+│           └── summary/           # Summary report markdown + chart data JSON
 ├── src/scientist_bin_backend/     # Main package
 │   ├── agents/
 │   │   ├── base/                  # Shared nodes (code_executor, results_analyzer) and schemas

@@ -61,6 +61,13 @@ async def analyze_results(state: dict) -> dict:
                 "metrics": entry.get("metrics", {}),
                 "training_time_seconds": entry.get("training_time", 0),
                 "timestamp": datetime.now(UTC).isoformat(),
+                # Enriched diagnostic fields (optional — present when
+                # the generated code extracts them)
+                "cv_fold_scores": entry.get("cv_fold_scores"),
+                "cv_results_top_n": entry.get("cv_results_top_n"),
+                "feature_importances": entry.get("feature_importances"),
+                "confusion_matrix": entry.get("confusion_matrix"),
+                "residual_stats": entry.get("residual_stats"),
             }
             new_records.append(record)
 

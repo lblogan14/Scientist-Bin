@@ -39,6 +39,8 @@ class CentralAgent:
             summary_report=final_state.get("summary_report"),
             best_model=agent_resp.get("best_model"),
             best_hyperparameters=agent_resp.get("best_hyperparameters"),
+            selection_reasoning=agent_resp.get("selection_reasoning"),
+            report_sections=agent_resp.get("report_sections"),
             status="failed" if final_state.get("error") else "completed",
         )
 

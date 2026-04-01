@@ -127,10 +127,15 @@ async def evaluate_on_test(state: dict) -> dict:
 
     # Parse test results
     test_metrics: dict | None = None
+    test_confusion_matrix: dict | None = None
+    test_residual_stats: dict | None = None
     if result.success:
         parsed = _parse_test_results(result.stdout)
-        if parsed and "metrics" in parsed:
-            test_metrics = parsed["metrics"]
+        if parsed:
+            if "metrics" in parsed:
+                test_metrics = parsed["metrics"]
+            test_confusion_matrix = parsed.get("confusion_matrix")
+            test_residual_stats = parsed.get("residual_stats")
 
     if test_metrics:
         status_msg = f"Test evaluation completed. Metrics: {json.dumps(test_metrics)}"
@@ -151,8 +156,16 @@ async def evaluate_on_test(state: dict) -> dict:
         ),
     )
 
+    # Bundle enriched test diagnostics alongside metrics
+    test_diagnostics: dict = {}
+    if test_confusion_matrix:
+        test_diagnostics["confusion_matrix"] = test_confusion_matrix
+    if test_residual_stats:
+        test_diagnostics["residual_stats"] = test_residual_stats
+
     return {
         "test_metrics": test_metrics,
         "test_evaluation_code": code,
+        "test_diagnostics": test_diagnostics if test_diagnostics else None,
         "messages": [HumanMessage(content=status_msg)],
     }

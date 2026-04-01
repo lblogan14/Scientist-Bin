@@ -121,6 +121,14 @@ so calling model.predict() handles preprocessing automatically
    {{"algorithm": "{best_algorithm}", "metrics": {{"test_<metric>": value, ...}}, \
 "test_samples": N}}
 8. Handle errors gracefully — if the model file doesn't exist, print an error message
+9. For classification: also compute the confusion matrix on the test set using \
+sklearn.metrics.confusion_matrix and include "confusion_matrix": \
+{{"labels": [<class_labels>], "matrix": [[int, ...], ...]}} in the JSON
+10. For regression: also compute residual statistics (y_test - y_pred) and include \
+"residual_stats": {{"mean_residual": float, "std_residual": float, \
+"max_abs_residual": float, "residual_percentiles": {{"25": float, "50": float, "75": float}}}}
+11. Requirements 9-10 are OPTIONAL enrichments — wrap each in try/except so failures \
+do not break the test evaluation script
 
 Return ONLY the Python code, no markdown fences.
 """
