@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartContainer } from "./ChartContainer";
 
 interface MetricBarChartProps {
@@ -22,6 +22,7 @@ export function MetricBarChart({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey={xKey} />
         <YAxis />
+        <Tooltip cursor={{ fill: "var(--color-muted)" }} />
         <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ChartContainer>

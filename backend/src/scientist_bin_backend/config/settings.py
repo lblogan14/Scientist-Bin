@@ -1,9 +1,14 @@
 """Application settings loaded from environment variables."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolve .env relative to the backend/ directory (3 levels up from this file)
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+_ENV_FILE = _BACKEND_DIR / ".env"
 
 
 class Settings(BaseSettings):
@@ -15,7 +20,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="SCIENTIST_BIN_",
-        env_file=".env",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         populate_by_name=True,
     )
@@ -27,6 +32,11 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     debug: bool = False
     cors_origins: list[str] = ["http://localhost:5173"]
+
+    # Sandbox / execution settings
+    sandbox_timeout: int = 300  # seconds per code execution
+    max_iterations: int = 5  # max generate-execute-analyze cycles
+    sandbox_max_output_bytes: int = 1_000_000  # 1 MB stdout cap
 
 
 @lru_cache

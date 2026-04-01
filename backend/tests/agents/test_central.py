@@ -45,8 +45,19 @@ def test_build_initial_state():
     state = build_initial_state(req)
     assert state["objective"] == "Test"
     assert state["data_description"] == "some data"
+    assert state["data_file_path"] is None
     assert state["selected_framework"] is None
     assert state["messages"] == []
+
+
+def test_build_initial_state_with_data_file():
+    req = TrainRequest(
+        objective="Test",
+        data_description="some data",
+        data_file_path="data/iris.csv",
+    )
+    state = build_initial_state(req)
+    assert state["data_file_path"] == "data/iris.csv"
 
 
 def test_is_supported_framework():

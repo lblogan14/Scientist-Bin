@@ -17,6 +17,8 @@ async def _sklearn_delegate(state: CentralState) -> dict:
     result = await agent.run(
         objective=state["objective"],
         data_description=state.get("data_description", ""),
+        data_file_path=state.get("data_file_path"),
+        experiment_id=state.get("experiment_id"),
     )
     return {"agent_response": result}
 

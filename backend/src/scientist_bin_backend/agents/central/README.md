@@ -4,7 +4,7 @@ Orchestrator agent that coordinates the training pipeline.
 
 ## Flow
 
-`START → analyze → route → [framework subagent] → END`
+`START -> analyze -> route -> [framework subagent] -> END`
 
 ## Nodes
 
@@ -13,7 +13,9 @@ Orchestrator agent that coordinates the training pipeline.
 
 ## Key Files
 
-- `states.py` — `CentralState` TypedDict with `add_messages` annotation.
-- `schemas.py` — `TrainRequest`, `FrameworkSelection`, `AgentResponse` Pydantic models.
-- `graph.py` — StateGraph definition and compilation.
-- `agent.py` — `CentralAgent` class wrapping the graph.
+| File | Purpose |
+|------|---------|
+| `states.py` | `CentralState` TypedDict with `data_file_path` support |
+| `schemas.py` | `TrainRequest`, `FrameworkSelection`, `AgentResponse` |
+| `graph.py` | StateGraph definition with `_sklearn_delegate` |
+| `agent.py` | `CentralAgent` class wrapping the graph |

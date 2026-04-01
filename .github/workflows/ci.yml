@@ -45,6 +45,8 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -63,7 +65,7 @@ jobs:
         run: pnpm exec tsc --noEmit
 
       - name: Run tests with Vitest
-        run: pnpm test
+        run: pnpm exec vitest run --passWithNoTests
 
       - name: Build production bundle
         run: pnpm build

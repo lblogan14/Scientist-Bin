@@ -1,4 +1,11 @@
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ChartContainer } from "./ChartContainer";
 
 interface MetricLineChartProps {
@@ -22,6 +29,7 @@ export function MetricLineChart({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey={xKey} />
         <YAxis />
+        <Tooltip />
         <Line type="monotone" dataKey={yKey} stroke={color} strokeWidth={2} />
       </LineChart>
     </ChartContainer>

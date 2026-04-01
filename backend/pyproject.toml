@@ -15,6 +15,11 @@ dependencies = [
     "typer",
     "python-dotenv",
     "httpx",
+    # Data science execution dependencies (used by sandboxed subprocess)
+    "pandas",
+    "scikit-learn",
+    "joblib",
+    "matplotlib",
 ]
 
 [project.scripts]

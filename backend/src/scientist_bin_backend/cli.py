@@ -22,6 +22,7 @@ def serve(
         host=host,
         port=port,
         reload=reload,
+        reload_excludes=["data/*", "outputs/*"] if reload else None,
     )
 
 
@@ -29,35 +30,146 @@ def serve(
 def train(
     objective: str = typer.Argument(..., help="Training objective description"),
     data: str = typer.Option("", "--data", help="Data description"),
+    data_file: str | None = typer.Option(None, "--data-file", help="Path to dataset file"),
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
 ) -> None:
     """Run training agent locally (no server required)."""
     import asyncio
+    import uuid
+    from pathlib import Path
 
     from scientist_bin_backend.agents.central.agent import CentralAgent
     from scientist_bin_backend.agents.central.schemas import TrainRequest
 
+    # Resolve data file path to absolute and validate before starting the agent
+    resolved_data_file = None
+    if data_file:
+        resolved = Path(data_file).resolve()
+        if not resolved.exists():
+            typer.echo(f"Error: Data file not found: {resolved}", err=True)
+            raise typer.Exit(code=1)
+        resolved_data_file = str(resolved)
+
     agent = CentralAgent()
+    experiment_id = uuid.uuid4().hex[:12]
     request = TrainRequest(
         objective=objective,
         data_description=data,
+        data_file_path=resolved_data_file,
         framework_preference=framework,
     )
-    result = asyncio.run(agent.run(request))
+
+    async def run_with_progress() -> "AgentResponse":  # noqa: F821
+        from scientist_bin_backend.events.bus import event_bus
+
+        if not quiet:
+            typer.echo("\n  Scientist-Bin  |  Training Agent")
+            typer.echo(f"  Experiment: {experiment_id}")
+            typer.echo(f"  Objective:  {objective}")
+            if resolved_data_file:
+                typer.echo(f"  Data file:  {resolved_data_file}")
+            typer.echo("")
+
+        async def print_events() -> None:
+            async for event in event_bus.subscribe(experiment_id):
+                if not quiet:
+                    _print_event(event)
+
+        event_task = asyncio.create_task(print_events())
+        try:
+            result = await agent.run(request, experiment_id=experiment_id)
+        finally:
+            await event_bus.close(experiment_id)
+            await event_task
+
+        return result
+
+    result = asyncio.run(run_with_progress())
+    if not quiet:
+        typer.echo("")
+
+    # Save artifacts to top-level output directories
+    _save_artifacts(experiment_id, result, quiet)
+
     typer.echo(result.model_dump_json(indent=2))
+
+
+def _print_event(event: "ExperimentEvent") -> None:  # noqa: F821
+    """Format and print an experiment event to the terminal."""
+    data = event.data
+    etype = event.event_type
+
+    if etype == "phase_change":
+        phase = data.get("phase", "?")
+        msg = data.get("message") or data.get("summary", "")
+        if msg:
+            typer.echo(f"  [{phase}] {msg}")
+    elif etype == "agent_activity":
+        action = data.get("action", "?")
+        iteration = data.get("iteration", 0)
+        decision = data.get("decision")
+        if decision:
+            typer.echo(f"  [iter {iteration}] {action} -> {decision}")
+        else:
+            typer.echo(f"  [iter {iteration}] {action}")
+    elif etype == "run_started":
+        timeout = data.get("timeout", "?")
+        est = data.get("estimated_duration")
+        est_str = f", estimated: {est:.0f}s" if est else ""
+        typer.echo(f"  [run] Started (timeout: {timeout}s{est_str})")
+    elif etype == "run_completed":
+        status = data.get("status", "?")
+        wall = data.get("wall_time_seconds", "?")
+        typer.echo(f"  [run] {status} in {wall}s")
+    elif etype == "metric_update":
+        name = data.get("name", "?")
+        value = data.get("value", "?")
+        typer.echo(f"  [metric] {name} = {value}")
+    elif etype == "experiment_done":
+        best = data.get("best_model", "?")
+        metrics = data.get("best_metrics", {})
+        metrics_str = ", ".join(f"{k}={v:.4f}" for k, v in metrics.items())
+        typer.echo(f"  [done] Best model: {best} ({metrics_str})")
+    elif etype == "error":
+        msg = data.get("message", "Unknown error")
+        typer.echo(f"  [error] {msg}")
+
+
+def _save_artifacts(
+    experiment_id: str,
+    result: "AgentResponse",  # noqa: F821
+    quiet: bool,
+) -> None:
+    """Save model, results JSON, and journal to top-level output directories."""
+    from scientist_bin_backend.utils.artifacts import save_experiment_artifacts
+
+    saved = save_experiment_artifacts(experiment_id, result.model_dump())
+
+    if not quiet:
+        if "results" in saved:
+            typer.echo(f"  [saved] Results  -> {saved['results']}")
+        if "model" in saved:
+            typer.echo(f"  [saved] Model    -> {saved['model']}")
+        if "journal" in saved:
+            typer.echo(f"  [saved] Journal  -> {saved['journal']}")
+        typer.echo("")
 
 
 @app.command(name="train-remote")
 def train_remote(
     objective: str = typer.Argument(..., help="Training objective description"),
     data: str = typer.Option("", "--data", help="Data description"),
+    data_file: str | None = typer.Option(None, "--data-file", help="Path to dataset file"),
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
     base_url: str = typer.Option("http://localhost:8000", "--base-url", help="Server URL"),
 ) -> None:
     """Submit training request to a running server."""
     import httpx
 
-    payload = {"objective": objective, "data_description": data}
+    payload: dict = {"objective": objective, "data_description": data}
+    if data_file:
+        payload["data_file_path"] = data_file
     if framework:
         payload["framework_preference"] = framework
     response = httpx.post(f"{base_url}/api/v1/train", json=payload)
