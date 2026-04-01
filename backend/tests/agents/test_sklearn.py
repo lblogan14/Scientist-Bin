@@ -1,4 +1,9 @@
-"""Tests for the sklearn subagent schemas, utilities, and routing logic."""
+"""Tests for the sklearn subagent schemas and framework-specific code.
+
+Base infrastructure tests (routing, validation, state, graph building) are in
+``test_base_framework.py``.  This file covers sklearn-specific schemas and
+the SklearnAgent wrapper.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +14,8 @@ from scientist_bin_backend.agents.base.schemas import (
     ProblemClassification,
     StrategyPlan,
 )
-from scientist_bin_backend.agents.sklearn.graph import _route_decision
-from scientist_bin_backend.agents.sklearn.schemas import SklearnStrategyPlan
-from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
+from scientist_bin_backend.agents.base.utils import strip_code_fences
+from scientist_bin_backend.agents.frameworks.sklearn.schemas import SklearnStrategyPlan
 
 # --- Base schema tests ---
 
@@ -110,41 +114,23 @@ def test_strip_code_fences_no_fences():
     assert strip_code_fences(text) == 'print("hello")'
 
 
-# --- Route decision tests (now at agents/sklearn/graph._route_decision) ---
+# --- Sklearn agent wrapper tests ---
 
 
-def test_route_decision_accept():
-    state = {"next_action": "accept"}
-    assert _route_decision(state) == "finalize"
+def test_sklearn_agent_instantiation():
+    from scientist_bin_backend.agents.frameworks.sklearn.agent import SklearnAgent
+
+    agent = SklearnAgent()
+    assert agent.framework_name == "sklearn"
+    assert agent.graph is not None
 
 
-def test_route_decision_abort():
-    state = {"next_action": "abort"}
-    assert _route_decision(state) == "finalize"
+def test_sklearn_agent_has_examples():
+    from scientist_bin_backend.agents.frameworks.sklearn.agent import EXAMPLES
 
-
-def test_route_decision_fix_error():
-    """fix_error now routes to error_research (web search before regenerating)."""
-    state = {"next_action": "fix_error"}
-    assert _route_decision(state) == "error_research"
-
-
-def test_route_decision_refine_params():
-    state = {"next_action": "refine_params"}
-    assert _route_decision(state) == "generate_code"
-
-
-def test_route_decision_try_new_algo():
-    state = {"next_action": "try_new_algo"}
-    assert _route_decision(state) == "generate_code"
-
-
-def test_route_decision_feature_engineer():
-    state = {"next_action": "feature_engineer"}
-    assert _route_decision(state) == "generate_code"
-
-
-def test_route_decision_default_aborts():
-    """With no next_action, defaults to 'abort' which routes to finalize."""
-    state = {}
-    assert _route_decision(state) == "finalize"
+    assert len(EXAMPLES) >= 2
+    for ex in EXAMPLES:
+        assert "name" in ex
+        assert "objective" in ex
+        assert "problem_type" in ex
+        assert "execution_plan" in ex

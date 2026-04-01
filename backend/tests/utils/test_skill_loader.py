@@ -15,6 +15,7 @@ SKLEARN_SKILLS_DIR = (
     / "src"
     / "scientist_bin_backend"
     / "agents"
+    / "frameworks"
     / "sklearn"
     / "skills"
 )

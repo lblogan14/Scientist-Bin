@@ -26,6 +26,7 @@ class SummaryState(TypedDict, total=False):
     sklearn_results: dict | None
     experiment_history: list[dict]
     runs: list[dict]
+    test_metrics: dict | None  # Metrics on held-out test set
 
     # -- Analysis --
     best_model: str | None

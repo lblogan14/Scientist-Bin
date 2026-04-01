@@ -79,6 +79,7 @@ async def generate_report(state: dict) -> dict:
     best_hyperparameters = state.get("best_hyperparameters", {})
     best_metrics = state.get("best_metrics", {})
     sklearn_results = state.get("sklearn_results")
+    test_metrics = state.get("test_metrics")
     experiment_id = state.get("experiment_id")
 
     # Format inputs for the prompt
@@ -94,7 +95,12 @@ async def generate_report(state: dict) -> dict:
     sklearn_results_str = (
         json.dumps(sklearn_results, indent=2, default=str)
         if sklearn_results
-        else "No sklearn results available."
+        else "No framework results available."
+    )
+    test_metrics_str = (
+        json.dumps(test_metrics, indent=2, default=str)
+        if test_metrics
+        else "No test set evaluation was performed."
     )
 
     # Build the prompt
@@ -108,6 +114,7 @@ async def generate_report(state: dict) -> dict:
         best_hyperparameters=hyperparams_str,
         best_metrics=metrics_str,
         sklearn_results=sklearn_results_str,
+        test_metrics=test_metrics_str,
     )
 
     # LLM call with structured output

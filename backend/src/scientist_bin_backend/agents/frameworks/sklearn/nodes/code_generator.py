@@ -14,8 +14,8 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage
 
-from scientist_bin_backend.agents.sklearn.prompts import CODE_GENERATOR_PROMPT
-from scientist_bin_backend.agents.sklearn.utils import strip_code_fences
+from scientist_bin_backend.agents.base.utils import strip_code_fences
+from scientist_bin_backend.agents.frameworks.sklearn.prompts import CODE_GENERATOR_PROMPT
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.utils.llm import extract_text_content, get_agent_model
@@ -27,6 +27,15 @@ async def generate_code(state: dict) -> dict:
     retry_context = ""
     next_action = state.get("next_action")
     refinement_context = state.get("refinement_context")
+
+    # Include validation error if the previous attempt failed validation
+    validation_error = state.get("validation_error")
+    if validation_error:
+        retry_context += (
+            "== CODE VALIDATION FAILED ==\n"
+            f"{validation_error}\n"
+            "Fix the issues above in the regenerated code.\n\n"
+        )
 
     if next_action == "fix_error" and refinement_context:
         retry_context = f"== PREVIOUS ATTEMPT FAILED ==\n{refinement_context}\n"

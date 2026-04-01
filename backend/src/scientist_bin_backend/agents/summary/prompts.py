@@ -103,8 +103,11 @@ Algorithm: {best_model}
 Hyperparameters: {best_hyperparameters}
 Metrics: {best_metrics}
 
-== Full Sklearn Results ==
+== Full Framework Results ==
 {sklearn_results}
+
+== Test Set Metrics (held-out, unseen during training/validation) ==
+{test_metrics}
 
 Write each section in clear, professional markdown:
 

@@ -1,4 +1,9 @@
-"""Shared state schemas for all ML framework subagents."""
+"""Shared state schemas for all ML framework subagents.
+
+Framework-specific subagents extend ``BaseMLState`` with additional fields.
+The base state covers the pipeline-driven flow where upstream agents (analyst,
+plan) provide execution plans, split data paths, and data profiles.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +15,7 @@ from typing_extensions import TypedDict
 
 
 class DataProfile(TypedDict, total=False):
-    """Summary of dataset characteristics produced by EDA."""
+    """Summary of dataset characteristics produced by the analyst agent."""
 
     file_path: str
     shape: list[int]  # [rows, cols]
@@ -41,44 +46,43 @@ class BaseMLState(TypedDict, total=False):
     """Base state schema shared by all ML framework subagents.
 
     Framework-specific subagents extend this with additional fields.
+    Fields are organised by pipeline phase.
     """
 
     # -- Message history (LangGraph convention) --
     messages: Annotated[list, add_messages]
 
-    # -- Input context --
+    # -- Input from upstream pipeline (analyst + plan agents) --
     objective: str
-    data_description: str
-    data_file_path: str | None
+    execution_plan: dict | None
+    analysis_report: str | None
+    split_data_paths: dict | None  # {"train": path, "val": path, "test": path}
     problem_type: str | None
-
-    # -- Phase 1: Data Analysis --
     data_profile: DataProfile | None
-    eda_code: str | None
-    eda_output: str | None
 
-    # -- Phase 2: Strategy --
+    # -- Strategy (derived from execution_plan on first iteration) --
     strategy: dict | None
     candidate_algorithms: list[str]
-    preprocessing_plan: list[str]
-    feature_engineering_plan: list[str]
     hyperparameter_spaces: dict | None
-    cv_strategy: str | None
     success_criteria: dict | None
 
-    # -- Phase 3: Code Generation & Execution --
+    # -- Code validation (pre-execution) --
     generated_code: str | None
+    validation_error: str | None
+    validation_attempts: int
+
+    # -- Code execution --
     execution_output: str | None
     execution_success: bool
     execution_error: str | None
     execution_metrics: list[dict]
 
-    # -- Phase 3b: Duration estimation --
+    # -- Duration estimation --
     estimated_duration_seconds: float | None
     dynamic_timeout: int | None
     data_subset_size: int | None  # For progressive training
 
-    # -- Phase 4: Results & Iteration --
+    # -- Iteration & tracking --
     experiment_history: Annotated[list[dict], operator.add]
     best_experiment: dict | None
     current_iteration: int
@@ -86,9 +90,19 @@ class BaseMLState(TypedDict, total=False):
     next_action: str | None
     refinement_context: str | None
 
-    # -- Reflection & learning --
-    reflection: str | None  # Agent's reflection on latest results
-    learned_heuristics: list[str]  # Heuristics extracted from past experiments
+    # -- Test evaluation (held-out test set) --
+    test_metrics: dict | None
+    test_evaluation_code: str | None
+
+    # -- Error research (web search) --
+    search_results: str | None
+
+    # -- Reflection & learning (ERL pattern) --
+    reflection: str | None
+    learned_heuristics: list[str]
+
+    # -- Output for summary agent --
+    hyperparameters_summary: list[dict]
 
     # -- Control --
     phase: str

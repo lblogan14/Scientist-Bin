@@ -187,6 +187,7 @@ async def _summary_delegate(state: PipelineState) -> dict:
         analysis_report=state.get("analysis_report"),
         sklearn_results=framework_results,
         experiment_history=framework_results.get("experiment_history", []),
+        test_metrics=framework_results.get("test_metrics"),
         experiment_id=experiment_id,
     )
 

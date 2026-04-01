@@ -187,7 +187,7 @@ def train_sklearn(
     import json
     from pathlib import Path
 
-    from scientist_bin_backend.agents.sklearn.agent import SklearnAgent
+    from scientist_bin_backend.agents.frameworks.sklearn.agent import SklearnAgent
     from scientist_bin_backend.utils.naming import generate_experiment_id
 
     split_data_paths = {}

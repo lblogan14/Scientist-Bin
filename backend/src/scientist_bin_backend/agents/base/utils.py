@@ -1,4 +1,4 @@
-"""Utility functions for the sklearn subagent."""
+"""Shared utility functions for ML framework subagents."""
 
 from __future__ import annotations
 

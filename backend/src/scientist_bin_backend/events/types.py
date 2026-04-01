@@ -21,6 +21,7 @@ EventType = Literal[
     "plan_completed",
     "analysis_completed",
     "sklearn_completed",
+    "framework_completed",
     "summary_completed",
 ]
 

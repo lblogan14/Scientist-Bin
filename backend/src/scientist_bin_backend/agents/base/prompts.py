@@ -1,4 +1,9 @@
-"""Prompt templates for framework-agnostic nodes."""
+"""Prompt templates for framework-agnostic nodes.
+
+Prompts here are used by shared base nodes (results_analyzer, test_evaluator,
+finalize).  Framework-specific prompts (e.g. sklearn code generation) live in
+the respective ``agents/frameworks/<name>/prompts.py``.
+"""
 
 RESULTS_ANALYZER_PROMPT = """\
 You are an expert data scientist analyzing experiment results.
@@ -83,4 +88,39 @@ Write a concise interpretation of the results:
 2. Key metrics and what they mean in context
 3. Any caveats or limitations
 4. Recommendations for production use or further improvement
+"""
+
+TEST_EVALUATION_PROMPT = """\
+You are an expert Python developer. Generate a self-contained Python script that \
+evaluates a trained model on a held-out test set.
+
+Objective: {objective}
+Problem type: {problem_type}
+
+== Best model details ==
+Algorithm: {best_algorithm}
+Training/validation metrics: {best_metrics}
+Best hyperparameters: {best_hyperparameters}
+
+== Data ==
+Test data file: {test_file_path}
+
+== REQUIREMENTS (MUST follow all) ==
+1. The script must be runnable as-is (include all imports)
+2. Load the saved model from the path in os.environ.get("SCIENTIST_BIN_ARTIFACTS_DIR", ".") \
++ "/best_model.joblib" using joblib.load()
+3. Load the test data from the test file path above using pandas
+4. Apply the SAME preprocessing as training — the loaded model is a sklearn Pipeline \
+so calling model.predict() handles preprocessing automatically
+5. Compute all relevant metrics for the problem type ({problem_type}):
+   - Classification: accuracy, precision, recall, f1 (weighted), confusion matrix
+   - Regression: mse, rmse, mae, r2
+   - Clustering: silhouette_score, calinski_harabasz_score
+6. Call report_metric(name, value) for each metric (this function is pre-defined)
+7. Print "===TEST_RESULTS===" followed by a JSON object:
+   {{"algorithm": "{best_algorithm}", "metrics": {{"test_<metric>": value, ...}}, \
+"test_samples": N}}
+8. Handle errors gracefully — if the model file doesn't exist, print an error message
+
+Return ONLY the Python code, no markdown fences.
 """

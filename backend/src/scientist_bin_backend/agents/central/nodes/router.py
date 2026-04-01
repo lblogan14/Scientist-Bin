@@ -15,8 +15,8 @@ from scientist_bin_backend.utils.llm import get_agent_model
 # Framework registry: maps framework name -> fully-qualified agent class path.
 # Adding a new framework requires one entry here + implementing the agent.
 FRAMEWORK_REGISTRY: dict[str, str] = {
-    "sklearn": "scientist_bin_backend.agents.sklearn.agent.SklearnAgent",
-    # "pytorch": "scientist_bin_backend.agents.pytorch.agent.PytorchAgent",
+    "sklearn": "scientist_bin_backend.agents.frameworks.sklearn.agent.SklearnAgent",
+    # "pytorch": "scientist_bin_backend.agents.frameworks.pytorch.agent.PytorchAgent",
 }
 
 SUPPORTED_FRAMEWORKS = set(FRAMEWORK_REGISTRY.keys())

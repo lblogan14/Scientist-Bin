@@ -28,8 +28,9 @@ A linear 3-node pipeline that synthesizes all upstream results into a final repo
 - `problem_type` -- classification, regression, clustering, etc.
 - `execution_plan` -- the strategy plan from the plan agent
 - `analysis_report` -- markdown report from the analyst agent
-- `sklearn_results` -- full results dict from the sklearn agent
+- `sklearn_results` -- full results dict from the framework agent
 - `experiment_history` -- list of per-iteration experiment records
+- `test_metrics` -- metrics from held-out test set evaluation (from framework agent's `evaluate_on_test` node)
 
 ## Output
 

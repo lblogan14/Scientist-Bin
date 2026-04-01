@@ -21,6 +21,7 @@ class SummaryAgent:
         sklearn_results: dict | None = None,
         experiment_history: list[dict] | None = None,
         runs: list[dict] | None = None,
+        test_metrics: dict | None = None,
         experiment_id: str | None = None,
     ) -> dict:
         """Execute the full summary pipeline and return results.
@@ -28,11 +29,12 @@ class SummaryAgent:
         Args:
             objective: The original ML objective.
             problem_type: Detected problem type (classification, regression, etc.).
-            execution_plan: The strategy plan used by the sklearn subagent.
+            execution_plan: The strategy plan used by the framework subagent.
             analysis_report: Data analysis / EDA report text.
-            sklearn_results: Full results dict from the sklearn subagent.
+            sklearn_results: Full results dict from the framework subagent.
             experiment_history: List of per-iteration experiment records.
             runs: List of raw run detail dicts.
+            test_metrics: Metrics from held-out test set evaluation.
             experiment_id: Experiment identifier (generated if not provided).
 
         Returns:
@@ -50,6 +52,7 @@ class SummaryAgent:
             "sklearn_results": sklearn_results,
             "experiment_history": experiment_history or [],
             "runs": runs or [],
+            "test_metrics": test_metrics,
             "best_model": None,
             "best_hyperparameters": None,
             "best_metrics": None,
