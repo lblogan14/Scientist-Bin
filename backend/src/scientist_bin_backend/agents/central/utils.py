@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from scientist_bin_backend.agents.central.nodes.router import SUPPORTED_FRAMEWORKS
 from scientist_bin_backend.agents.central.schemas import TrainRequest
 from scientist_bin_backend.agents.central.states import PipelineState
 
@@ -33,8 +32,3 @@ def build_initial_state(
         summary_report=None,
         agent_response=None,
     )
-
-
-def is_supported_framework(name: str) -> bool:
-    """Check whether a framework identifier is currently supported."""
-    return name.lower() in SUPPORTED_FRAMEWORKS

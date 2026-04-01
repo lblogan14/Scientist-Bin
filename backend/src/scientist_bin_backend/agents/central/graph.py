@@ -7,7 +7,6 @@ The central agent orchestrates the full 5-agent pipeline:
 from __future__ import annotations
 
 import importlib
-import logging
 
 from langgraph.graph import END, START, StateGraph
 
@@ -21,9 +20,6 @@ from scientist_bin_backend.agents.central.nodes.router import (
 from scientist_bin_backend.agents.central.states import PipelineState
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
-
-logger = logging.getLogger(__name__)
-
 
 # ---------------------------------------------------------------------------
 # Delegate nodes — each calls the respective agent and maps results back

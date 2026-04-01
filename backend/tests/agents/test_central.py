@@ -7,10 +7,7 @@ from scientist_bin_backend.agents.central.schemas import (
     FrameworkSelection,
     TrainRequest,
 )
-from scientist_bin_backend.agents.central.utils import (
-    build_initial_state,
-    is_supported_framework,
-)
+from scientist_bin_backend.agents.central.utils import build_initial_state
 
 # ---------------------------------------------------------------------------
 # TrainRequest schema tests
@@ -161,14 +158,3 @@ def test_build_initial_state_without_experiment_id():
     req = TrainRequest(objective="Test")
     state = build_initial_state(req)
     assert state["experiment_id"] is None
-
-
-# ---------------------------------------------------------------------------
-# is_supported_framework tests
-# ---------------------------------------------------------------------------
-
-
-def test_is_supported_framework():
-    assert is_supported_framework("sklearn") is True
-    assert is_supported_framework("SKLEARN") is True
-    assert is_supported_framework("pytorch") is False
