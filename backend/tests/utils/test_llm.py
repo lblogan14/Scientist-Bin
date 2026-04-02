@@ -4,12 +4,32 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from scientist_bin_backend.utils.llm import (
     AGENT_MODELS,
+    _LazyAgentModels,
     extract_text_content,
     get_agent_model,
     get_chat_model,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_lazy_agent_models(mock_settings):
+    """Reset the global AGENT_MODELS lazy dict before each test so it
+    re-loads from (mocked) settings instead of requiring GOOGLE_API_KEY."""
+    AGENT_MODELS.clear()
+    # Reset the instance attribute (not just the class attribute)
+    AGENT_MODELS._loaded = False
+    with patch(
+        "scientist_bin_backend.utils.llm.get_settings",
+        return_value=mock_settings,
+    ):
+        yield
+    # Clean up: reset again so other test modules aren't affected
+    AGENT_MODELS.clear()
+    AGENT_MODELS._loaded = False
 
 # ---------------------------------------------------------------------------
 # extract_text_content tests
