@@ -35,9 +35,9 @@ export function ConsoleOutput({ logs }: ConsoleOutputProps) {
                     key={i}
                     className={
                       line.toLowerCase().includes("error")
-                        ? "text-red-500"
+                        ? "text-destructive"
                         : line.startsWith("METRIC:")
-                          ? "text-blue-500"
+                          ? "text-primary"
                           : ""
                     }
                   >

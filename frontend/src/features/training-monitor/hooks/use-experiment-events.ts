@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createExperimentEventSource } from "@/lib/api-client";
-import type {
-  AgentActivity,
-  MetricPoint,
-  ProgressEvent,
-} from "@/types/api";
+import type { AgentActivity, MetricPoint, ProgressEvent } from "@/types/api";
+
+export interface PlanReviewData {
+  planMarkdown: string;
+  revisionCount: number;
+}
 
 interface ExperimentEvents {
   /** Timestamped agent activity entries */
@@ -17,6 +18,14 @@ interface ExperimentEvents {
   isConnected: boolean;
   /** Whether the experiment is done (no more events expected) */
   isDone: boolean;
+  /** Plan review data when plan_review_pending fires */
+  planReview: PlanReviewData | null;
+  /** Execution plan JSON when plan_completed fires */
+  executionPlan: Record<string, unknown> | null;
+  /** Analysis report markdown when analysis_completed fires */
+  analysisReport: string | null;
+  /** Summary report markdown when summary_completed fires */
+  summaryReport: string | null;
 }
 
 /**
@@ -32,11 +41,16 @@ export function useExperimentEvents(
 ): ExperimentEvents {
   const [activities, setActivities] = useState<AgentActivity[]>([]);
   const [logLines, setLogLines] = useState<string[]>([]);
-  const [metrics, setMetrics] = useState<Map<string, MetricPoint[]>>(
-    new Map(),
-  );
+  const [metrics, setMetrics] = useState<Map<string, MetricPoint[]>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [planReview, setPlanReview] = useState<PlanReviewData | null>(null);
+  const [executionPlan, setExecutionPlan] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [analysisReport, setAnalysisReport] = useState<string | null>(null);
+  const [summaryReport, setSummaryReport] = useState<string | null>(null);
 
   // Use refs for batching
   const pendingActivities = useRef<AgentActivity[]>([]);
@@ -88,6 +102,10 @@ export function useExperimentEvents(
     setMetrics(new Map());
     setIsConnected(false);
     setIsDone(false);
+    setPlanReview(null);
+    setExecutionPlan(null);
+    setAnalysisReport(null);
+    setSummaryReport(null);
 
     const source = createExperimentEventSource(experimentId);
     let hasOpened = false;
@@ -186,6 +204,73 @@ export function useExperimentEvents(
       }
     });
 
+    source.addEventListener("plan_review_pending", (e: MessageEvent) => {
+      const event: ProgressEvent = JSON.parse(e.data);
+      setPlanReview({
+        planMarkdown: (event.data.plan_markdown as string) ?? "",
+        revisionCount: (event.data.revision_count as number) ?? 0,
+      });
+      pendingActivities.current.push({
+        agent: "plan",
+        action: "Plan review required",
+        timestamp: event.timestamp,
+        details: "Waiting for your approval",
+        data: event.data,
+      });
+      scheduleFlush();
+    });
+
+    source.addEventListener("plan_review_submitted", (e: MessageEvent) => {
+      const event: ProgressEvent = JSON.parse(e.data);
+      setPlanReview(null);
+      pendingActivities.current.push({
+        agent: "plan",
+        action: event.data.approved ? "Plan approved" : "Revision requested",
+        timestamp: event.timestamp,
+        details: event.data.feedback as string | undefined,
+        data: event.data,
+      });
+      scheduleFlush();
+    });
+
+    source.addEventListener("plan_completed", (e: MessageEvent) => {
+      const event: ProgressEvent = JSON.parse(e.data);
+      setExecutionPlan(
+        (event.data.execution_plan as Record<string, unknown>) ?? null,
+      );
+      pendingActivities.current.push({
+        agent: "plan",
+        action: "Plan finalized",
+        timestamp: event.timestamp,
+        data: event.data,
+      });
+      scheduleFlush();
+    });
+
+    source.addEventListener("analysis_completed", (e: MessageEvent) => {
+      const event: ProgressEvent = JSON.parse(e.data);
+      setAnalysisReport((event.data.analysis_report as string) ?? null);
+      pendingActivities.current.push({
+        agent: "analyst",
+        action: "Data analysis complete",
+        timestamp: event.timestamp,
+        data: event.data,
+      });
+      scheduleFlush();
+    });
+
+    source.addEventListener("summary_completed", (e: MessageEvent) => {
+      const event: ProgressEvent = JSON.parse(e.data);
+      setSummaryReport((event.data.summary_report as string) ?? null);
+      pendingActivities.current.push({
+        agent: "summary",
+        action: "Summary report generated",
+        timestamp: event.timestamp,
+        data: event.data,
+      });
+      scheduleFlush();
+    });
+
     source.addEventListener("experiment_done", (e: MessageEvent) => {
       const event: ProgressEvent = JSON.parse(e.data);
       pendingActivities.current.push({
@@ -207,5 +292,15 @@ export function useExperimentEvents(
     };
   }, [experimentId, enabled, flush, scheduleFlush]);
 
-  return { activities, logLines, metrics, isConnected, isDone };
+  return {
+    activities,
+    logLines,
+    metrics,
+    isConnected,
+    isDone,
+    planReview,
+    executionPlan,
+    analysisReport,
+    summaryReport,
+  };
 }

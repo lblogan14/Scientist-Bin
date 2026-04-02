@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+import { Activity, BarChart3, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +23,10 @@ export function ExperimentDetail({
   if (isLoading) return <LoadingSpinner />;
   if (!experiment) return null;
 
+  const isActive =
+    experiment.status === "running" || experiment.status === "pending";
+  const isCompleted = experiment.status === "completed";
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -35,18 +41,90 @@ export function ExperimentDetail({
           <span>{new Date(experiment.created_at).toLocaleString()}</span>
           <span className="text-muted-foreground">Data</span>
           <span>{experiment.data_description || "Not specified"}</span>
+          {experiment.data_file_path && (
+            <>
+              <span className="text-muted-foreground">Data File</span>
+              <span className="truncate font-mono text-xs">
+                {experiment.data_file_path}
+              </span>
+            </>
+          )}
+          {experiment.phase && (
+            <>
+              <span className="text-muted-foreground">Current Phase</span>
+              <Badge variant="secondary" className="w-fit">
+                {experiment.phase}
+              </Badge>
+            </>
+          )}
+          {experiment.iteration_count > 0 && (
+            <>
+              <span className="text-muted-foreground">Iterations</span>
+              <span>{experiment.iteration_count}</span>
+            </>
+          )}
         </div>
+
+        {/* Execution plan summary */}
+        {experiment.execution_plan && (
+          <>
+            <Separator />
+            <div className="space-y-1">
+              <span className="text-muted-foreground text-xs font-medium">
+                Execution Plan
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {(
+                  (experiment.execution_plan as Record<string, unknown>)
+                    .algorithms_to_try as string[] | undefined
+                )?.map((algo, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">
+                    {algo}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
         <Separator />
-        <Button
-          variant="destructive"
-          size="sm"
-          disabled={isPending}
-          onClick={() =>
-            remove(experimentId, { onSuccess: () => onDeleted() })
-          }
-        >
-          {isPending ? "Deleting..." : "Delete Experiment"}
-        </Button>
+
+        <div className="flex flex-wrap gap-2">
+          {isActive && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/monitor?id=${experimentId}`}>
+                <Activity className="mr-1.5 size-3.5" />
+                Monitor
+              </Link>
+            </Button>
+          )}
+          {isCompleted && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/results?id=${experimentId}`}>
+                <BarChart3 className="mr-1.5 size-3.5" />
+                View Results
+              </Link>
+            </Button>
+          )}
+          {experiment.analysis_report && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link to={`/results?id=${experimentId}`}>
+                <FileText className="mr-1.5 size-3.5" />
+                Analysis
+              </Link>
+            </Button>
+          )}
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={isPending}
+            onClick={() =>
+              remove(experimentId, { onSuccess: () => onDeleted() })
+            }
+          >
+            {isPending ? "Deleting..." : "Delete"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

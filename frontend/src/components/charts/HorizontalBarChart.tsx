@@ -21,7 +21,12 @@ export function HorizontalBarChart({
       <BarChart data={data} layout="vertical">
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis type="number" />
-        <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+        <YAxis
+          dataKey="name"
+          type="category"
+          width={120}
+          tick={{ fontSize: 12 }}
+        />
         <Tooltip cursor={{ fill: "var(--color-muted)" }} />
         <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} />
       </BarChart>

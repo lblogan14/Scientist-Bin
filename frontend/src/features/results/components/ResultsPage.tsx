@@ -8,20 +8,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  getArtifactDownloadUrl,
   getModelDownloadUrl,
   getResultsDownloadUrl,
   listExperiments,
 } from "@/lib/api-client";
 import { isExperimentError } from "@/types/api";
+import type { ExperimentResult, ChartData } from "@/types/api";
 import { useResult } from "../hooks/use-result";
 import { AlgorithmComparisonChart } from "./AlgorithmComparisonChart";
 import { AlgorithmRadarChart } from "./AlgorithmRadarChart";
+import { AnalysisTab } from "./AnalysisTab";
 import { CodeDisplay } from "./CodeDisplay";
+import { ConfusionMatrixTab } from "./ConfusionMatrixTab";
+import { CVStabilityTab } from "./CVStabilityTab";
 import { DataProfileCard } from "./DataProfileCard";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { EvaluationReport } from "./EvaluationReport";
+import { FeatureImportanceTab } from "./FeatureImportanceTab";
+import { HyperparameterTab } from "./HyperparameterTab";
 import { JournalViewer } from "./JournalViewer";
 import { MetricCards } from "./MetricCards";
+import { OverfitAnalysisTab } from "./OverfitAnalysisTab";
+import { OverviewTab } from "./OverviewTab";
+import { PlanTab } from "./PlanTab";
+import { SummaryTab } from "./SummaryTab";
 import { TrainingTimeChart } from "./TrainingTimeChart";
 
 export default function ResultsPage() {
@@ -33,11 +44,9 @@ export default function ResultsPage() {
   const { data: latestExperiment } = useQuery({
     queryKey: ["experiments", "latest-result"],
     queryFn: async () => {
-      const all = await listExperiments();
+      const { experiments: all } = await listExperiments();
       return (
-        all.find(
-          (e) => e.status === "completed" || e.status === "failed",
-        ) ??
+        all.find((e) => e.status === "completed" || e.status === "failed") ??
         all[0] ??
         null
       );
@@ -80,16 +89,41 @@ export default function ResultsPage() {
     );
   }
 
-  const successResult = isExperimentError(result) ? null : result;
+  const successResult = isExperimentError(result)
+    ? null
+    : (result as ExperimentResult | null);
   const experimentHistory = successResult?.experiment_history ?? [];
   const dataProfile = successResult?.data_profile ?? null;
-  const evaluationResults =
-    successResult?.evaluation_results as Record<string, unknown> | null;
+  const evaluationResults = successResult?.evaluation_results as Record<
+    string,
+    unknown
+  > | null;
   const bestMetrics =
     (evaluationResults?.metrics as Record<string, unknown>) ?? null;
+  const chartData: ChartData | undefined =
+    successResult?.report_sections?.chart_data;
+  const sections = successResult?.report_sections ?? null;
+
+  // Determine which diagnostic tabs have data
+  const hasConfusionMatrix =
+    (chartData?.confusion_matrices &&
+      Object.keys(chartData.confusion_matrices).length > 0) ||
+    experimentHistory.some((r) => r.confusion_matrix);
+  const hasCVFolds =
+    (chartData?.cv_fold_scores &&
+      Object.keys(chartData.cv_fold_scores).length > 0) ||
+    experimentHistory.some((r) => r.cv_fold_scores);
+  const hasFeatureImportance =
+    chartData?.feature_importances?.features?.length ||
+    experimentHistory.some((r) => r.feature_importances?.length);
+  const hasHyperparamSearch =
+    (chartData?.hyperparam_search &&
+      Object.keys(chartData.hyperparam_search).length > 0) ||
+    experimentHistory.some((r) => r.cv_results_top_n?.length);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Results</h2>
@@ -117,21 +151,57 @@ export default function ResultsPage() {
                 Model
               </a>
             </Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href={getArtifactDownloadUrl(experimentId, "charts")} download>
+                <Download className="mr-1 size-4" />
+                Charts
+              </a>
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Best model metrics at the top */}
+      {/* Top-level metric cards */}
       <MetricCards metrics={bestMetrics} />
 
-      <Tabs defaultValue="experiments">
-        <TabsList>
+      {/* Three-group tab layout: Overview | Analysis | Reports */}
+      <Tabs defaultValue="overview">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="experiments">Experiments</TabsTrigger>
+          {hasConfusionMatrix && (
+            <TabsTrigger value="confusion">Confusion Matrix</TabsTrigger>
+          )}
+          {hasCVFolds && (
+            <TabsTrigger value="cv-stability">CV Stability</TabsTrigger>
+          )}
+          <TabsTrigger value="overfit">Overfitting</TabsTrigger>
+          {hasFeatureImportance && (
+            <TabsTrigger value="features">Features</TabsTrigger>
+          )}
+          {hasHyperparamSearch && (
+            <TabsTrigger value="hyperparams">Hyperparams</TabsTrigger>
+          )}
+          <TabsTrigger value="plan">Plan</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="code">Code</TabsTrigger>
-          {dataProfile && <TabsTrigger value="data">Data Profile</TabsTrigger>}
+          {dataProfile && <TabsTrigger value="data">Data</TabsTrigger>}
           <TabsTrigger value="journal">Journal</TabsTrigger>
         </TabsList>
 
+        {/* Overview */}
+        <TabsContent value="overview" className="mt-4">
+          {successResult ? (
+            <OverviewTab result={successResult} />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              No results available.
+            </p>
+          )}
+        </TabsContent>
+
+        {/* Experiments (existing) */}
         <TabsContent value="experiments" className="mt-4 space-y-4">
           <EvaluationReport
             evaluation={evaluationResults}
@@ -144,16 +214,97 @@ export default function ResultsPage() {
           <AlgorithmRadarChart history={experimentHistory} />
         </TabsContent>
 
+        {/* Confusion Matrix */}
+        {hasConfusionMatrix && (
+          <TabsContent value="confusion" className="mt-4">
+            <ConfusionMatrixTab
+              matrices={chartData?.confusion_matrices}
+              history={experimentHistory}
+            />
+          </TabsContent>
+        )}
+
+        {/* CV Stability */}
+        {hasCVFolds && (
+          <TabsContent value="cv-stability" className="mt-4">
+            <CVStabilityTab chartData={chartData} history={experimentHistory} />
+          </TabsContent>
+        )}
+
+        {/* Overfitting Analysis */}
+        <TabsContent value="overfit" className="mt-4">
+          <OverfitAnalysisTab history={experimentHistory} />
+        </TabsContent>
+
+        {/* Feature Importance */}
+        {hasFeatureImportance && (
+          <TabsContent value="features" className="mt-4">
+            <FeatureImportanceTab
+              chartData={chartData}
+              history={experimentHistory}
+            />
+          </TabsContent>
+        )}
+
+        {/* Hyperparameters */}
+        {hasHyperparamSearch && (
+          <TabsContent value="hyperparams" className="mt-4">
+            <HyperparameterTab
+              chartData={chartData}
+              history={experimentHistory}
+              result={successResult ?? undefined}
+            />
+          </TabsContent>
+        )}
+
+        {/* Plan */}
+        <TabsContent value="plan" className="mt-4">
+          <PlanTab
+            executionPlan={
+              experiment.execution_plan ?? successResult?.plan ?? null
+            }
+            planMarkdown={successResult?.plan_markdown ?? null}
+            experimentId={experimentId}
+          />
+        </TabsContent>
+
+        {/* Analysis Report */}
+        <TabsContent value="analysis" className="mt-4">
+          <AnalysisTab
+            analysisReport={
+              experiment.analysis_report ??
+              successResult?.analysis_report ??
+              null
+            }
+            splitDataPaths={experiment.split_data_paths}
+            experimentId={experimentId}
+          />
+        </TabsContent>
+
+        {/* Summary Report */}
+        <TabsContent value="summary" className="mt-4">
+          <SummaryTab
+            summaryReport={
+              experiment.summary_report ?? successResult?.summary_report ?? null
+            }
+            sections={sections}
+            experimentId={experimentId}
+          />
+        </TabsContent>
+
+        {/* Code */}
         <TabsContent value="code" className="mt-4">
           <CodeDisplay code={successResult?.generated_code ?? null} />
         </TabsContent>
 
+        {/* Data Profile */}
         {dataProfile && (
           <TabsContent value="data" className="mt-4">
             <DataProfileCard profile={dataProfile} />
           </TabsContent>
         )}
 
+        {/* Journal */}
         <TabsContent value="journal" className="mt-4">
           <JournalViewer experimentId={experimentId} />
         </TabsContent>

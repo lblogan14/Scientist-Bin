@@ -11,6 +11,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from scientist_bin_backend.utils.naming import generate_experiment_id
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -28,8 +30,11 @@ class ExperimentPhase(StrEnum):
     classify = "classify"
     eda = "eda"
     planning = "planning"
+    plan_review = "plan_review"
+    data_analysis = "data_analysis"
     execution = "execution"
     analysis = "analysis"
+    summarizing = "summarizing"
     done = "done"
     error = "error"
 
@@ -90,6 +95,10 @@ class Experiment(BaseModel):
     iteration_count: int = 0
     progress_events: list[dict] = Field(default_factory=list)
     result: dict | None = None
+    execution_plan: dict | None = None
+    analysis_report: str | None = None
+    summary_report: str | None = None
+    split_data_paths: dict | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -148,6 +157,7 @@ class ExperimentStore:
         framework: str | None = None,
     ) -> Experiment:
         experiment = Experiment(
+            id=generate_experiment_id(objective),
             objective=objective,
             data_description=data_description,
             data_file_path=data_file_path,
@@ -162,13 +172,25 @@ class ExperimentStore:
         with self._lock:
             return self._experiments.get(experiment_id)
 
-    def list_all(self) -> list[Experiment]:
+    def list_filtered(
+        self,
+        status: str | None = None,
+        framework: str | None = None,
+        search: str | None = None,
+    ) -> list[Experiment]:
+        """List experiments with optional filtering, most recent first."""
         with self._lock:
-            return sorted(
-                self._experiments.values(),
-                key=lambda e: e.created_at,
-                reverse=True,
-            )
+            results = list(self._experiments.values())
+
+        if status:
+            results = [e for e in results if e.status == status]
+        if framework:
+            results = [e for e in results if e.framework == framework]
+        if search:
+            search_lower = search.lower()
+            results = [e for e in results if search_lower in e.objective.lower()]
+
+        return sorted(results, key=lambda e: e.created_at, reverse=True)
 
     def update(self, experiment_id: str, **kwargs: object) -> Experiment | None:
         with self._lock:

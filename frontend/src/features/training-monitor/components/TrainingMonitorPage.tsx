@@ -16,6 +16,7 @@ import { ProgressDisplay } from "./ProgressDisplay";
 import { AgentActivityLog } from "./AgentActivityLog";
 import { ConsoleOutput } from "./ConsoleOutput";
 import { MetricsStream } from "./MetricsStream";
+import { PlanReviewPanel } from "./PlanReviewPanel";
 
 export default function TrainingMonitorPage() {
   const [searchParams] = useSearchParams();
@@ -26,7 +27,7 @@ export default function TrainingMonitorPage() {
   const { data: latestExperiment } = useQuery({
     queryKey: ["experiments", "latest-active"],
     queryFn: async () => {
-      const all = await listExperiments();
+      const { experiments: all } = await listExperiments();
       return (
         all.find((e) => e.status === "running" || e.status === "pending") ??
         all[0] ??
@@ -55,7 +56,7 @@ export default function TrainingMonitorPage() {
   const isNotFound =
     isError && error instanceof HTTPError && error.response.status === 404;
 
-  const { activities, logLines, metrics, isConnected, isDone } =
+  const { activities, logLines, metrics, isConnected, isDone, planReview } =
     useExperimentEvents(experimentId, !isNotFound);
 
   // Use SSE activities when live, fall back to stored progress_events.
@@ -168,8 +169,8 @@ export default function TrainingMonitorPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Training</h2>
         {isConnected && (
-          <span className="flex items-center gap-2 text-sm text-green-600">
-            <span className="size-2 animate-pulse rounded-full bg-green-500" />
+          <span className="flex items-center gap-2 text-sm text-success">
+            <span className="size-2 animate-pulse rounded-full bg-success" />
             Live
           </span>
         )}
@@ -180,6 +181,16 @@ export default function TrainingMonitorPage() {
           traceback={experiment.result.traceback}
         />
       )}
+      {/* Plan review UI — show when phase is plan_review or SSE sent plan_review_pending */}
+      {(experiment.phase === "plan_review" || planReview) &&
+        experimentId &&
+        planReview && (
+          <PlanReviewPanel
+            experimentId={experimentId}
+            planMarkdown={planReview.planMarkdown}
+            revisionCount={planReview.revisionCount}
+          />
+        )}
       <div className="grid gap-6 lg:grid-cols-2">
         <ProgressDisplay experiment={experiment} />
         <AgentActivityLog activities={displayActivities} />

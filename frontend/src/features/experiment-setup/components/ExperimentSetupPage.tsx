@@ -11,10 +11,7 @@ export default function ExperimentSetupPage() {
       <h2 className="text-2xl font-bold">Experiments</h2>
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
-          <ExperimentList
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-          />
+          <ExperimentList selectedId={selectedId} onSelect={setSelectedId} />
         </div>
         <div className="space-y-4">
           {selectedId ? (

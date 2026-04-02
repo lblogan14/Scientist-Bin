@@ -4,7 +4,8 @@ import { listExperiments } from "../api";
 export function useModels() {
   return useQuery({
     queryKey: ["experiments"],
-    queryFn: listExperiments,
-    select: (data) => data.filter((exp) => exp.status === "completed"),
+    queryFn: () => listExperiments(),
+    select: (data) =>
+      data.experiments.filter((exp) => exp.status === "completed"),
   });
 }
