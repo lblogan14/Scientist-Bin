@@ -246,7 +246,7 @@ def build_central_graph(checkpointer=None):
     builder.add_conditional_edges(
         "route",
         select_subagent,
-        {fw: "analyst" for fw in SUPPORTED_FRAMEWORKS} | {END: END},
+        {fw: "analyst" for fw in SUPPORTED_FRAMEWORKS},
     )
     builder.add_edge("analyst", "plan")
     builder.add_edge("plan", "framework")

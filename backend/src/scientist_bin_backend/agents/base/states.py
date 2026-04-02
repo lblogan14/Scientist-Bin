@@ -87,6 +87,7 @@ class BaseMLState(TypedDict, total=False):
 
     # -- Code execution --
     execution_output: str | None
+    execution_results_json: dict | None  # Parsed ===RESULTS=== JSON (avoids truncation)
     execution_success: bool
     execution_error: str | None
     execution_metrics: list[dict]

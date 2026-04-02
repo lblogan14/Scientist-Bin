@@ -90,6 +90,31 @@ def test_base_ml_state_test_evaluation_fields():
     assert state["test_evaluation_code"].startswith("import")
 
 
+def test_base_ml_state_execution_results_json_field():
+    """BaseMLState includes execution_results_json for passing parsed results."""
+    state: BaseMLState = {
+        "execution_results_json": {
+            "results": [{"algorithm": "RF", "metrics": {"accuracy": 0.95}}],
+            "best_model": "RF",
+        },
+        "execution_output": "truncated...",
+        "execution_success": True,
+        "phase": "analysis",
+    }
+    assert state["execution_results_json"]["best_model"] == "RF"
+    assert len(state["execution_results_json"]["results"]) == 1
+
+
+def test_base_ml_state_execution_results_json_none():
+    """execution_results_json can be None (no results parsed)."""
+    state: BaseMLState = {
+        "execution_results_json": None,
+        "execution_success": False,
+        "phase": "analysis",
+    }
+    assert state["execution_results_json"] is None
+
+
 def test_data_profile_typed_dict():
     profile: DataProfile = {
         "shape": [150, 4],
@@ -400,3 +425,37 @@ class TestBaseFrameworkAgent:
 
         agent = SklearnAgent()
         assert agent.graph is not None
+
+    def test_initial_state_includes_execution_results_json(self):
+        """BaseFrameworkAgent.run() includes execution_results_json in initial state."""
+        from scientist_bin_backend.agents.frameworks.sklearn.agent import SklearnAgent
+
+        agent = SklearnAgent()
+        # Inspect the initial state construction by checking agent.run()
+        # creates a state with execution_results_json=None
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        with patch.object(agent, "graph") as mock_graph:
+            mock_graph.ainvoke = AsyncMock(
+                return_value={
+                    "strategy": None,
+                    "generated_code": None,
+                    "best_experiment": None,
+                    "experiment_history": [],
+                    "data_profile": None,
+                    "problem_type": None,
+                    "current_iteration": 0,
+                    "hyperparameters_summary": [],
+                    "test_metrics": None,
+                    "test_evaluation_code": None,
+                    "test_diagnostics": None,
+                }
+            )
+            asyncio.run(agent.run(objective="test", experiment_id="test-id"))
+
+            # Verify the initial_state passed to ainvoke includes
+            # execution_results_json
+            call_args = mock_graph.ainvoke.call_args[0][0]
+            assert "execution_results_json" in call_args
+            assert call_args["execution_results_json"] is None

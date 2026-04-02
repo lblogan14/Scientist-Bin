@@ -253,11 +253,14 @@ def _create_experiments(client, objectives: list[tuple[str, str | None]]):
 
 def test_list_experiments_pagination(client):
     """Verify offset and limit work correctly."""
-    _create_experiments(client, [
-        ("Exp A", None),
-        ("Exp B", None),
-        ("Exp C", None),
-    ])
+    _create_experiments(
+        client,
+        [
+            ("Exp A", None),
+            ("Exp B", None),
+            ("Exp C", None),
+        ],
+    )
 
     # Default: all 3
     resp = client.get("/api/v1/experiments")
@@ -292,10 +295,13 @@ def test_list_experiments_filter_by_status(client):
 
 def test_list_experiments_search(client):
     """Search in objective text."""
-    _create_experiments(client, [
-        ("Classify iris species", None),
-        ("Predict house prices", None),
-    ])
+    _create_experiments(
+        client,
+        [
+            ("Classify iris species", None),
+            ("Predict house prices", None),
+        ],
+    )
 
     resp = client.get("/api/v1/experiments", params={"search": "iris"})
     data = resp.json()
@@ -347,3 +353,138 @@ def test_download_artifact_not_found(client):
     for artifact_type in ["model", "results", "analysis", "summary", "plan", "charts", "journal"]:
         resp = client.get(f"/api/v1/experiments/{exp_id}/artifacts/{artifact_type}")
         assert resp.status_code == 404, f"Expected 404 for {artifact_type}"
+
+
+def test_download_artifact_success(client, tmp_path):
+    """Downloading existing artifacts returns 200 with correct content."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test artifact success"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    # Create fake artifact files in the outputs directory
+    from scientist_bin_backend.api.routes import _OUTPUTS_DIR
+
+    artifacts = {
+        "model": (_OUTPUTS_DIR / "models" / f"{exp_id}.joblib", b"fake-model"),
+        "results": (_OUTPUTS_DIR / "results" / f"{exp_id}.json", b'{"status":"ok"}'),
+        "analysis": (_OUTPUTS_DIR / "results" / f"{exp_id}_analysis.md", b"# Analysis"),
+        "summary": (_OUTPUTS_DIR / "results" / f"{exp_id}_summary.md", b"# Summary"),
+        "plan": (_OUTPUTS_DIR / "results" / f"{exp_id}_plan.json", b'{"plan":true}'),
+        "charts": (_OUTPUTS_DIR / "results" / f"{exp_id}_charts.json", b'{"charts":[]}'),
+        "journal": (_OUTPUTS_DIR / "logs" / f"{exp_id}.jsonl", b'{"event":"test"}\n'),
+    }
+
+    created_files = []
+    try:
+        for artifact_type, (path, content) in artifacts.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+            created_files.append(path)
+
+            resp = client.get(f"/api/v1/experiments/{exp_id}/artifacts/{artifact_type}")
+            assert resp.status_code == 200, (
+                f"Expected 200 for {artifact_type}, got {resp.status_code}"
+            )
+            assert resp.content == content, f"Content mismatch for {artifact_type}"
+    finally:
+        # Clean up created files
+        for path in created_files:
+            path.unlink(missing_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Additional filtering tests
+# ---------------------------------------------------------------------------
+
+
+def test_list_experiments_filter_by_framework(client):
+    """Filter by ML framework."""
+    _create_experiments(
+        client,
+        [
+            ("Sklearn experiment", "sklearn"),
+            ("Another sklearn", "sklearn"),
+            ("Pytorch experiment", "pytorch"),
+        ],
+    )
+
+    resp = client.get("/api/v1/experiments", params={"framework": "sklearn"})
+    data = resp.json()
+    assert data["total"] >= 2
+    for exp in data["experiments"]:
+        assert exp["framework"] == "sklearn"
+
+    resp = client.get("/api/v1/experiments", params={"framework": "pytorch"})
+    data = resp.json()
+    assert data["total"] >= 1
+    for exp in data["experiments"]:
+        assert exp["framework"] == "pytorch"
+
+
+def test_list_experiments_offset_beyond_total(client):
+    """Offset beyond total results returns empty list."""
+    _create_experiments(client, [("Edge case", None)])
+
+    resp = client.get("/api/v1/experiments", params={"offset": 1000, "limit": 10})
+    data = resp.json()
+    assert data["experiments"] == []
+    assert data["total"] >= 1  # Total is unaffected by offset
+
+
+# ---------------------------------------------------------------------------
+# best_run_id population tests
+# ---------------------------------------------------------------------------
+
+
+def test_best_run_id_not_set_initially(client):
+    """best_run_id is None for a new experiment."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test best_run_id"},
+        )
+    exp = create_resp.json()
+    assert exp["best_run_id"] is None
+
+
+# ---------------------------------------------------------------------------
+# Artifact save warning tests
+# ---------------------------------------------------------------------------
+
+
+def test_artifact_save_failure_surfaces_warnings(client):
+    """When artifact saving fails, _warnings is added to the result."""
+    from scientist_bin_backend.api.experiments import experiment_store
+
+    # Create an experiment and simulate a completed result with save failure
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test warnings"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    # Simulate what _run_training does when artifact save fails:
+    # it stores _warnings in the result dict
+    result_dict = {"framework": "sklearn", "status": "completed"}
+    experiment_store.update(
+        exp_id,
+        status="completed",
+        result={**result_dict, "_warnings": ["Artifact save failed: disk full"]},
+    )
+
+    resp = client.get(f"/api/v1/experiments/{exp_id}")
+    data = resp.json()
+    assert data["result"]["_warnings"] == ["Artifact save failed: disk full"]

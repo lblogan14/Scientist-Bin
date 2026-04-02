@@ -179,6 +179,7 @@ async def execute_code(state: dict) -> dict:
 
     return {
         "execution_output": result.stdout[:5000],
+        "execution_results_json": parsed,
         "execution_success": result.success,
         "execution_error": result.stderr[:2000] if not result.success else None,
         "execution_metrics": result.metrics,

@@ -86,6 +86,7 @@ class BaseFrameworkAgent(ABC):
             "validation_error": None,
             "validation_attempts": 0,
             "execution_output": None,
+            "execution_results_json": None,
             "execution_success": False,
             "execution_error": None,
             "execution_metrics": [],

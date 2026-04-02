@@ -403,11 +403,16 @@ def review(
     """Submit plan review feedback for a waiting experiment."""
     import httpx
 
-    response = httpx.post(
-        f"{base_url}/api/v1/experiments/{experiment_id}/review",
-        json={"feedback": feedback},
-    )
-    response.raise_for_status()
+    try:
+        response = httpx.post(
+            f"{base_url}/api/v1/experiments/{experiment_id}/review",
+            json={"feedback": feedback},
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.json().get("detail", str(exc))
+        typer.echo(f"Error: {detail}", err=True)
+        raise typer.Exit(code=1)
     data = response.json()
     typer.echo(f"  Review submitted: {data.get('status', 'ok')}")
 

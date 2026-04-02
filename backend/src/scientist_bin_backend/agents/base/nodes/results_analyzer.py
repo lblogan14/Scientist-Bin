@@ -47,8 +47,11 @@ async def analyze_results(state: dict) -> dict:
     # Get experiment journal for logging
     journal = get_journal_for_experiment(experiment_id)
 
-    # Parse results from execution output
-    results_json = parse_results_json(execution_output)
+    # Use pre-parsed results from code_executor (avoids truncation issues),
+    # falling back to re-parsing from execution_output for backwards compat.
+    results_json = state.get("execution_results_json")
+    if results_json is None:
+        results_json = parse_results_json(execution_output)
 
     # Build new experiment records from this iteration
     new_records = []

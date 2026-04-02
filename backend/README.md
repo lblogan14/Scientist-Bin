@@ -30,9 +30,9 @@ The system uses a 5-agent pipeline orchestrated by the central agent:
 
 ```mermaid
 graph TD
-    A[Central Agent] -- "analyze + route" --> B{Framework<br/>Supported?}
+    A[Central Agent] -- "analyze + route" --> B{Framework<br/>Selection}
     B -->|sklearn| C[Analyst Agent]
-    B -->|unsupported| Z[END]
+    B -->|unsupported| C
     C -- "split data + report" --> D[Plan Agent]
     D -- "execution plan<br/>(HITL review)" --> E[Framework Agent]
     E -- "experiment results" --> F[Summary Agent]
@@ -117,32 +117,47 @@ backend/
 
 | Method | Path | Description |
 |--------|------|-------------|
+| Method | Path | Description |
+|--------|------|-------------|
 | `POST` | `/api/v1/train` | Submit training request (validates data file, runs 5-agent pipeline in background) |
-| `GET` | `/api/v1/experiments` | List all experiments |
+| `GET` | `/api/v1/experiments` | List experiments with filtering (`status`, `framework`, `search`) and pagination (`offset`, `limit`) |
 | `GET` | `/api/v1/experiments/{id}` | Get experiment details |
 | `GET` | `/api/v1/experiments/{id}/events` | SSE stream of real-time events |
+| `POST` | `/api/v1/experiments/{id}/review` | Submit plan review feedback (HITL) |
 | `GET` | `/api/v1/experiments/{id}/journal` | Agent decision journal |
 | `GET` | `/api/v1/experiments/{id}/plan` | Get the execution plan |
 | `GET` | `/api/v1/experiments/{id}/analysis` | Get the analyst report and split data paths |
 | `GET` | `/api/v1/experiments/{id}/summary` | Get the summary report |
-| `GET` | `/api/v1/experiments/{id}/artifacts/model` | Download trained model (.joblib) |
-| `GET` | `/api/v1/experiments/{id}/artifacts/results` | Download results JSON |
+| `GET` | `/api/v1/experiments/{id}/artifacts/{type}` | Download artifact (model, results, analysis, summary, plan, charts, journal) |
 | `DELETE` | `/api/v1/experiments/{id}` | Delete experiment |
 | `GET` | `/api/v1/health` | Health check |
 
 Data file paths in train requests are resolved relative to `backend/data/` by default (e.g., `iris_data/Iris.csv`). Invalid paths are rejected with HTTP 400 before the agent starts.
 
-The `auto_approve_plan` field in the train request body skips human-in-the-loop plan review.
+The `auto_approve_plan` field in the train request body skips human-in-the-loop plan review. When `false`, the pipeline pauses at the plan review step; submit feedback via `POST /api/v1/experiments/{id}/review`.
 
 ## CLI
 
 ```bash
+# Local execution
 uv run scientist-bin serve                                                          # Start server
 uv run scientist-bin train "Classify iris" --data-file data/iris_data/Iris.csv      # Train locally
 uv run scientist-bin train "Classify iris" --data-file data/iris_data/Iris.csv -q   # JSON only
 uv run scientist-bin train "Classify iris" --auto-approve                           # Skip plan review
-uv run scientist-bin train-remote "Classify iris"                                   # Submit to server
-uv run scientist-bin list                                                           # List experiments
+
+# Standalone agent commands
+uv run scientist-bin analyze data/iris_data/Iris.csv --objective "Classify iris"    # Analyst only
+uv run scientist-bin plan "Classify iris" --data-file data/iris_data/Iris.csv --run-analyst --auto-approve  # Plan with auto-analyst
+uv run scientist-bin train-sklearn "Classify iris" --data-dir outputs/runs/<id>/data/ --problem-type classification  # Sklearn only
+uv run scientist-bin summarize <experiment-id>                                      # Summary only
+
+# Remote server commands
+uv run scientist-bin train-remote "Classify iris" --auto-approve                    # Submit + stream events
+uv run scientist-bin watch <experiment-id>                                          # Stream events from running experiment
+uv run scientist-bin review <experiment-id> "approve"                               # Submit plan review
+uv run scientist-bin download <experiment-id> model -o model.joblib                 # Download artifact
+uv run scientist-bin download <experiment-id> all                                   # Download all artifacts
+uv run scientist-bin list --status completed --framework sklearn --search "iris"    # Filtered list
 uv run scientist-bin show <id> --json                                               # Show experiment
 uv run scientist-bin delete <id>                                                    # Delete experiment
 ```

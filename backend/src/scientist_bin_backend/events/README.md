@@ -26,10 +26,25 @@ Real-time event system for experiment progress streaming.
 | `plan_completed` | Plan agent finished | `{plan_approved}` |
 | `analysis_completed` | Analyst agent finished | `{has_report}` or `{phase, message, report_path}` |
 | `sklearn_completed` | Sklearn agent finished | `{iterations}` |
+| `framework_completed` | Framework agent finished | `{framework, iterations}` |
 | `summary_completed` | Summary agent finished | `{best_model}` or `{phase, report_path, best_model}` |
 
 ## Usage
 
 The API exposes `GET /api/v1/experiments/{id}/events` as an SSE endpoint. The frontend connects via `EventSource` for real-time updates.
 
-Events are also mirrored into the `ExperimentStore` by `_sync_events_to_store()` in `routes.py`, so polling clients (GET /experiments/{id}) see up-to-date phase and progress without relying solely on the SSE stream.
+Events are also mirrored into the `ExperimentStore` by `_sync_events_from_queue()` in `routes.py`, so polling clients (GET /experiments/{id}) see up-to-date phase and progress without relying solely on the SSE stream.
+
+## Race-Free Event Consumption
+
+To guarantee no events are lost (e.g. in background tasks that start before the consumer loop), use `pre_register()` + `consume()` instead of `subscribe()`:
+
+```python
+queue = event_bus.pre_register(experiment_id)   # register BEFORE agent starts
+sync_task = asyncio.create_task(process_events(experiment_id, queue))
+result = await agent.run(...)                    # events buffered in queue
+await event_bus.close(experiment_id)
+await sync_task
+```
+
+`subscribe()` is still available for cases where the race is not a concern (e.g. SSE streaming endpoint).

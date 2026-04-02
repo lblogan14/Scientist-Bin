@@ -172,14 +172,6 @@ class ExperimentStore:
         with self._lock:
             return self._experiments.get(experiment_id)
 
-    def list_all(self) -> list[Experiment]:
-        with self._lock:
-            return sorted(
-                self._experiments.values(),
-                key=lambda e: e.created_at,
-                reverse=True,
-            )
-
     def list_filtered(
         self,
         status: str | None = None,

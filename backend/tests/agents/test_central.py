@@ -1,7 +1,11 @@
-"""Tests for the central agent schemas and utilities."""
+"""Tests for the central agent schemas, utilities, and routing."""
 
 from __future__ import annotations
 
+from scientist_bin_backend.agents.central.nodes.router import (
+    SUPPORTED_FRAMEWORKS,
+    select_subagent,
+)
 from scientist_bin_backend.agents.central.schemas import (
     AgentResponse,
     FrameworkSelection,
@@ -226,3 +230,43 @@ def test_pipeline_state_classification_overridden():
     assert state["classification_confidence"] == "overridden"
     assert state["problem_type"] == "regression"
     assert state["task_analysis"]["task_type"] == "classification"  # Original was different
+
+
+# ---------------------------------------------------------------------------
+# select_subagent routing tests
+# ---------------------------------------------------------------------------
+
+
+def test_select_subagent_supported_framework():
+    """Supported frameworks are returned as-is."""
+    state = {"selected_framework": "sklearn"}
+    result = select_subagent(state)
+    assert result == "sklearn"
+
+
+def test_select_subagent_case_insensitive():
+    """Framework names are lowercased before lookup."""
+    state = {"selected_framework": "SKLEARN"}
+    result = select_subagent(state)
+    assert result == "sklearn"
+
+
+def test_select_subagent_unsupported_fallback():
+    """Unsupported frameworks fall back to first supported framework."""
+    state = {"selected_framework": "pytorch"}
+    result = select_subagent(state)
+    assert result in SUPPORTED_FRAMEWORKS
+
+
+def test_select_subagent_none_fallback():
+    """None framework falls back to first supported framework."""
+    state = {"selected_framework": None}
+    result = select_subagent(state)
+    assert result in SUPPORTED_FRAMEWORKS
+
+
+def test_select_subagent_empty_string_fallback():
+    """Empty string framework falls back to first supported framework."""
+    state = {"selected_framework": ""}
+    result = select_subagent(state)
+    assert result in SUPPORTED_FRAMEWORKS
