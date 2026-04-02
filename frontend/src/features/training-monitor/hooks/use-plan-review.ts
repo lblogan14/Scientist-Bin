@@ -1,13 +1,18 @@
+import { useCallback, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { submitPlanReview } from "@/lib/api-client";
+import { submitPlanReview, extractErrorMessage } from "@/lib/api-client";
 
 export function usePlanReview(experimentId: string) {
   const queryClient = useQueryClient();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  return useMutation({
+  const clearError = useCallback(() => setErrorMessage(null), []);
+
+  const mutation = useMutation({
     mutationFn: (feedback: string) =>
       submitPlanReview(experimentId, { feedback }),
     onSuccess: () => {
+      setErrorMessage(null);
       queryClient.invalidateQueries({
         queryKey: ["experiments", experimentId],
       });
@@ -15,5 +20,10 @@ export function usePlanReview(experimentId: string) {
         queryKey: ["experiments"],
       });
     },
+    onError: async (error) => {
+      setErrorMessage(await extractErrorMessage(error));
+    },
   });
+
+  return { ...mutation, errorMessage, clearError };
 }

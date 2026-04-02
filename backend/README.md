@@ -117,8 +117,6 @@ backend/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| Method | Path | Description |
-|--------|------|-------------|
 | `POST` | `/api/v1/train` | Submit training request (validates data file, runs 5-agent pipeline in background) |
 | `GET` | `/api/v1/experiments` | List experiments with filtering (`status`, `framework`, `search`) and pagination (`offset`, `limit`) |
 | `GET` | `/api/v1/experiments/{id}` | Get experiment details |

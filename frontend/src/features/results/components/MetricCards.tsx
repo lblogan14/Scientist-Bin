@@ -55,7 +55,14 @@ export function MetricCards({ metrics }: MetricCardsProps) {
                 {numVal !== null ? numVal.toFixed(4) : String(value)}
               </p>
               {isRatio && numVal !== null && (
-                <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+                <div
+                  className="bg-muted h-2 w-full overflow-hidden rounded-full"
+                  role="progressbar"
+                  aria-valuenow={Math.round(numVal * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`${key}: ${Math.round(numVal * 100)}%`}
+                >
                   <div
                     className={`h-full rounded-full transition-all ${getBarColor(key, numVal)}`}
                     style={{ width: `${Math.min(numVal * 100, 100)}%` }}

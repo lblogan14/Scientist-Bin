@@ -27,7 +27,12 @@ export function PlanTab({
     );
   }
 
-  const plan = executionPlan as ExecutionPlan | null;
+  const plan: ExecutionPlan | null =
+    executionPlan &&
+    typeof executionPlan === "object" &&
+    "approach_summary" in executionPlan
+      ? (executionPlan as ExecutionPlan)
+      : null;
 
   return (
     <div className="space-y-4">

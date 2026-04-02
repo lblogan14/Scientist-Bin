@@ -32,7 +32,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function ObjectiveForm() {
-  const { mutate, isPending } = useSubmitTrain();
+  const { mutate, isPending, errorMessage, clearError } = useSubmitTrain();
   const {
     register,
     handleSubmit,
@@ -76,7 +76,7 @@ export function ObjectiveForm() {
               {...register("objective")}
             />
             {errors.objective && (
-              <p className="text-destructive text-sm">
+              <p className="text-destructive text-sm" role="alert">
                 {errors.objective.message}
               </p>
             )}
@@ -152,6 +152,23 @@ export function ObjectiveForm() {
               }
             />
           </div>
+
+          {errorMessage && (
+            <div
+              className="flex items-center justify-between rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+              role="alert"
+            >
+              <span>{errorMessage}</span>
+              <button
+                type="button"
+                onClick={clearError}
+                className="text-destructive/70 hover:text-destructive ml-2"
+                aria-label="Dismiss error"
+              >
+                &times;
+              </button>
+            </div>
+          )}
 
           <Button type="submit" disabled={isPending} className="w-full">
             {isPending ? "Launching..." : "Launch Training"}

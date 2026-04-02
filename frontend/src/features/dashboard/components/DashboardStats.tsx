@@ -6,12 +6,31 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { isExperimentError } from "@/types/api";
 import type { ExperimentResult } from "@/types/api";
 import { useExperiments } from "../hooks/use-experiments";
 
 export function DashboardStats() {
-  const { data: experiments } = useExperiments();
+  const { data: experiments, isLoading } = useExperiments();
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="flex items-center gap-3 pt-6">
+              <Skeleton className="size-5 rounded" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-6 w-12" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   if (!experiments || experiments.length === 0) return null;
 

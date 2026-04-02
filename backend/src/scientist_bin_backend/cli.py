@@ -585,7 +585,6 @@ def _print_event(event: "ExperimentEvent") -> None:  # noqa: F821
         typer.echo("  [plan] Waiting for plan review...")
     elif etype in (
         "analysis_completed",
-        "sklearn_completed",
         "framework_completed",
         "summary_completed",
     ):

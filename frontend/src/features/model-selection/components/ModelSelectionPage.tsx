@@ -1,4 +1,4 @@
-import { Boxes } from "lucide-react";
+import { AlertTriangle, Boxes } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { useModels } from "../hooks/use-models";
@@ -8,9 +8,18 @@ import { ModelRankingCard } from "./ModelRankingCard";
 import { ModelTradeoffScatter } from "./ModelTradeoffScatter";
 
 export default function ModelSelectionPage() {
-  const { data: models, isLoading } = useModels();
+  const { data: models, isLoading, isError } = useModels();
 
   if (isLoading) return <LoadingSpinner message="Loading models..." />;
+  if (isError) {
+    return (
+      <EmptyState
+        icon={AlertTriangle}
+        title="Failed to load models"
+        description="Could not fetch experiments. Check that the backend is running."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

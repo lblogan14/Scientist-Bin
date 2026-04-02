@@ -47,6 +47,8 @@ export function BoxPlotChart({
     "--chart-5",
   ]);
 
+  if (!data?.length) return null;
+
   // One row per fold, one column per algorithm
   const maxFolds = Math.max(...data.map((d) => d.scores.length), 0);
   const foldRows = Array.from({ length: maxFolds }, (_, foldIdx) => {

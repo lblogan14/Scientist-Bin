@@ -23,6 +23,7 @@ export function ConfusionMatrixHeatmap({
   matrix,
   title = "Confusion Matrix",
 }: ConfusionMatrixHeatmapProps) {
+  if (!labels?.length || !matrix?.length) return null;
   const maxVal = Math.max(...matrix.flat(), 1);
 
   return (

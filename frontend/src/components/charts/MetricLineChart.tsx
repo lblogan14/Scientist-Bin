@@ -7,6 +7,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChartContainer } from "./ChartContainer";
+import { useCssVars } from "@/hooks/use-css-vars";
 
 interface MetricLineChartProps {
   title: string;
@@ -21,8 +22,13 @@ export function MetricLineChart({
   data,
   xKey,
   yKey,
-  color = "var(--chart-1)",
+  color,
 }: MetricLineChartProps) {
+  const [resolvedDefault] = useCssVars(["--chart-1"]);
+  const strokeColor = color ?? resolvedDefault;
+
+  if (!data || data.length === 0) return null;
+
   return (
     <ChartContainer title={title}>
       <LineChart data={data}>
@@ -30,7 +36,7 @@ export function MetricLineChart({
         <XAxis dataKey={xKey} />
         <YAxis />
         <Tooltip />
-        <Line type="monotone" dataKey={yKey} stroke={color} strokeWidth={2} />
+        <Line type="monotone" dataKey={yKey} stroke={strokeColor} strokeWidth={2} />
       </LineChart>
     </ChartContainer>
   );

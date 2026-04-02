@@ -78,7 +78,9 @@ export function JournalViewer({ experimentId }: JournalViewerProps) {
                   )}
                   {entry.data &&
                     Object.keys(entry.data).length > 0 &&
-                    "metrics" in entry.data && (
+                    "metrics" in entry.data &&
+                    typeof entry.data.metrics === "object" &&
+                    entry.data.metrics !== null && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {Object.entries(
                           entry.data.metrics as Record<string, number>,

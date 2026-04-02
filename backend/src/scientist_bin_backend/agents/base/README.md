@@ -25,9 +25,9 @@ START -> generate_code -> validate_code -> execute_code -> analyze_results
 |------|------|-----------|-------------|
 | `validate_code` | `nodes/code_validator.py` | 0 | Static analysis: syntax check, import check, results marker, report_metric call. Max 2 retries. |
 | `execute_code` | `nodes/code_executor.py` | 0 | Sandboxed subprocess execution with dynamic timeout, metrics streaming, journal logging. |
-| `analyze_results` | `nodes/results_analyzer.py` | 0-2 | Parses metrics, decides next action (IMPROVE pattern), structured reflection (ERL). |
+| `analyze_results` | `nodes/results_analyzer.py` | 0-2 | Parses metrics, decides next action (IMPROVE pattern), structured reflection (ERL). Uses `get_agent_model(fw)` for per-framework model selection. |
 | `evaluate_on_test` | `nodes/test_evaluator.py` | 1 | Evaluates best model on held-out test set after iteration loop accepts. |
-| `finalize` | `nodes/results_analyzer.py` | 1 | Generates final structured report from best experiment. |
+| `finalize` | `nodes/results_analyzer.py` | 1 | Generates final structured report from best experiment. Uses `get_agent_model(fw)` for per-framework model selection. |
 
 ## Modules
 
@@ -35,7 +35,7 @@ START -> generate_code -> validate_code -> execute_code -> analyze_results
 |------|---------|
 | `agent.py` | `BaseFrameworkAgent` ABC with shared `run()` interface |
 | `graph.py` | `build_framework_graph()` shared graph builder, `_route_decision`, `_route_validation` |
-| `states.py` | `BaseMLState`, `DataProfile`, `ExperimentRecord` TypedDicts |
+| `states.py` | `BaseMLState` (incl. `framework_name: str \| None`), `DataProfile`, `ExperimentRecord` TypedDicts |
 | `schemas.py` | `ProblemClassification`, `StrategyPlan`, `IterationDecision`, `FinalReport` |
 | `prompts.py` | Prompts for results analysis, reflection, final report, test evaluation |
 | `utils.py` | `strip_code_fences()` utility for cleaning LLM code output |

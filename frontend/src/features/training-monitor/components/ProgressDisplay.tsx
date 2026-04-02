@@ -8,8 +8,10 @@ interface ProgressDisplayProps {
 }
 
 const PIPELINE_PHASES: { key: ExperimentPhase; label: string }[] = [
+  { key: "initializing", label: "Init" },
   { key: "classify", label: "Classify" },
   { key: "eda", label: "EDA" },
+  { key: "data_analysis", label: "Data" },
   { key: "planning", label: "Plan" },
   { key: "plan_review", label: "Review" },
   { key: "execution", label: "Execute" },

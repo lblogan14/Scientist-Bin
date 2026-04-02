@@ -49,6 +49,26 @@ def test_base_ml_state_creation():
     assert state["phase"] == "execution"
 
 
+def test_base_ml_state_accepts_framework_name():
+    """BaseMLState accepts the framework_name field."""
+    state: BaseMLState = {
+        "objective": "Classify iris",
+        "problem_type": "classification",
+        "phase": "execution",
+        "framework_name": "sklearn",
+    }
+    assert state["framework_name"] == "sklearn"
+
+    # Also works with None
+    state_none: BaseMLState = {
+        "objective": "Classify iris",
+        "problem_type": "classification",
+        "phase": "execution",
+        "framework_name": None,
+    }
+    assert state_none["framework_name"] is None
+
+
 def test_base_ml_state_all_pipeline_fields():
     """BaseMLState accepts all upstream pipeline fields."""
     state: BaseMLState = {

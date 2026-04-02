@@ -87,9 +87,9 @@ class Experiment(BaseModel):
     objective: str
     data_description: str = ""
     data_file_path: str | None = None
-    framework: str | None = None
-    status: str = ExperimentStatus.pending
-    phase: str | None = None
+    framework: Framework | None = None
+    status: ExperimentStatus = ExperimentStatus.pending
+    phase: ExperimentPhase | None = None
     runs: list[Run] = Field(default_factory=list)
     best_run_id: str | None = None
     iteration_count: int = 0
