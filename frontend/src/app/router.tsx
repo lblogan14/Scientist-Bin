@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { Layout } from "./Layout";
 
 const DashboardPage = lazy(
@@ -28,6 +28,7 @@ export const router = createBrowserRouter([
       { path: "results", element: <ResultsPage /> },
       { path: "results/:id", element: <ResultsPage /> },
       { path: "models", element: <ModelSelectionPage /> },
+      { path: "*", element: <Navigate to="/" replace /> },
     ],
   },
 ]);

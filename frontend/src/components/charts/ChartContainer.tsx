@@ -18,9 +18,11 @@ export function ChartContainer({
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={height}>
-          {children as React.ReactElement}
-        </ResponsiveContainer>
+        <div role="img" aria-label={title}>
+          <ResponsiveContainer width="100%" height={height}>
+            {children as React.ReactElement}
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

@@ -146,7 +146,7 @@ The web UI provides five pages for managing the full experiment lifecycle:
 |------|-------------|
 | **Dashboard** | Submit objectives, view stats, see active experiments |
 | **Experiments** | Browse, filter, and inspect past experiments |
-| **Training Monitor** | Real-time progress (8-phase pipeline), plan review, agent activity log, metrics stream |
+| **Training Monitor** | Real-time progress (10-phase pipeline), plan review, agent activity log, metrics stream |
 | **Results** | 13-tab deep-dive: overview, confusion matrix, CV stability, overfitting, feature importance, hyperparameters, plan, analysis, summary, code, data, journal |
 | **Model Selection** | Rank models, compare metrics, tradeoff scatter plots |
 

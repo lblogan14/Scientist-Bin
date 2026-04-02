@@ -45,9 +45,9 @@ describe("ProgressDisplay", () => {
     expect(screen.getByText("planning")).toBeInTheDocument();
   });
 
-  it("renders all 8 pipeline phase labels", () => {
+  it("renders all 10 pipeline phase labels", () => {
     render(<ProgressDisplay experiment={makeExperiment()} />);
-    const phases = ["Classify", "EDA", "Plan", "Review", "Execute", "Analyze", "Summary", "Done"];
+    const phases = ["Init", "Classify", "EDA", "Data", "Plan", "Review", "Execute", "Analyze", "Summary", "Done"];
     for (const phase of phases) {
       expect(screen.getByText(phase)).toBeInTheDocument();
     }

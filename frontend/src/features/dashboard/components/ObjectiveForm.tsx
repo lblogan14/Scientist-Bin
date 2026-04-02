@@ -76,7 +76,7 @@ export function ObjectiveForm() {
               {...register("objective")}
             />
             {errors.objective && (
-              <p className="text-destructive text-sm">
+              <p className="text-destructive text-sm" role="alert">
                 {errors.objective.message}
               </p>
             )}

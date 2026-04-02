@@ -121,6 +121,8 @@ export function useExperimentEvents(
     };
     source.onerror = () => {
       setIsConnected(false);
+      // Flush any pending events before handling the error
+      flush();
       // If the connection never opened, the endpoint likely returned an HTTP
       // error (e.g. 404). Close to prevent the browser's auto-reconnect loop.
       if (!hasOpened) {

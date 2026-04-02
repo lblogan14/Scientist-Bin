@@ -62,7 +62,7 @@ export default function ResultsPage() {
 
   const experimentId = experimentIdParam ?? latestExperiment?.id ?? null;
 
-  const { data, isLoading } = useResult(experimentId);
+  const { data, isLoading, isError } = useResult(experimentId);
 
   if (!experimentId) {
     return (
@@ -75,6 +75,14 @@ export default function ResultsPage() {
   }
 
   if (isLoading) return <LoadingSpinner message="Loading results..." />;
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">Results</h2>
+        <ErrorDisplay error={`Failed to load experiment ${experimentId}.`} />
+      </div>
+    );
+  }
   if (!data) return null;
 
   const { experiment, result } = data;

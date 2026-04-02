@@ -1,7 +1,6 @@
 import ky from "ky";
 import type {
   ArtifactType,
-  ExecutionPlan,
   Experiment,
   HealthResponse,
   JournalEntry,
@@ -83,24 +82,6 @@ export async function submitPlanReview(
   review: ReviewRequest,
 ): Promise<{ status: string }> {
   return api.post(`experiments/${id}/review`, { json: review }).json();
-}
-
-export async function getExperimentPlan(
-  id: string,
-): Promise<{ execution_plan: ExecutionPlan | null }> {
-  return api.get(`experiments/${id}/plan`).json();
-}
-
-export async function getExperimentAnalysis(
-  id: string,
-): Promise<{ analysis_report: string | null; split_data_paths: Record<string, string> | null }> {
-  return api.get(`experiments/${id}/analysis`).json();
-}
-
-export async function getExperimentSummary(
-  id: string,
-): Promise<{ summary_report: string | null }> {
-  return api.get(`experiments/${id}/summary`).json();
 }
 
 export async function checkHealth(): Promise<HealthResponse> {

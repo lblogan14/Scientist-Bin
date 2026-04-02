@@ -36,6 +36,13 @@ export type ProgressEventType =
   | "framework_completed"
   | "summary_completed";
 
+export type RunStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "timeout";
+
 export type ArtifactType =
   | "model"
   | "results"
@@ -100,7 +107,7 @@ export interface Run {
   hyperparameters: Record<string, unknown>;
   metrics: MetricPoint[];
   final_metrics: Record<string, number> | null;
-  status: string;
+  status: RunStatus;
   code: string;
   stdout: string;
   stderr: string;

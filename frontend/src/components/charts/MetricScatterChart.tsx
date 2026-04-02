@@ -8,6 +8,7 @@ import {
   ZAxis,
 } from "recharts";
 import { ChartContainer } from "./ChartContainer";
+import { useCssVars } from "@/hooks/use-css-vars";
 
 interface MetricScatterChartProps {
   title: string;
@@ -42,6 +43,8 @@ export function MetricScatterChart({
   yLabel,
   height,
 }: MetricScatterChartProps) {
+  const [chartColor] = useCssVars(["--chart-1"]);
+
   if (!data || data.length === 0) return null;
 
   return (
@@ -64,7 +67,7 @@ export function MetricScatterChart({
         />
         <ZAxis dataKey="name" type="category" />
         <Tooltip content={<CustomTooltip />} />
-        <Scatter data={data} fill="var(--chart-1)" />
+        <Scatter data={data} fill={chartColor} />
       </ScatterChart>
     </ChartContainer>
   );
