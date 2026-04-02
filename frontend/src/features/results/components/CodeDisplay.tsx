@@ -1,12 +1,22 @@
 import { Highlight, themes } from "prism-react-renderer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAppStore } from "@/stores/app-store";
 
 interface CodeDisplayProps {
   code: string | null;
 }
 
+function useCodeTheme() {
+  const theme = useAppStore((s) => s.theme);
+  if (theme === "dark") return themes.nightOwl;
+  if (theme === "science") return themes.dracula;
+  return themes.github;
+}
+
 export function CodeDisplay({ code }: CodeDisplayProps) {
+  const codeTheme = useCodeTheme();
+
   if (!code) {
     return (
       <Card>
@@ -26,7 +36,7 @@ export function CodeDisplay({ code }: CodeDisplayProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-96">
-          <Highlight theme={themes.nightOwl} code={code} language="python">
+          <Highlight theme={codeTheme} code={code} language="python">
             {({ style, tokens, getLineProps, getTokenProps }) => (
               <pre
                 className="overflow-x-auto rounded-md p-4 font-mono text-xs"

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// Note: "Actual" label is placed to the left of the row headers, rotated vertically
 
 interface ConfusionMatrixHeatmapProps {
   labels: string[];
@@ -31,55 +32,66 @@ export function ConfusionMatrixHeatmap({
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          {/* Column headers label */}
-          <div className="text-muted-foreground mb-1 text-center text-xs font-medium">
-            Predicted
-          </div>
-          <div
-            className="mx-auto grid w-fit gap-1"
-            style={{
-              gridTemplateColumns: `auto repeat(${labels.length}, minmax(3rem, 1fr))`,
-            }}
-          >
-            {/* Top-left corner */}
-            <div />
-            {/* Column headers */}
-            {labels.map((label) => (
-              <div
-                key={`col-${label}`}
-                className="text-muted-foreground truncate text-center text-xs font-medium"
-                title={label}
+          <div className="flex gap-1">
+            {/* "Actual" rotated label + spacer to match row-header width */}
+            <div className="flex shrink-0 items-center justify-center" style={{ width: "1.5rem" }}>
+              <span
+                className="text-muted-foreground text-xs font-medium"
+                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
               >
-                {label}
-              </div>
-            ))}
+                Actual
+              </span>
+            </div>
 
-            {/* Rows */}
-            {matrix.map((row, rowIdx) => (
-              <Fragment key={`row-${rowIdx}`}>
-                {/* Row header */}
+            {/* Main grid: row-header col + data cols */}
+            <div
+              className="grid gap-1"
+              style={{
+                gridTemplateColumns: `auto repeat(${labels.length}, minmax(3rem, 1fr))`,
+              }}
+            >
+              {/* Row 0: corner cell + "Predicted" spanning all data columns */}
+              <div />
+              <div
+                className="text-muted-foreground mb-1 text-center text-xs font-medium"
+                style={{ gridColumn: `span ${labels.length}` }}
+              >
+                Predicted
+              </div>
+
+              {/* Row 1: corner + column label headers */}
+              <div />
+              {labels.map((label) => (
                 <div
-                  className="text-muted-foreground flex items-center justify-end pr-2 text-xs font-medium"
-                  title={labels[rowIdx]}
+                  key={`col-${label}`}
+                  className="text-muted-foreground truncate text-center text-xs font-medium"
+                  title={label}
                 >
-                  <span className="max-w-20 truncate">{labels[rowIdx]}</span>
+                  {label}
                 </div>
-                {/* Cells */}
-                {row.map((value, colIdx) => (
+              ))}
+
+              {/* Data rows */}
+              {matrix.map((row, rowIdx) => (
+                <Fragment key={`row-${rowIdx}`}>
                   <div
-                    key={`${rowIdx}-${colIdx}`}
-                    className={`flex min-h-10 items-center justify-center rounded-md text-sm font-medium ${getCellColor(value, maxVal)}`}
-                    title={`True: ${labels[rowIdx]}, Predicted: ${labels[colIdx]}, Count: ${value}`}
+                    className="text-muted-foreground flex items-center justify-end pr-2 text-xs font-medium"
+                    title={labels[rowIdx]}
                   >
-                    {value}
+                    <span className="max-w-20 truncate">{labels[rowIdx]}</span>
                   </div>
-                ))}
-              </Fragment>
-            ))}
-          </div>
-          {/* Row headers label */}
-          <div className="text-muted-foreground mt-1 text-center text-xs font-medium">
-            Actual
+                  {row.map((value, colIdx) => (
+                    <div
+                      key={`${rowIdx}-${colIdx}`}
+                      className={`flex min-h-10 items-center justify-center rounded-md text-sm font-medium ${getCellColor(value, maxVal)}`}
+                      title={`True: ${labels[rowIdx]}, Predicted: ${labels[colIdx]}, Count: ${value}`}
+                    >
+                      {value}
+                    </div>
+                  ))}
+                </Fragment>
+              ))}
+            </div>
           </div>
         </div>
       </CardContent>

@@ -169,8 +169,8 @@ export default function TrainingMonitorPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Training</h2>
         {isConnected && (
-          <span className="flex items-center gap-2 text-sm text-green-600">
-            <span className="size-2 animate-pulse rounded-full bg-green-500" />
+          <span className="flex items-center gap-2 text-sm text-success">
+            <span className="size-2 animate-pulse rounded-full bg-success" />
             Live
           </span>
         )}

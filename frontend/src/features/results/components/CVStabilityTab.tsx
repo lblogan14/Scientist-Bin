@@ -26,20 +26,14 @@ interface CVStabilityTabProps {
 function getRiskBadge(cv: number) {
   if (cv < 0.05)
     return (
-      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-        Stable
-      </Badge>
+      <Badge className="bg-success/15 text-success">Stable</Badge>
     );
   if (cv < 0.1)
     return (
-      <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-        Moderate
-      </Badge>
+      <Badge className="bg-warning/15 text-warning">Moderate</Badge>
     );
   return (
-    <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-      Unstable
-    </Badge>
+    <Badge className="bg-destructive/15 text-destructive">Unstable</Badge>
   );
 }
 

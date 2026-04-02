@@ -18,23 +18,11 @@ interface OverfitAnalysisTabProps {
 function riskBadge(risk: string) {
   switch (risk) {
     case "low":
-      return (
-        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-          Low
-        </Badge>
-      );
+      return <Badge className="bg-success/15 text-success">Low</Badge>;
     case "moderate":
-      return (
-        <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-          Moderate
-        </Badge>
-      );
+      return <Badge className="bg-warning/15 text-warning">Moderate</Badge>;
     case "high":
-      return (
-        <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-          High
-        </Badge>
-      );
+      return <Badge className="bg-destructive/15 text-destructive">High</Badge>;
     default:
       return <Badge variant="outline">{risk}</Badge>;
   }

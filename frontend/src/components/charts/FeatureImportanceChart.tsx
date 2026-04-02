@@ -2,12 +2,14 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { ChartContainer } from "./ChartContainer";
+import { useCssVars } from "@/hooks/use-css-vars";
 import type { FeatureImportance } from "@/types/api";
 
 interface FeatureImportanceChartProps {
@@ -21,13 +23,19 @@ export function FeatureImportanceChart({
   algorithm,
   maxFeatures = 15,
 }: FeatureImportanceChartProps) {
-  const data = features
+  const [c1, c2] = useCssVars(["--chart-1", "--chart-2"]);
+
+  const sorted = features
     .slice(0, maxFeatures)
-    .sort((a, b) => a.importance - b.importance)
-    .map((f) => ({
-      feature: f.feature,
-      importance: Number(f.importance.toFixed(4)),
-    }));
+    .sort((a, b) => a.importance - b.importance);
+
+  const maxVal = sorted[sorted.length - 1]?.importance ?? 1;
+
+  const data = sorted.map((f) => ({
+    feature: f.feature,
+    importance: Number(f.importance.toFixed(4)),
+    ratio: maxVal > 0 ? f.importance / maxVal : 0,
+  }));
 
   const title = algorithm
     ? `Feature Importance — ${algorithm}`
@@ -57,14 +65,20 @@ export function FeatureImportanceChart({
           />
           <Bar
             dataKey="importance"
-            fill="hsl(var(--chart-1))"
             radius={[0, 4, 4, 0]}
             label={{
               position: "right",
               fontSize: 11,
               formatter: (val: number) => val.toFixed(3),
             }}
-          />
+          >
+            {data.map((entry, index) => {
+              // Blend chart-1 (high) → chart-2 (low) by importance ratio
+              const opacity = 0.3 + entry.ratio * 0.7;
+              const fill = entry.ratio > 0.5 ? c1 : c2;
+              return <Cell key={index} fill={fill} fillOpacity={opacity} />;
+            })}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>

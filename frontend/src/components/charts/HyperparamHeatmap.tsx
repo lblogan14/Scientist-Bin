@@ -10,11 +10,11 @@ function getScoreColor(score: number, min: number, max: number): string {
   const range = max - min;
   if (range === 0) return "bg-primary/40";
   const ratio = (score - min) / range;
-  if (ratio > 0.8) return "bg-green-500/70 text-white";
-  if (ratio > 0.6) return "bg-green-400/50";
-  if (ratio > 0.4) return "bg-yellow-400/40";
-  if (ratio > 0.2) return "bg-orange-400/40";
-  return "bg-red-400/30";
+  if (ratio > 0.8) return "bg-success text-success-foreground";
+  if (ratio > 0.6) return "bg-success/50";
+  if (ratio > 0.4) return "bg-warning/40";
+  if (ratio > 0.2) return "bg-warning/25";
+  return "bg-destructive/30";
 }
 
 export function HyperparamHeatmap({

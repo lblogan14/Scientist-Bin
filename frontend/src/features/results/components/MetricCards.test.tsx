@@ -34,20 +34,20 @@ describe("MetricCards", () => {
       <MetricCards metrics={{ accuracy: 0.95 }} />,
     );
     // Should have a progress bar div
-    const bars = container.querySelectorAll(".bg-green-500");
+    const bars = container.querySelectorAll(".bg-success");
     expect(bars.length).toBeGreaterThan(0);
   });
 
-  it("applies green color for metrics >= 0.9", () => {
+  it("applies success color for metrics >= 0.9", () => {
     render(<MetricCards metrics={{ accuracy: 0.95 }} />);
     const valueEl = screen.getByText("0.9500");
-    expect(valueEl).toHaveClass("text-green-600");
+    expect(valueEl).toHaveClass("text-success");
   });
 
-  it("applies yellow color for metrics >= 0.7 and < 0.9", () => {
+  it("applies warning color for metrics >= 0.7 and < 0.9", () => {
     render(<MetricCards metrics={{ accuracy: 0.75 }} />);
     const valueEl = screen.getByText("0.7500");
-    expect(valueEl).toHaveClass("text-yellow-600");
+    expect(valueEl).toHaveClass("text-warning");
   });
 
   it("handles non-numeric values gracefully", () => {

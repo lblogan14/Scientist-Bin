@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChartContainer } from "./ChartContainer";
+import { useCssVars } from "@/hooks/use-css-vars";
 
 interface ParetoPoint {
   name: string;
@@ -30,6 +31,8 @@ export function ParetoFrontierChart({
   xLabel = "Training Time (s)",
   yLabel = "Performance",
 }: ParetoFrontierChartProps) {
+  const [c1, c3] = useCssVars(["--chart-1", "--chart-3"]);
+
   if (data.length === 0) return null;
 
   // Separate Pareto-optimal and non-Pareto points
@@ -90,14 +93,14 @@ export function ParetoFrontierChart({
           {/* All points */}
           <Scatter
             data={data.filter((d) => !d.isPareto)}
-            fill="hsl(var(--chart-3))"
+            fill={c3}
             fillOpacity={0.6}
             r={5}
           />
           {/* Pareto-optimal points */}
           <Scatter
             data={paretoPoints}
-            fill="hsl(var(--chart-1))"
+            fill={c1}
             r={7}
             shape="star"
           />
@@ -106,7 +109,7 @@ export function ParetoFrontierChart({
             <Line
               data={paretoPoints}
               dataKey="performance"
-              stroke="hsl(var(--chart-1))"
+              stroke={c1}
               strokeDasharray="5 3"
               dot={false}
               type="monotone"

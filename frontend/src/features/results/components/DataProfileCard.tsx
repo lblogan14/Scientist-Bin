@@ -108,7 +108,7 @@ export function DataProfileCard({ profile }: DataProfileCardProps) {
             </p>
             <ul className="list-inside list-disc text-sm">
               {profile.data_quality_issues.map((issue, i) => (
-                <li key={i} className="text-yellow-600">
+                <li key={i} className="text-warning">
                   {issue}
                 </li>
               ))}

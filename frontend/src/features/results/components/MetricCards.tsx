@@ -18,15 +18,15 @@ const RATIO_METRICS = new Set([
 
 function getMetricColor(key: string, value: number): string {
   if (!RATIO_METRICS.has(key)) return "";
-  if (value >= 0.9) return "text-green-600";
-  if (value >= 0.7) return "text-yellow-600";
+  if (value >= 0.9) return "text-success";
+  if (value >= 0.7) return "text-warning";
   return "text-destructive";
 }
 
 function getBarColor(key: string, value: number): string {
   if (!RATIO_METRICS.has(key)) return "bg-primary";
-  if (value >= 0.9) return "bg-green-500";
-  if (value >= 0.7) return "bg-yellow-500";
+  if (value >= 0.9) return "bg-success";
+  if (value >= 0.7) return "bg-warning";
   return "bg-destructive";
 }
 

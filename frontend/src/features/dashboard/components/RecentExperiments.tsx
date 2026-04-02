@@ -6,10 +6,10 @@ import { EmptyState } from "@/components/feedback/EmptyState";
 import { useExperiments } from "../hooks/use-experiments";
 
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-500",
-  running: "bg-blue-500",
-  completed: "bg-green-500",
-  failed: "bg-red-500",
+  pending: "bg-warning",
+  running: "bg-primary",
+  completed: "bg-success",
+  failed: "bg-destructive",
 };
 
 export function RecentExperiments() {
