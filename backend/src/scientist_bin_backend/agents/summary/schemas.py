@@ -119,6 +119,46 @@ class SummaryReport(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class FeatureImportanceItem(BaseModel):
+    """A single feature importance entry."""
+
+    feature: str
+    importance: float
+
+
+class CVFoldScores(BaseModel):
+    """Fold-level scores for a single metric."""
+
+    scores: list[float]
+    mean: float
+
+
+class ChartData(BaseModel):
+    """Structured chart data consumed by the frontend visualization layer."""
+
+    model_comparison: list[dict[str, Any]] = Field(
+        default_factory=list, description="Per-model metrics for bar chart comparison"
+    )
+    cv_fold_scores: dict[str, dict[str, CVFoldScores]] = Field(
+        default_factory=dict, description="Per-algo, per-metric fold scores for box plots"
+    )
+    feature_importances: dict[str, Any] | None = Field(
+        default=None, description="Top feature importances: {algorithm, features[]}"
+    )
+    confusion_matrices: dict[str, Any] | None = Field(
+        default=None, description="Per-algo confusion matrix grids"
+    )
+    training_times: list[dict[str, Any]] = Field(
+        default_factory=list, description="Per-algo training durations"
+    )
+    hyperparam_search: dict[str, list[dict[str, Any]]] = Field(
+        default_factory=dict, description="Per-algo hyperparameter search results"
+    )
+    residual_stats: dict[str, Any] = Field(
+        default_factory=dict, description="Per-algo residual statistics (regression)"
+    )
+
+
 class CVStabilityEntry(BaseModel):
     """Cross-validation stability metrics for one algorithm + metric."""
 

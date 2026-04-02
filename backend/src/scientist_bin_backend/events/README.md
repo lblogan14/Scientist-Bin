@@ -25,7 +25,6 @@ Real-time event system for experiment progress streaming.
 | `plan_review_submitted` | Human responded to plan review | `{approved, feedback?, revision_count?}` |
 | `plan_completed` | Plan agent finished | `{plan_approved}` |
 | `analysis_completed` | Analyst agent finished | `{has_report}` or `{phase, message, report_path}` |
-| `sklearn_completed` | Sklearn agent finished | `{iterations}` |
 | `framework_completed` | Framework agent finished | `{framework, iterations}` |
 | `summary_completed` | Summary agent finished | `{best_model}` or `{phase, report_path, best_model}` |
 

@@ -8,14 +8,7 @@ import {
   Tooltip,
 } from "recharts";
 import { ChartContainer } from "./ChartContainer";
-
-const COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
+import { useCssVars } from "@/hooks/use-css-vars";
 
 interface MetricRadarChartProps {
   title: string;
@@ -30,6 +23,14 @@ export function MetricRadarChart({
   algorithms,
   height,
 }: MetricRadarChartProps) {
+  const chartColors = useCssVars([
+    "--chart-1",
+    "--chart-2",
+    "--chart-3",
+    "--chart-4",
+    "--chart-5",
+  ]);
+
   if (!data || data.length === 0 || algorithms.length === 0) return null;
 
   return (
@@ -45,8 +46,8 @@ export function MetricRadarChart({
             key={algo}
             name={algo}
             dataKey={algo}
-            stroke={COLORS[i % COLORS.length]}
-            fill={COLORS[i % COLORS.length]}
+            stroke={chartColors[i % chartColors.length]}
+            fill={chartColors[i % chartColors.length]}
             fillOpacity={0.15}
           />
         ))}

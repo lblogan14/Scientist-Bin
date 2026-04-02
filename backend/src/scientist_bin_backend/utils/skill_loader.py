@@ -135,6 +135,7 @@ def parse_skill(raw: str, path: Path) -> Skill:
 def match_skill(skills: list[Skill], problem_type: str, objective: str = "") -> Skill | None:
     """Find the best matching skill for a given problem type and objective.
 
+    Public API for framework agents (pending integration).
     Uses exact name match first, then keyword matching in description.
     Returns None if no match is found.
     """
@@ -172,6 +173,7 @@ def match_skill(skills: list[Skill], problem_type: str, objective: str = "") -> 
 def format_skill_listing(skills: list[Skill]) -> str:
     """Format all skills as a compact listing for prompt injection.
 
+    Public API for framework agents (pending integration).
     This is the "metadata level" — only names and descriptions,
     suitable for always-loaded context (~100 tokens per skill).
     """

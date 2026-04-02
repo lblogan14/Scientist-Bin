@@ -23,7 +23,7 @@ from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.journal import get_journal_for_experiment
 from scientist_bin_backend.execution.metrics_bridge import parse_results_json
-from scientist_bin_backend.utils.llm import extract_text_content, get_chat_model
+from scientist_bin_backend.utils.llm import extract_text_content, get_agent_model
 
 
 async def analyze_results(state: dict) -> dict:
@@ -143,7 +143,8 @@ async def analyze_results(state: dict) -> dict:
         # Include journal heuristics for context
         journal_context = journal.summarize(max_entries=10)
 
-        llm = get_chat_model()
+        fw = state.get("framework_name") or "sklearn"
+        llm = get_agent_model(fw)
         structured_llm = llm.with_structured_output(IterationDecision)
         prompt = RESULTS_ANALYZER_PROMPT.format(
             objective=state.get("objective", ""),
@@ -242,7 +243,8 @@ async def finalize(state: dict) -> dict:
 
     history_summary = _build_history_summary(experiment_history)
 
-    llm = get_chat_model()
+    fw = state.get("framework_name") or "sklearn"
+    llm = get_agent_model(fw)
     structured_llm = llm.with_structured_output(FinalReport)
     prompt = FINAL_REPORT_PROMPT.format(
         objective=state.get("objective", ""),

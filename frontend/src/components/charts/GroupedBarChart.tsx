@@ -8,14 +8,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChartContainer } from "./ChartContainer";
-
-const DEFAULT_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
+import { useCssVars } from "@/hooks/use-css-vars";
 
 interface GroupedBarChartProps {
   title: string;
@@ -31,9 +24,18 @@ export function GroupedBarChart({
   data,
   xKey,
   yKeys,
-  colors = DEFAULT_COLORS,
+  colors,
   height,
 }: GroupedBarChartProps) {
+  const resolvedColors = useCssVars([
+    "--chart-1",
+    "--chart-2",
+    "--chart-3",
+    "--chart-4",
+    "--chart-5",
+  ]);
+  const fillColors = colors ?? resolvedColors;
+
   if (!data || data.length === 0) return null;
 
   return (
@@ -42,13 +44,13 @@ export function GroupedBarChart({
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
         <YAxis />
-        <Tooltip cursor={{ fill: "var(--color-muted)" }} />
+        <Tooltip cursor={{ fill: "transparent" }} />
         <Legend />
         {yKeys.map((key, i) => (
           <Bar
             key={key}
             dataKey={key}
-            fill={colors[i % colors.length]}
+            fill={fillColors[i % fillColors.length]}
             radius={[4, 4, 0, 0]}
           />
         ))}

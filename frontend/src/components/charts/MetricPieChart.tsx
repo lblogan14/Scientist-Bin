@@ -1,13 +1,6 @@
 import { Cell, Legend, Pie, PieChart, Tooltip } from "recharts";
 import { ChartContainer } from "./ChartContainer";
-
-const COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-];
+import { useCssVars } from "@/hooks/use-css-vars";
 
 interface MetricPieChartProps {
   title: string;
@@ -16,6 +9,14 @@ interface MetricPieChartProps {
 }
 
 export function MetricPieChart({ title, data, height }: MetricPieChartProps) {
+  const chartColors = useCssVars([
+    "--chart-1",
+    "--chart-2",
+    "--chart-3",
+    "--chart-4",
+    "--chart-5",
+  ]);
+
   if (!data || data.length === 0) return null;
 
   return (
@@ -36,7 +37,7 @@ export function MetricPieChart({ title, data, height }: MetricPieChartProps) {
           labelLine={false}
         >
           {data.map((_, i) => (
-            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            <Cell key={i} fill={chartColors[i % chartColors.length]} />
           ))}
         </Pie>
         <Tooltip />

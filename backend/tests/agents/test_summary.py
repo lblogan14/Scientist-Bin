@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 
 from scientist_bin_backend.agents.summary.schemas import (
+    ChartData,
+    CVFoldScores,
+    FeatureImportanceItem,
     ModelRanking,
     ReviewAndRankResult,
     SummaryReport,
@@ -140,6 +143,50 @@ def test_summary_report_serialization():
     assert restored.title == "Iris Classification Report"
     assert restored.recommendations == ["rec1"]
     assert restored.executive_summary == report.executive_summary
+
+
+# ---------------------------------------------------------------------------
+# ChartData schema tests
+# ---------------------------------------------------------------------------
+
+
+def test_chart_data_defaults():
+    cd = ChartData()
+    assert cd.model_comparison == []
+    assert cd.cv_fold_scores == {}
+    assert cd.feature_importances is None
+    assert cd.confusion_matrices is None
+    assert cd.training_times == []
+    assert cd.hyperparam_search == {}
+    assert cd.residual_stats == {}
+
+
+def test_chart_data_with_cv_fold_scores():
+    cd = ChartData(
+        cv_fold_scores={
+            "RandomForest": {
+                "accuracy": CVFoldScores(scores=[0.95, 0.96, 0.94], mean=0.95),
+            }
+        },
+    )
+    assert cd.cv_fold_scores["RandomForest"]["accuracy"].mean == 0.95
+    assert len(cd.cv_fold_scores["RandomForest"]["accuracy"].scores) == 3
+
+
+def test_feature_importance_item():
+    item = FeatureImportanceItem(feature="petal_width", importance=0.42)
+    assert item.feature == "petal_width"
+    assert item.importance == 0.42
+
+
+def test_chart_data_serialization():
+    cd = ChartData(
+        model_comparison=[{"algorithm": "SVM", "accuracy": 0.93}],
+        training_times=[{"algorithm": "SVM", "time_seconds": 12.5}],
+    )
+    data = cd.model_dump()
+    assert data["model_comparison"][0]["algorithm"] == "SVM"
+    assert data["training_times"][0]["time_seconds"] == 12.5
 
 
 # ---------------------------------------------------------------------------

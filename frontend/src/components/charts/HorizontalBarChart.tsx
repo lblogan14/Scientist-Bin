@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartContainer } from "./ChartContainer";
+import { useCssVars } from "@/hooks/use-css-vars";
 
 interface HorizontalBarChartProps {
   title: string;
@@ -11,9 +12,12 @@ interface HorizontalBarChartProps {
 export function HorizontalBarChart({
   title,
   data,
-  color = "var(--chart-2)",
+  color,
   height,
 }: HorizontalBarChartProps) {
+  const [resolvedDefault] = useCssVars(["--chart-2"]);
+  const fillColor = color ?? resolvedDefault;
+
   if (!data || data.length === 0) return null;
 
   return (
@@ -27,8 +31,8 @@ export function HorizontalBarChart({
           width={120}
           tick={{ fontSize: 12 }}
         />
-        <Tooltip cursor={{ fill: "var(--color-muted)" }} />
-        <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} />
+        <Tooltip cursor={{ fill: "transparent" }} />
+        <Bar dataKey="value" fill={fillColor} radius={[0, 4, 4, 0]} />
       </BarChart>
     </ChartContainer>
   );

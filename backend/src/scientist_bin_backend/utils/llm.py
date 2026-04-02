@@ -6,15 +6,77 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from scientist_bin_backend.config.settings import Settings, get_settings
 
-# Per-agent model registry.  Central graph and summary use the faster flash
-# model; plan, analyst, and sklearn use the more capable pro model.
-AGENT_MODELS: dict[str, str] = {
-    "central": "gemini-3-flash-preview",
-    "plan": "gemini-3.1-pro-preview",
-    "analyst": "gemini-3.1-pro-preview",
-    "sklearn": "gemini-3.1-pro-preview",
-    "summary": "gemini-3-flash-preview",
-}
+
+def _build_agent_models(settings: Settings | None = None) -> dict[str, str]:
+    """Build per-agent model registry from settings.
+
+    Central graph and summary use the faster flash model;
+    plan, analyst, and sklearn use the more capable pro model.
+    Reads model names from settings so ``.env`` overrides take effect.
+    """
+    if settings is None:
+        settings = get_settings()
+    flash = settings.gemini_model_flash
+    pro = settings.gemini_model_pro
+    return {
+        "central": flash,
+        "plan": pro,
+        "analyst": pro,
+        "sklearn": pro,
+        "summary": flash,
+    }
+
+
+class _LazyAgentModels(dict):
+    """Lazy dict that populates from settings on first access.
+
+    Avoids requiring GOOGLE_API_KEY at import time while keeping the
+    ``AGENT_MODELS["sklearn"]`` access pattern working everywhere.
+    """
+
+    _loaded: bool = False
+
+    def _ensure_loaded(self) -> None:
+        if not self._loaded:
+            self.update(_build_agent_models())
+            self._loaded = True
+
+    def __getitem__(self, key: str) -> str:
+        self._ensure_loaded()
+        return super().__getitem__(key)
+
+    def __contains__(self, key: object) -> bool:
+        self._ensure_loaded()
+        return super().__contains__(key)
+
+    def get(self, key: str, default: str | None = None) -> str | None:  # type: ignore[override]
+        self._ensure_loaded()
+        return super().get(key, default)
+
+    def keys(self):
+        self._ensure_loaded()
+        return super().keys()
+
+    def values(self):
+        self._ensure_loaded()
+        return super().values()
+
+    def items(self):
+        self._ensure_loaded()
+        return super().items()
+
+    def __iter__(self):
+        self._ensure_loaded()
+        return super().__iter__()
+
+    def __len__(self):
+        self._ensure_loaded()
+        return super().__len__()
+
+
+# Per-agent model registry. Lazily resolves from settings so .env overrides
+# take effect, without requiring GOOGLE_API_KEY at import time.
+AGENT_MODELS: dict[str, str] = _LazyAgentModels()
 
 
 def extract_text_content(content: str | list) -> str:
@@ -65,12 +127,14 @@ def get_agent_model(
 ) -> ChatGoogleGenerativeAI:
     """Return a chat model configured for a specific agent.
 
-    Looks up the model name in :data:`AGENT_MODELS` and falls back to the
-    default ``settings.gemini_model`` if the agent name is unknown.
+    Looks up the model name in the per-agent registry (built from settings)
+    and falls back to the default ``settings.gemini_model`` if the agent name
+    is unknown.
     """
     if settings is None:
         settings = get_settings()
-    model = AGENT_MODELS.get(agent_name, settings.gemini_model)
+    agent_models = _build_agent_models(settings)
+    model = agent_models.get(agent_name, settings.gemini_model)
     return get_chat_model(settings=settings, model=model)
 
 

@@ -10,9 +10,14 @@ from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from scientist_bin_backend.api.experiments import Run, experiment_store
+from scientist_bin_backend.api.experiments import (
+    ExperimentPhase,
+    ExperimentStatus,
+    Run,
+    experiment_store,
+)
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 
@@ -22,6 +27,10 @@ router = APIRouter(prefix="/api/v1")
 
 # outputs/ is always relative to the backend package root
 _OUTPUTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "outputs"
+
+# File validation constants
+_ALLOWED_EXTENSIONS = {".csv", ".tsv", ".parquet", ".xlsx", ".xls", ".json"}
+_MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB
 
 # Active HITL sessions: experiment_id -> asyncio.Event for review feedback
 _review_events: dict[str, asyncio.Event] = {}
@@ -34,7 +43,7 @@ _review_feedback: dict[str, str] = {}
 
 
 class TrainRequestBody(BaseModel):
-    objective: str
+    objective: str = Field(..., min_length=1)
     data_description: str = ""
     data_file_path: str | None = None
     framework_preference: str | None = None
@@ -67,13 +76,17 @@ async def _sync_events_from_queue(
         event_dict = event.model_dump(mode="json")
 
         if event.event_type == "phase_change":
-            phase = event.data.get("phase")
-            if phase:
+            phase_str = event.data.get("phase")
+            if phase_str:
+                try:
+                    phase = ExperimentPhase(phase_str)
+                except ValueError:
+                    phase = phase_str  # type: ignore[assignment]
                 experiment_store.update(experiment_id, phase=phase)
             experiment_store.append_events(experiment_id, [event_dict])
 
         elif event.event_type == "run_started":
-            experiment_store.update(experiment_id, phase="execution")
+            experiment_store.update(experiment_id, phase=ExperimentPhase.execution)
             # Create a new Run object
             run_id = event.data.get("run_id", "")
             _current_run_id = run_id
@@ -117,11 +130,11 @@ async def _sync_events_from_queue(
         elif event.event_type == "agent_activity":
             action = event.data.get("action")
             if action == "analyze_results":
-                experiment_store.update(experiment_id, phase="analysis")
+                experiment_store.update(experiment_id, phase=ExperimentPhase.analysis)
             experiment_store.append_events(experiment_id, [event_dict])
 
         elif event.event_type == "experiment_done":
-            updates: dict = {"phase": "done"}
+            updates: dict = {"phase": ExperimentPhase.done}
             best_model = event.data.get("best_model")
             if best_model:
                 exp = experiment_store.get(experiment_id)
@@ -158,7 +171,7 @@ async def _sync_events_from_queue(
             experiment_store.append_events(experiment_id, [event_dict])
 
         elif event.event_type == "plan_review_pending":
-            experiment_store.update(experiment_id, phase="plan_review")
+            experiment_store.update(experiment_id, phase=ExperimentPhase.plan_review)
             experiment_store.append_events(experiment_id, [event_dict])
 
         else:
@@ -221,8 +234,8 @@ async def _run_training(
     data_file_path = _resolve_data_file_path(data_file_path)
     experiment_store.update(
         experiment_id,
-        status="running",
-        phase="initializing",
+        status=ExperimentStatus.running,
+        phase=ExperimentPhase.initializing,
         data_file_path=data_file_path,
     )
 
@@ -285,14 +298,14 @@ async def _run_training(
             best_hyperparameters=agent_resp.get("best_hyperparameters"),
             selection_reasoning=agent_resp.get("selection_reasoning"),
             report_sections=agent_resp.get("report_sections"),
-            status="failed" if state.get("error") else "completed",
+            status=ExperimentStatus.failed if state.get("error") else ExperimentStatus.completed,
         )
 
         result_dict = result.model_dump()
         experiment_store.update(
             experiment_id,
-            status="completed",
-            phase="done",
+            status=ExperimentStatus.completed,
+            phase=ExperimentPhase.done,
             framework=result.framework,
             iteration_count=result.iterations,
             result=result_dict,
@@ -318,8 +331,8 @@ async def _run_training(
         logger.error("Experiment %s failed: %s\n%s", experiment_id, error_msg, tb)
         experiment_store.update(
             experiment_id,
-            status="failed",
-            phase="error",
+            status=ExperimentStatus.failed,
+            phase=ExperimentPhase.error,
             result={"error": error_msg, "traceback": tb},
         )
         await event_bus.emit(
@@ -351,12 +364,27 @@ async def create_train(body: TrainRequestBody, background_tasks: BackgroundTasks
     # Validate data file path upfront (matches CLI behavior)
     resolved_data_file = _resolve_data_file_path(body.data_file_path)
     if body.data_file_path and resolved_data_file:
-        from pathlib import Path
-
-        if not Path(resolved_data_file).is_file():
+        data_path = Path(resolved_data_file)
+        if not data_path.is_file():
             raise HTTPException(
                 status_code=400,
                 detail=f"Data file not found: {body.data_file_path}",
+            )
+        # Validate file extension
+        if data_path.suffix.lower() not in _ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Unsupported file type '{data_path.suffix}'. "
+                    f"Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"
+                ),
+            )
+        # Validate file size
+        file_size = data_path.stat().st_size
+        if file_size > _MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Data file too large ({file_size / 1024 / 1024:.1f} MB). Maximum: 500 MB.",
             )
 
     experiment = experiment_store.create(
@@ -513,7 +541,11 @@ async def download_artifact(experiment_id: str, artifact_type: str) -> FileRespo
 
     subdir, pattern, media_type = spec
     filename = pattern.format(id=experiment_id)
-    path = _OUTPUTS_DIR / subdir / filename
+    path = (_OUTPUTS_DIR / subdir / filename).resolve()
+
+    # Guard against path traversal via crafted experiment IDs
+    if not str(path).startswith(str(_OUTPUTS_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid experiment ID")
 
     if not path.is_file():
         raise HTTPException(

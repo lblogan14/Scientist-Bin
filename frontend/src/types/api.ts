@@ -33,9 +33,15 @@ export type ProgressEventType =
   | "plan_review_submitted"
   | "plan_completed"
   | "analysis_completed"
-  | "sklearn_completed"
   | "framework_completed"
   | "summary_completed";
+
+export type RunStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "timeout";
 
 export type ArtifactType =
   | "model"
@@ -101,7 +107,7 @@ export interface Run {
   hyperparameters: Record<string, unknown>;
   metrics: MetricPoint[];
   final_metrics: Record<string, number> | null;
-  status: string;
+  status: RunStatus;
   code: string;
   stdout: string;
   stderr: string;
@@ -137,6 +143,12 @@ export function isExperimentError(
   result: ExperimentResult | ExperimentError | null,
 ): result is ExperimentError {
   return result !== null && "error" in result;
+}
+
+export function isExperimentResult(
+  result: ExperimentResult | ExperimentError | null,
+): result is ExperimentResult {
+  return result !== null && !isExperimentError(result);
 }
 
 // ---------------------------------------------------------------------------
@@ -186,29 +198,6 @@ export interface SummaryReportSections {
   chart_data?: ChartData;
 }
 
-export interface ModelRanking {
-  rank: number;
-  algorithm: string;
-  hyperparameters: Record<string, unknown>;
-  train_metrics: Record<string, number>;
-  val_metrics: Record<string, number>;
-  test_metrics: Record<string, number> | null;
-  training_time_seconds: number;
-  strengths: string[];
-  weaknesses: string[];
-}
-
-export interface CVStabilityEntry {
-  algorithm: string;
-  metric_name: string;
-  fold_scores: number[];
-  mean: number;
-  std: number;
-  cv_coefficient_of_variation: number;
-  min_fold: number;
-  max_fold: number;
-}
-
 export interface OverfitEntry {
   algorithm: string;
   metric_name: string;
@@ -217,14 +206,6 @@ export interface OverfitEntry {
   gap: number;
   gap_percentage: number;
   overfit_risk: "low" | "moderate" | "high";
-}
-
-export interface HyperparamSensitivityEntry {
-  algorithm: string;
-  param_name: string;
-  score_range: number;
-  best_value: unknown;
-  values_tried: number;
 }
 
 export interface ExperimentResult {

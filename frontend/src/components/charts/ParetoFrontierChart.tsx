@@ -1,9 +1,8 @@
 import {
   CartesianGrid,
+  ComposedChart,
   Line,
-  ResponsiveContainer,
   Scatter,
-  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
@@ -42,81 +41,75 @@ export function ParetoFrontierChart({
 
   return (
     <ChartContainer title={title}>
-      <ResponsiveContainer width="100%" height={300}>
-        <ScatterChart margin={{ left: 10, right: 20, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="time"
-            type="number"
-            name={xLabel}
-            tick={{ fontSize: 12 }}
-            label={{
-              value: xLabel,
-              position: "insideBottom",
-              offset: -5,
-              fontSize: 11,
-            }}
-          />
-          <YAxis
+      <ComposedChart
+        data={paretoPoints}
+        margin={{ left: 10, right: 20, bottom: 10 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis
+          dataKey="time"
+          type="number"
+          name={xLabel}
+          tick={{ fontSize: 12 }}
+          label={{
+            value: xLabel,
+            position: "insideBottom",
+            offset: -5,
+            fontSize: 11,
+          }}
+        />
+        <YAxis
+          dataKey="performance"
+          type="number"
+          name={yLabel}
+          tick={{ fontSize: 12 }}
+          label={{
+            value: yLabel,
+            angle: -90,
+            position: "insideLeft",
+            fontSize: 11,
+          }}
+          domain={["auto", "auto"]}
+        />
+        <Tooltip
+          content={({ payload }) => {
+            if (!payload?.[0]) return null;
+            const d = payload[0].payload as ParetoPoint;
+            return (
+              <div className="bg-background rounded-md border p-2 text-xs shadow-md">
+                <p className="font-medium">{d.name}</p>
+                <p>
+                  {yLabel}: {d.performance.toFixed(4)}
+                </p>
+                <p>
+                  {xLabel}: {d.time.toFixed(2)}
+                </p>
+                {d.isPareto && (
+                  <p className="text-primary font-medium">Pareto-optimal</p>
+                )}
+              </div>
+            );
+          }}
+        />
+        {/* All points */}
+        <Scatter
+          data={data.filter((d) => !d.isPareto)}
+          fill={c3}
+          fillOpacity={0.6}
+        />
+        {/* Pareto-optimal points */}
+        <Scatter data={paretoPoints} fill={c1} shape="star" />
+        {/* Pareto frontier line */}
+        {paretoPoints.length > 1 && (
+          <Line
             dataKey="performance"
-            type="number"
-            name={yLabel}
-            tick={{ fontSize: 12 }}
-            label={{
-              value: yLabel,
-              angle: -90,
-              position: "insideLeft",
-              fontSize: 11,
-            }}
-            domain={["auto", "auto"]}
+            stroke={c1}
+            strokeDasharray="5 3"
+            dot={false}
+            type="monotone"
           />
-          <Tooltip
-            content={({ payload }) => {
-              if (!payload?.[0]) return null;
-              const d = payload[0].payload as ParetoPoint;
-              return (
-                <div className="bg-background rounded-md border p-2 text-xs shadow-md">
-                  <p className="font-medium">{d.name}</p>
-                  <p>
-                    {yLabel}: {d.performance.toFixed(4)}
-                  </p>
-                  <p>
-                    {xLabel}: {d.time.toFixed(2)}
-                  </p>
-                  {d.isPareto && (
-                    <p className="text-primary font-medium">Pareto-optimal</p>
-                  )}
-                </div>
-              );
-            }}
-          />
-          {/* All points */}
-          <Scatter
-            data={data.filter((d) => !d.isPareto)}
-            fill={c3}
-            fillOpacity={0.6}
-            r={5}
-          />
-          {/* Pareto-optimal points */}
-          <Scatter
-            data={paretoPoints}
-            fill={c1}
-            r={7}
-            shape="star"
-          />
-          {/* Pareto frontier line */}
-          {paretoPoints.length > 1 && (
-            <Line
-              data={paretoPoints}
-              dataKey="performance"
-              stroke={c1}
-              strokeDasharray="5 3"
-              dot={false}
-              type="monotone"
-            />
-          )}
-        </ScatterChart>
-      </ResponsiveContainer>
+        )}
+      </ComposedChart>
     </ChartContainer>
   );
 }
