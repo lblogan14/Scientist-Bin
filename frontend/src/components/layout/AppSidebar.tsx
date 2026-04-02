@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
   BarChart3,
@@ -17,6 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { listExperiments } from "@/lib/api-client";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -28,6 +30,16 @@ const navItems = [
 
 export function AppSidebar() {
   const { pathname } = useLocation();
+
+  // Check for experiments needing plan review
+  const { data: hasPlanReview } = useQuery({
+    queryKey: ["experiments", "plan-review-check"],
+    queryFn: async () => {
+      const { experiments } = await listExperiments();
+      return experiments.some((e) => e.phase === "plan_review");
+    },
+    refetchInterval: 10_000,
+  });
 
   return (
     <Sidebar>
@@ -45,12 +57,16 @@ export function AppSidebar() {
                   item.to === "/"
                     ? pathname === "/"
                     : pathname.startsWith(item.to);
+                const showDot = item.to === "/monitor" && hasPlanReview;
                 return (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton asChild isActive={active}>
                       <Link to={item.to}>
                         <item.icon className="size-4" />
-                        <span>{item.label}</span>
+                        <span className="flex-1">{item.label}</span>
+                        {showDot && (
+                          <span className="size-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

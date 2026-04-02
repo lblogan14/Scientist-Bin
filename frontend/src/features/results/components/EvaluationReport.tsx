@@ -71,7 +71,10 @@ export function EvaluationReport({
                       );
 
                   return (
-                    <TableRow key={i} className={isBestRow ? "bg-primary/5" : ""}>
+                    <TableRow
+                      key={i}
+                      className={isBestRow ? "bg-primary/5" : ""}
+                    >
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
                           {record.iteration}

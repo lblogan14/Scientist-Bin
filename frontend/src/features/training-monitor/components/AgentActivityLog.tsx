@@ -39,12 +39,12 @@ export function AgentActivityLog({ activities }: AgentActivityLogProps) {
           ) : (
             <div className="space-y-2">
               {activities.map((act, i) => (
-                <div
-                  key={i}
-                  className="border-border border-l-2 pl-3 text-sm"
-                >
+                <div key={i} className="border-border border-l-2 pl-3 text-sm">
                   <div className="flex items-center gap-2">
-                    <Badge variant={getActionVariant(act.action)} className="text-xs">
+                    <Badge
+                      variant={getActionVariant(act.action)}
+                      className="text-xs"
+                    >
                       {act.action}
                     </Badge>
                     <span className="text-muted-foreground text-xs">
@@ -52,7 +52,9 @@ export function AgentActivityLog({ activities }: AgentActivityLogProps) {
                     </span>
                   </div>
                   {act.details && (
-                    <p className="text-muted-foreground mt-0.5">{act.details}</p>
+                    <p className="text-muted-foreground mt-0.5">
+                      {act.details}
+                    </p>
                   )}
                 </div>
               ))}

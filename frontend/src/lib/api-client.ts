@@ -35,13 +35,10 @@ export async function listExperiments(
   if (params?.status) searchParams.status = params.status;
   if (params?.framework) searchParams.framework = params.framework;
   if (params?.search) searchParams.search = params.search;
-  if (params?.offset !== undefined)
-    searchParams.offset = String(params.offset);
+  if (params?.offset !== undefined) searchParams.offset = String(params.offset);
   if (params?.limit !== undefined) searchParams.limit = String(params.limit);
 
-  return api
-    .get("experiments", { searchParams })
-    .json<PaginatedExperiments>();
+  return api.get("experiments", { searchParams }).json<PaginatedExperiments>();
 }
 
 export async function getExperiment(id: string): Promise<Experiment> {
@@ -64,9 +61,7 @@ export async function getExperimentPlan(
   return api.get(`experiments/${id}/plan`).json();
 }
 
-export async function getExperimentAnalysis(
-  id: string,
-): Promise<{
+export async function getExperimentAnalysis(id: string): Promise<{
   analysis_report: string | null;
   split_data_paths: Record<string, string> | null;
 }> {
@@ -94,9 +89,7 @@ export async function checkHealth(): Promise<HealthResponse> {
  * Create an SSE connection for real-time experiment events.
  * Returns an EventSource that emits typed events.
  */
-export function createExperimentEventSource(
-  experimentId: string,
-): EventSource {
+export function createExperimentEventSource(experimentId: string): EventSource {
   return new EventSource(`/api/v1/experiments/${experimentId}/events`);
 }
 

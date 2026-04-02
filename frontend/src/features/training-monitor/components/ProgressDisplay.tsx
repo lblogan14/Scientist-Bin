@@ -11,8 +11,10 @@ const PIPELINE_PHASES: { key: ExperimentPhase; label: string }[] = [
   { key: "classify", label: "Classify" },
   { key: "eda", label: "EDA" },
   { key: "planning", label: "Plan" },
+  { key: "plan_review", label: "Review" },
   { key: "execution", label: "Execute" },
   { key: "analysis", label: "Analyze" },
+  { key: "summarizing", label: "Summary" },
   { key: "done", label: "Done" },
 ];
 
@@ -47,7 +49,8 @@ export function ProgressDisplay({ experiment }: ProgressDisplayProps) {
         {/* Pipeline phase steps */}
         <div className="flex items-center gap-1">
           {PIPELINE_PHASES.map((phase, idx) => {
-            const allDone = experiment.phase === "done" || experiment.status === "completed";
+            const allDone =
+              experiment.phase === "done" || experiment.status === "completed";
             const isCompleted = allDone || idx < currentPhaseIdx;
             const isCurrent = !allDone && idx === currentPhaseIdx;
 
@@ -61,6 +64,8 @@ export function ProgressDisplay({ experiment }: ProgressDisplayProps) {
                 <div className="flex flex-col items-center gap-1">
                   {isCompleted ? (
                     <CheckCircle2 className="text-primary size-4" />
+                  ) : isCurrent && phase.key === "plan_review" ? (
+                    <Circle className="size-4 animate-pulse fill-amber-500/30 text-amber-500" />
                   ) : isCurrent ? (
                     <Loader2 className="text-primary size-4 animate-spin" />
                   ) : (
@@ -89,7 +94,9 @@ export function ProgressDisplay({ experiment }: ProgressDisplayProps) {
             <div className="bg-muted h-2 rounded-full">
               <div
                 className="bg-primary h-2 rounded-full transition-all"
-                style={{ width: `${Math.min((iterationCount / 5) * 100, 100)}%` }}
+                style={{
+                  width: `${Math.min((iterationCount / 5) * 100, 100)}%`,
+                }}
               />
             </div>
           </div>

@@ -53,10 +53,20 @@ export function RecentExperiments() {
               className="hover:bg-muted flex items-center gap-3 rounded-md p-2 transition"
             >
               <span
-                className={`size-2 rounded-full ${statusColors[exp.status] ?? "bg-gray-500"}`}
+                className={`size-2 shrink-0 rounded-full ${statusColors[exp.status] ?? "bg-gray-500"}`}
               />
               <span className="flex-1 truncate text-sm">{exp.objective}</span>
-              <Badge variant="outline" className="text-xs">
+              {exp.phase && exp.phase !== "done" && (
+                <Badge variant="secondary" className="shrink-0 text-xs">
+                  {exp.phase}
+                </Badge>
+              )}
+              {exp.iteration_count > 0 && (
+                <span className="text-muted-foreground shrink-0 text-xs">
+                  {exp.iteration_count} iter
+                </span>
+              )}
+              <Badge variant="outline" className="shrink-0 text-xs">
                 {exp.status}
               </Badge>
             </Link>

@@ -17,13 +17,13 @@ Start the backend first (`uv run scientist-bin serve` from `backend/`).
 
 ## Pages
 
-| Route | Tab | Purpose |
-|-------|-----|---------|
-| `/` | Dashboard | Stats, objective form (with dataset path relative to `backend/data/`), recent experiments |
-| `/experiments` | Experiments | List of all experiments, click to view details |
-| `/monitor` | Training | Real-time progress (SSE), agent activity log, metrics charts, console output. Auto-selects latest experiment. |
-| `/results` | Results | Metric cards, algorithm comparison charts, generated code, data profile, journal. Download buttons for model and results. Auto-selects latest completed experiment. |
-| `/models` | Models | Cross-experiment model comparison table and charts |
+| Route          | Tab         | Purpose                                                                                                                                                             |
+| -------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`            | Dashboard   | Stats, objective form (with dataset path relative to `backend/data/`), recent experiments                                                                           |
+| `/experiments` | Experiments | List of all experiments, click to view details                                                                                                                      |
+| `/monitor`     | Training    | Real-time progress (SSE), agent activity log, metrics charts, console output. Auto-selects latest experiment.                                                       |
+| `/results`     | Results     | Metric cards, algorithm comparison charts, generated code, data profile, journal. Download buttons for model and results. Auto-selects latest completed experiment. |
+| `/models`      | Models      | Cross-experiment model comparison table and charts                                                                                                                  |
 
 ## Key Features
 
