@@ -8,7 +8,6 @@ import pytest
 
 from scientist_bin_backend.utils.llm import (
     AGENT_MODELS,
-    _LazyAgentModels,
     extract_text_content,
     get_agent_model,
     get_chat_model,
