@@ -65,6 +65,23 @@ sklearn.metrics.confusion_matrix and include "confusion_matrix": \
 23. Requirements 18-22 are OPTIONAL enrichments — wrap each extraction in its own \
 try/except block so that any failure does not break the main training script. \
 If extraction fails, simply omit the key from the results JSON
+24. For clustering problems:
+   a) Do NOT use a target column — these are unsupervised tasks. Use ALL columns as features
+   b) Use algorithms from sklearn.cluster (e.g. KMeans, DBSCAN, AgglomerativeClustering)
+   c) For KMeans, try multiple values of n_clusters (e.g. 2-10) and select the best via \
+silhouette_score using a manual loop (GridSearchCV does not natively support unsupervised scoring)
+   d) Compute internal validation metrics: silhouette_score, calinski_harabasz_score, \
+davies_bouldin_score from sklearn.metrics
+   e) Include "cluster_stats" in each result entry: {{"n_clusters": int, \
+"cluster_sizes": [int, ...], "silhouette_score": float, \
+"calinski_harabasz_score": float, "davies_bouldin_score": float}}
+   f) Compute per-cluster feature means and include "cluster_profiles": \
+{{"cluster_0": {{"feature_name": mean_value, ...}}, ...}}
+   g) Apply StandardScaler in the pipeline before clustering
+   h) The Pipeline should wrap scaling + clustering (e.g. Pipeline([("scaler", StandardScaler()), \
+("clusterer", KMeans())]))
+   i) Report silhouette_score as the primary metric via report_metric()
+   j) Wrap clustering enrichments in try/except so failures do not break the script
 
 Return ONLY the Python code, no markdown fences.
 """

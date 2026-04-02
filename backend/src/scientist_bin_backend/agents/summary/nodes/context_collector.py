@@ -33,6 +33,7 @@ async def collect_context(state: dict) -> dict:
     all_feature_importances: dict[str, list[dict]] = {}
     all_confusion_matrices: dict[str, dict] = {}
     all_residual_stats: dict[str, dict] = {}
+    all_cluster_stats: dict[str, dict] = {}
 
     for record in experiment_history:
         algo = record.get("algorithm", "unknown")
@@ -57,6 +58,10 @@ async def collect_context(state: dict) -> dict:
         if residual_stats:
             all_residual_stats[algo] = residual_stats
 
+        cluster_stats = record.get("cluster_stats")
+        if cluster_stats:
+            all_cluster_stats[algo] = cluster_stats
+
     # Include test-set diagnostics if available
     if test_diagnostics:
         if test_diagnostics.get("confusion_matrix"):
@@ -64,6 +69,8 @@ async def collect_context(state: dict) -> dict:
             all_confusion_matrices["__test__"] = test_diagnostics["confusion_matrix"]
         if test_diagnostics.get("residual_stats"):
             all_residual_stats["__test__"] = test_diagnostics["residual_stats"]
+        if test_diagnostics.get("cluster_stats"):
+            all_cluster_stats["__test__"] = test_diagnostics["cluster_stats"]
 
     # Compute aggregates
     algorithms_tried = []
@@ -85,6 +92,7 @@ async def collect_context(state: dict) -> dict:
         "feature_importances": all_feature_importances,
         "confusion_matrices": all_confusion_matrices,
         "residual_stats": all_residual_stats,
+        "cluster_stats": all_cluster_stats,
         "test_metrics": test_metrics,
         "test_diagnostics": test_diagnostics,
         "algorithms_tried": algorithms_tried,
@@ -94,13 +102,14 @@ async def collect_context(state: dict) -> dict:
 
     logger.info(
         "Collected context: %d experiments, %d algorithms, "
-        "cv_folds=%d, importances=%d, confusion=%d, residuals=%d",
+        "cv_folds=%d, importances=%d, confusion=%d, residuals=%d, clusters=%d",
         len(experiment_history),
         len(algorithms_tried),
         len(all_cv_fold_scores),
         len(all_feature_importances),
         len(all_confusion_matrices),
         len(all_residual_stats),
+        len(all_cluster_stats),
     )
 
     return {

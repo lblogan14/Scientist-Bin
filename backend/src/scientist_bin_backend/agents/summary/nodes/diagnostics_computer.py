@@ -316,4 +316,9 @@ def _build_chart_data(ctx: dict, problem_type: str) -> dict:
     if residual_stats:
         charts["residual_stats"] = residual_stats
 
+    # 8. Cluster stats (clustering)
+    cluster_stats = ctx.get("cluster_stats", {})
+    if cluster_stats:
+        charts["cluster_stats"] = cluster_stats
+
     return charts

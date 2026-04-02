@@ -30,6 +30,12 @@ export function OverviewTab({ result }: OverviewTabProps) {
         r.metrics.val_accuracy ??
         r.metrics.accuracy ??
         r.metrics.val_f1_macro ??
+        r.metrics.val_r2 ??
+        r.metrics.r2 ??
+        r.metrics.val_rmse ??
+        r.metrics.rmse ??
+        r.metrics.silhouette_score ??
+        r.metrics.val_silhouette_score ??
         Object.values(r.metrics)[0] ??
         0;
       return {

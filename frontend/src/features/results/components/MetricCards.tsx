@@ -14,10 +14,17 @@ const RATIO_METRICS = new Set([
   "recall",
   "r2",
   "roc_auc",
+  "silhouette_score",
 ]);
 
 function getMetricColor(key: string, value: number): string {
   if (!RATIO_METRICS.has(key)) return "";
+  // Silhouette score: range -1 to 1, different thresholds
+  if (key === "silhouette_score") {
+    if (value >= 0.5) return "text-success";
+    if (value >= 0.25) return "text-warning";
+    return "text-destructive";
+  }
   if (value >= 0.9) return "text-success";
   if (value >= 0.7) return "text-warning";
   return "text-destructive";
@@ -25,9 +32,22 @@ function getMetricColor(key: string, value: number): string {
 
 function getBarColor(key: string, value: number): string {
   if (!RATIO_METRICS.has(key)) return "bg-primary";
+  if (key === "silhouette_score") {
+    if (value >= 0.5) return "bg-success";
+    if (value >= 0.25) return "bg-warning";
+    return "bg-destructive";
+  }
   if (value >= 0.9) return "bg-success";
   if (value >= 0.7) return "bg-warning";
   return "bg-destructive";
+}
+
+function getBarWidth(key: string, value: number): number {
+  // Silhouette score ranges from -1 to 1, normalize to 0-100%
+  if (key === "silhouette_score") {
+    return Math.min(Math.max((value + 1) * 50, 0), 100);
+  }
+  return Math.min(value * 100, 100);
 }
 
 export function MetricCards({ metrics }: MetricCardsProps) {
@@ -58,7 +78,7 @@ export function MetricCards({ metrics }: MetricCardsProps) {
                 <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
                   <div
                     className={`h-full rounded-full transition-all ${getBarColor(key, numVal)}`}
-                    style={{ width: `${Math.min(numVal * 100, 100)}%` }}
+                    style={{ width: `${getBarWidth(key, numVal)}%` }}
                   />
                 </div>
               )}

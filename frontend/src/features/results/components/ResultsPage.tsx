@@ -19,6 +19,7 @@ import { useResult } from "../hooks/use-result";
 import { AlgorithmComparisonChart } from "./AlgorithmComparisonChart";
 import { AlgorithmRadarChart } from "./AlgorithmRadarChart";
 import { AnalysisTab } from "./AnalysisTab";
+import { ClusterAnalysisTab } from "./ClusterAnalysisTab";
 import { CodeDisplay } from "./CodeDisplay";
 import { ConfusionMatrixTab } from "./ConfusionMatrixTab";
 import { CVStabilityTab } from "./CVStabilityTab";
@@ -32,6 +33,7 @@ import { MetricCards } from "./MetricCards";
 import { OverfitAnalysisTab } from "./OverfitAnalysisTab";
 import { OverviewTab } from "./OverviewTab";
 import { PlanTab } from "./PlanTab";
+import { ResidualAnalysisTab } from "./ResidualAnalysisTab";
 import { SummaryTab } from "./SummaryTab";
 import { TrainingTimeChart } from "./TrainingTimeChart";
 
@@ -120,6 +122,14 @@ export default function ResultsPage() {
     (chartData?.hyperparam_search &&
       Object.keys(chartData.hyperparam_search).length > 0) ||
     experimentHistory.some((r) => r.cv_results_top_n?.length);
+  const hasResiduals =
+    (chartData?.residual_stats &&
+      Object.keys(chartData.residual_stats).length > 0) ||
+    experimentHistory.some((r) => r.residual_stats);
+  const hasClusterStats =
+    (chartData?.cluster_stats &&
+      Object.keys(chartData.cluster_stats).length > 0) ||
+    experimentHistory.some((r) => r.cluster_stats);
 
   return (
     <div className="space-y-6">
@@ -172,6 +182,12 @@ export default function ResultsPage() {
           {hasConfusionMatrix && (
             <TabsTrigger value="confusion">Confusion Matrix</TabsTrigger>
           )}
+          {hasResiduals && (
+            <TabsTrigger value="residuals">Residuals</TabsTrigger>
+          )}
+          {hasClusterStats && (
+            <TabsTrigger value="clusters">Clusters</TabsTrigger>
+          )}
           {hasCVFolds && (
             <TabsTrigger value="cv-stability">CV Stability</TabsTrigger>
           )}
@@ -219,6 +235,26 @@ export default function ResultsPage() {
           <TabsContent value="confusion" className="mt-4">
             <ConfusionMatrixTab
               matrices={chartData?.confusion_matrices}
+              history={experimentHistory}
+            />
+          </TabsContent>
+        )}
+
+        {/* Residual Analysis (regression) */}
+        {hasResiduals && (
+          <TabsContent value="residuals" className="mt-4">
+            <ResidualAnalysisTab
+              residualStats={chartData?.residual_stats}
+              history={experimentHistory}
+            />
+          </TabsContent>
+        )}
+
+        {/* Cluster Analysis (clustering) */}
+        {hasClusterStats && (
+          <TabsContent value="clusters" className="mt-4">
+            <ClusterAnalysisTab
+              chartData={chartData}
               history={experimentHistory}
             />
           </TabsContent>

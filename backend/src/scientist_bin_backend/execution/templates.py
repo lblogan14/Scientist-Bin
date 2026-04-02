@@ -72,6 +72,23 @@ if TARGET_COLUMN and TARGET_COLUMN in df.columns:
         target_stats = df[TARGET_COLUMN].describe()
         profile["target_stats"] = {{str(k): float(v) for k, v in target_stats.items()}}
 
+# Clustering-specific profiling (no target column)
+if PROBLEM_TYPE == "clustering":
+    profile["target_stats"] = None
+    profile["class_distribution"] = None
+    if numeric_cols:
+        scale_info = {{}}
+        for col in numeric_cols:
+            col_stats = df[col].describe()
+            scale_info[col] = {{str(k): float(v) for k, v in col_stats.items()}}
+        profile["feature_scale_summary"] = scale_info
+        # Check if features need scaling (large scale differences)
+        ranges = [df[col].max() - df[col].min() for col in numeric_cols if df[col].max() != df[col].min()]
+        if ranges and max(ranges) / (min(ranges) + 1e-10) > 100:
+            profile.setdefault("data_quality_issues", []).append(
+                "Features have very different scales — StandardScaler recommended for distance-based clustering"
+            )
+
 # Statistics summary
 stats_lines = []
 desc = df.describe()

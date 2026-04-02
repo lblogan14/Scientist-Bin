@@ -30,5 +30,10 @@ htmlcov/
 # Data and outputs (contents git-ignored)
 data/*
 !data/.gitkeep
+!data/ames_data/
+!data/cc_data/
+!data/iris_data/
+!data/mall_data/
+!data/wine_data/
 outputs/*
 !outputs/.gitkeep

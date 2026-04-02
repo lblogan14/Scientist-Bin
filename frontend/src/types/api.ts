@@ -167,6 +167,7 @@ export interface ChartData {
   training_times?: Array<{ algorithm: string; time_seconds: number }>;
   hyperparam_search?: Record<string, CVResultEntry[]>;
   residual_stats?: Record<string, ResidualStats>;
+  cluster_stats?: Record<string, ClusterStats>;
 }
 
 export interface SummaryReportSections {
@@ -272,6 +273,14 @@ export interface ResidualStats {
   residual_percentiles: Record<string, number>;
 }
 
+export interface ClusterStats {
+  n_clusters: number;
+  cluster_sizes: number[];
+  silhouette_score: number;
+  calinski_harabasz_score: number;
+  davies_bouldin_score: number;
+}
+
 export interface ExperimentRecord {
   iteration: number;
   algorithm: string;
@@ -284,6 +293,7 @@ export interface ExperimentRecord {
   feature_importances?: FeatureImportance[];
   confusion_matrix?: ConfusionMatrix;
   residual_stats?: ResidualStats;
+  cluster_stats?: ClusterStats;
 }
 
 export interface DataProfile {

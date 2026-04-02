@@ -129,6 +129,12 @@ sklearn.metrics.confusion_matrix and include "confusion_matrix": \
 "max_abs_residual": float, "residual_percentiles": {{"25": float, "50": float, "75": float}}}}
 11. Requirements 9-10 are OPTIONAL enrichments — wrap each in try/except so failures \
 do not break the test evaluation script
+12. For clustering: there is no target column — use ALL columns as features. \
+Call model.predict(X_test) to get cluster labels, then compute \
+"cluster_stats": {{"n_clusters": int, "cluster_sizes": [int, ...], \
+"silhouette_score": float, "calinski_harabasz_score": float, \
+"davies_bouldin_score": float}} on the test set. Include in the JSON output. \
+Wrap in try/except like requirements 9-10.
 
 Return ONLY the Python code, no markdown fences.
 """
