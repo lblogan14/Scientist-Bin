@@ -13,6 +13,7 @@ from langchain_core.messages import HumanMessage
 
 from scientist_bin_backend.agents.analyst.prompts import CLEANING_PROMPT
 from scientist_bin_backend.agents.analyst.states import AnalystState
+from scientist_bin_backend.agents.analyst.utils import read_data_sample, resolve_run_subdir
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.runner import CodeRunner, RunConfig
@@ -22,19 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_output_dir(experiment_id: str) -> Path:
-    """Resolve the data output directory for an experiment."""
-    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
-    return backend_root / "outputs" / "runs" / experiment_id / "data"
-
-
-def _read_data_sample(data_file_path: str, n_lines: int = 6) -> str:
-    """Read the first n lines of a CSV file as a string."""
-    try:
-        with open(data_file_path, encoding="utf-8", errors="replace") as f:
-            lines = [f.readline() for _ in range(n_lines)]
-        return "".join(lines)
-    except Exception:
-        return "(Could not read data sample)"
+    return resolve_run_subdir(experiment_id, "data")
 
 
 async def clean_data(state: AnalystState) -> dict:
@@ -78,7 +67,7 @@ async def clean_data(state: AnalystState) -> dict:
     profile = data_profile or {}
     task_analysis = state.get("task_analysis") or {}
     selected_framework = state.get("selected_framework") or "sklearn"
-    data_sample = _read_data_sample(data_file_path)
+    data_sample = read_data_sample(data_file_path)
 
     prompt = CLEANING_PROMPT.format(
         objective=objective,

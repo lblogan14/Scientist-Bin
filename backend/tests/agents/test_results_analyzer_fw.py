@@ -204,3 +204,144 @@ async def test_finalize_defaults_to_sklearn():
         state = _make_finalize_state(framework_name=None)
         await finalize(state)
         mock_get.assert_called_once_with("sklearn")
+
+
+# ---------------------------------------------------------------------------
+# analyze_results deterministic error paths (no LLM call needed)
+# ---------------------------------------------------------------------------
+
+
+def _make_error_state(*, execution_error: str = "ModuleNotFoundError: No module named 'xgb'"):
+    """Build a state where execution failed (no results)."""
+    return {
+        "execution_success": False,
+        "execution_output": "",
+        "execution_error": execution_error,
+        "current_iteration": 0,
+        "max_iterations": 5,
+        "experiment_history": [],
+        "experiment_id": "test-exp",
+        "execution_results_json": None,
+        "success_criteria": {"accuracy": 0.95},
+        "objective": "Classify iris",
+        "problem_type": "classification",
+        "framework_name": "sklearn",
+    }
+
+
+def _make_budget_exhausted_state(
+    *,
+    best_experiment=None,
+    current_iteration: int = 5,
+    include_results: bool = True,
+):
+    """Build a state where max_iterations has been reached."""
+    results_json = None
+    if include_results:
+        results_json = {
+            "results": [
+                {
+                    "algorithm": "LogisticRegression",
+                    "metrics": {"accuracy": 0.88},
+                    "best_params": {},
+                    "training_time": 1.0,
+                }
+            ],
+            "best_model": "LogisticRegression",
+        }
+    return {
+        "execution_success": True,
+        "execution_output": "",
+        "execution_error": "",
+        "current_iteration": current_iteration - 1,  # +1 is applied inside
+        "max_iterations": current_iteration,
+        "experiment_history": [],
+        "experiment_id": "test-exp",
+        "execution_results_json": results_json,
+        "success_criteria": {},
+        "objective": "Classify iris",
+        "problem_type": "classification",
+        "framework_name": "sklearn",
+        "best_experiment": best_experiment,
+    }
+
+
+@pytest.mark.asyncio
+async def test_analyze_results_execution_failed_fix_error():
+    """When execution_success=False, next_action is 'fix_error' without LLM call."""
+    with (
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.get_agent_model",
+        ) as mock_get_model,
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.event_bus",
+            emit=AsyncMock(),
+        ),
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.get_journal_for_experiment",
+            return_value=MagicMock(),
+        ),
+    ):
+        state = _make_error_state()
+        result = await analyze_results(state)
+
+        assert result["next_action"] == "fix_error"
+        ctx = result["refinement_context"].lower()
+        assert "failed" in ctx or "error" in ctx
+        # The LLM should NOT be invoked for deterministic error handling
+        mock_get_model.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_analyze_results_budget_exhausted_with_best_accepts():
+    """When max_iterations reached with a best_experiment, next_action is 'accept'."""
+    best = {
+        "iteration": 3,
+        "algorithm": "RandomForest",
+        "metrics": {"accuracy": 0.92},
+    }
+    with (
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.get_agent_model",
+        ) as mock_get_model,
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.event_bus",
+            emit=AsyncMock(),
+        ),
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.get_journal_for_experiment",
+            return_value=MagicMock(),
+        ),
+    ):
+        state = _make_budget_exhausted_state(best_experiment=best, current_iteration=5)
+        result = await analyze_results(state)
+
+        assert result["next_action"] == "accept"
+        # Budget exhausted is also deterministic — no LLM call
+        mock_get_model.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_analyze_results_budget_exhausted_without_best_aborts():
+    """When max_iterations reached without a best_experiment, next_action is 'abort'."""
+    with (
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.get_agent_model",
+        ) as mock_get_model,
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.event_bus",
+            emit=AsyncMock(),
+        ),
+        patch(
+            "scientist_bin_backend.agents.base.nodes.results_analyzer.get_journal_for_experiment",
+            return_value=MagicMock(),
+        ),
+    ):
+        state = _make_budget_exhausted_state(
+            best_experiment=None, current_iteration=5, include_results=False
+        )
+        result = await analyze_results(state)
+
+        assert result["next_action"] == "abort"
+        # Budget exhausted is also deterministic — no LLM call
+        mock_get_model.assert_not_called()

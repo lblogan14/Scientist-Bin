@@ -19,6 +19,7 @@ from scientist_bin_backend.agents.analyst.prompts import (
 )
 from scientist_bin_backend.agents.analyst.schemas import ValidatedClassification
 from scientist_bin_backend.agents.analyst.states import AnalystState
+from scientist_bin_backend.agents.analyst.utils import read_data_sample
 from scientist_bin_backend.agents.base.schemas import ProblemClassification
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
@@ -30,13 +31,11 @@ logger = logging.getLogger(__name__)
 
 
 def _read_data_sample(data_file_path: str, n_lines: int = 6) -> str:
-    """Read the first n lines of a data file for LLM context."""
-    try:
-        with open(data_file_path, encoding="utf-8", errors="replace") as f:
-            lines = [f.readline() for _ in range(n_lines)]
-        return f"First rows of the dataset:\n{''.join(lines)}"
-    except Exception:
-        return "(Could not read data sample)"
+    """Read the first n lines of a data file for LLM context (with prefix)."""
+    sample = read_data_sample(data_file_path, n_lines)
+    if sample.startswith("("):
+        return sample
+    return f"First rows of the dataset:\n{sample}"
 
 
 async def _validate_classification(

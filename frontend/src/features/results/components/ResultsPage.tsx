@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Download } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
+import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -200,121 +201,152 @@ export default function ResultsPage() {
 
         {/* Overview */}
         <TabsContent value="overview" className="mt-4">
-          {successResult ? (
-            <OverviewTab result={successResult} />
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              No results available.
-            </p>
-          )}
+          <ErrorBoundary>
+            {successResult ? (
+              <OverviewTab result={successResult} />
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No results available.
+              </p>
+            )}
+          </ErrorBoundary>
         </TabsContent>
 
         {/* Experiments (existing) */}
         <TabsContent value="experiments" className="mt-4 space-y-4">
-          <EvaluationReport
-            evaluation={evaluationResults}
-            experimentHistory={experimentHistory}
-          />
-          <div className="grid gap-4 md:grid-cols-2">
-            <AlgorithmComparisonChart history={experimentHistory} />
-            <TrainingTimeChart history={experimentHistory} />
-          </div>
-          <AlgorithmRadarChart history={experimentHistory} />
+          <ErrorBoundary>
+            <EvaluationReport
+              evaluation={evaluationResults}
+              experimentHistory={experimentHistory}
+            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <AlgorithmComparisonChart history={experimentHistory} />
+              <TrainingTimeChart history={experimentHistory} />
+            </div>
+            <AlgorithmRadarChart history={experimentHistory} />
+          </ErrorBoundary>
         </TabsContent>
 
         {/* Confusion Matrix */}
         {hasConfusionMatrix && (
           <TabsContent value="confusion" className="mt-4">
-            <ConfusionMatrixTab
-              matrices={chartData?.confusion_matrices}
-              history={experimentHistory}
-            />
+            <ErrorBoundary>
+              <ConfusionMatrixTab
+                matrices={chartData?.confusion_matrices}
+                history={experimentHistory}
+              />
+            </ErrorBoundary>
           </TabsContent>
         )}
 
         {/* CV Stability */}
         {hasCVFolds && (
           <TabsContent value="cv-stability" className="mt-4">
-            <CVStabilityTab chartData={chartData} history={experimentHistory} />
+            <ErrorBoundary>
+              <CVStabilityTab
+                chartData={chartData}
+                history={experimentHistory}
+              />
+            </ErrorBoundary>
           </TabsContent>
         )}
 
         {/* Overfitting Analysis */}
         <TabsContent value="overfit" className="mt-4">
-          <OverfitAnalysisTab history={experimentHistory} />
+          <ErrorBoundary>
+            <OverfitAnalysisTab history={experimentHistory} />
+          </ErrorBoundary>
         </TabsContent>
 
         {/* Feature Importance */}
         {hasFeatureImportance && (
           <TabsContent value="features" className="mt-4">
-            <FeatureImportanceTab
-              chartData={chartData}
-              history={experimentHistory}
-            />
+            <ErrorBoundary>
+              <FeatureImportanceTab
+                chartData={chartData}
+                history={experimentHistory}
+              />
+            </ErrorBoundary>
           </TabsContent>
         )}
 
         {/* Hyperparameters */}
         {hasHyperparamSearch && (
           <TabsContent value="hyperparams" className="mt-4">
-            <HyperparameterTab
-              chartData={chartData}
-              history={experimentHistory}
-              result={successResult ?? undefined}
-            />
+            <ErrorBoundary>
+              <HyperparameterTab
+                chartData={chartData}
+                history={experimentHistory}
+                result={successResult ?? undefined}
+              />
+            </ErrorBoundary>
           </TabsContent>
         )}
 
         {/* Plan */}
         <TabsContent value="plan" className="mt-4">
-          <PlanTab
-            executionPlan={
-              experiment.execution_plan ?? successResult?.plan ?? null
-            }
-            planMarkdown={successResult?.plan_markdown ?? null}
-            experimentId={experimentId}
-          />
+          <ErrorBoundary>
+            <PlanTab
+              executionPlan={
+                experiment.execution_plan ?? successResult?.plan ?? null
+              }
+              planMarkdown={successResult?.plan_markdown ?? null}
+              experimentId={experimentId}
+            />
+          </ErrorBoundary>
         </TabsContent>
 
         {/* Analysis Report */}
         <TabsContent value="analysis" className="mt-4">
-          <AnalysisTab
-            analysisReport={
-              experiment.analysis_report ??
-              successResult?.analysis_report ??
-              null
-            }
-            splitDataPaths={experiment.split_data_paths}
-            experimentId={experimentId}
-          />
+          <ErrorBoundary>
+            <AnalysisTab
+              analysisReport={
+                experiment.analysis_report ??
+                successResult?.analysis_report ??
+                null
+              }
+              splitDataPaths={experiment.split_data_paths}
+              experimentId={experimentId}
+            />
+          </ErrorBoundary>
         </TabsContent>
 
         {/* Summary Report */}
         <TabsContent value="summary" className="mt-4">
-          <SummaryTab
-            summaryReport={
-              experiment.summary_report ?? successResult?.summary_report ?? null
-            }
-            sections={sections}
-            experimentId={experimentId}
-          />
+          <ErrorBoundary>
+            <SummaryTab
+              summaryReport={
+                experiment.summary_report ??
+                successResult?.summary_report ??
+                null
+              }
+              sections={sections}
+              experimentId={experimentId}
+            />
+          </ErrorBoundary>
         </TabsContent>
 
         {/* Code */}
         <TabsContent value="code" className="mt-4">
-          <CodeDisplay code={successResult?.generated_code ?? null} />
+          <ErrorBoundary>
+            <CodeDisplay code={successResult?.generated_code ?? null} />
+          </ErrorBoundary>
         </TabsContent>
 
         {/* Data Profile */}
         {dataProfile && (
           <TabsContent value="data" className="mt-4">
-            <DataProfileCard profile={dataProfile} />
+            <ErrorBoundary>
+              <DataProfileCard profile={dataProfile} />
+            </ErrorBoundary>
           </TabsContent>
         )}
 
         {/* Journal */}
         <TabsContent value="journal" className="mt-4">
-          <JournalViewer experimentId={experimentId} />
+          <ErrorBoundary>
+            <JournalViewer experimentId={experimentId} />
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>

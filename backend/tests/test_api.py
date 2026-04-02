@@ -618,9 +618,11 @@ def test_artifact_save_failure_surfaces_warnings(client):
     # Simulate what _run_training does when artifact save fails:
     # it stores _warnings in the result dict
     result_dict = {"framework": "sklearn", "status": "completed"}
+    from scientist_bin_backend.api.experiments import ExperimentStatus
+
     experiment_store.update(
         exp_id,
-        status="completed",
+        status=ExperimentStatus.completed,
         result={**result_dict, "_warnings": ["Artifact save failed: disk full"]},
     )
 

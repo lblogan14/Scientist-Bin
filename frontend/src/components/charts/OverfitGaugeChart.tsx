@@ -22,6 +22,8 @@ export function OverfitGaugeChart({
 }: OverfitGaugeChartProps) {
   const [c1, c2] = useCssVars(["--chart-1", "--chart-2"]);
 
+  if (!entries?.length) return null;
+
   const data = entries.map((e) => ({
     name: `${e.algorithm}\n(${e.metric_name})`,
     Train: Number(e.train_value.toFixed(4)),

@@ -12,6 +12,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage
 
 from scientist_bin_backend.agents.analyst.states import AnalystState
+from scientist_bin_backend.agents.analyst.utils import resolve_run_subdir
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.runner import CodeRunner, RunConfig
@@ -20,9 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_output_dir(experiment_id: str) -> Path:
-    """Resolve the data output directory for an experiment."""
-    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
-    return backend_root / "outputs" / "runs" / experiment_id / "data"
+    return resolve_run_subdir(experiment_id, "data")
 
 
 def _compute_split_ratios(

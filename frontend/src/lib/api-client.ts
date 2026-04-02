@@ -110,3 +110,24 @@ export function getModelDownloadUrl(experimentId: string): string {
 export function getResultsDownloadUrl(experimentId: string): string {
   return getArtifactDownloadUrl(experimentId, "results");
 }
+
+export async function getExperimentPlan(
+  id: string,
+): Promise<{ execution_plan: Record<string, unknown> | null }> {
+  return api.get(`experiments/${id}/plan`).json();
+}
+
+export async function getExperimentAnalysis(
+  id: string,
+): Promise<{
+  analysis_report: string | null;
+  split_data_paths: Record<string, string> | null;
+}> {
+  return api.get(`experiments/${id}/analysis`).json();
+}
+
+export async function getExperimentSummary(
+  id: string,
+): Promise<{ summary_report: string | null }> {
+  return api.get(`experiments/${id}/summary`).json();
+}

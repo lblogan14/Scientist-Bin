@@ -93,6 +93,14 @@ const components: Components = {
   td: ({ children }) => (
     <td className="px-4 py-2 text-foreground">{children}</td>
   ),
+  img: ({ src, alt }) => (
+    <img
+      src={src}
+      alt={alt ?? ""}
+      className="my-4 max-w-full rounded-lg border border-border"
+      loading="lazy"
+    />
+  ),
   hr: () => <hr className="my-6 border-border" />,
 };
 

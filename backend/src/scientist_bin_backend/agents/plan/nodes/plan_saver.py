@@ -10,6 +10,7 @@ import json
 import logging
 from pathlib import Path
 
+from scientist_bin_backend.agents.analyst.utils import resolve_run_subdir
 from scientist_bin_backend.agents.plan.states import PlanState
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
@@ -18,9 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve_output_dir(experiment_id: str) -> Path:
-    """Resolve the plan output directory for an experiment."""
-    backend_root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
-    return backend_root / "outputs" / "runs" / experiment_id / "plan"
+    return resolve_run_subdir(experiment_id, "plan")
 
 
 async def save_plan(state: PlanState) -> dict:

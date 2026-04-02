@@ -24,6 +24,8 @@ export function FeatureImportanceChart({
 }: FeatureImportanceChartProps) {
   const [c1, c2] = useCssVars(["--chart-1", "--chart-2"]);
 
+  if (!features?.length) return null;
+
   const sorted = features
     .slice(0, maxFeatures)
     .sort((a, b) => a.importance - b.importance);

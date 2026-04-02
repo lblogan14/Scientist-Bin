@@ -145,6 +145,12 @@ export function isExperimentError(
   return result !== null && "error" in result;
 }
 
+export function isExperimentResult(
+  result: ExperimentResult | ExperimentError | null,
+): result is ExperimentResult {
+  return result !== null && !isExperimentError(result);
+}
+
 // ---------------------------------------------------------------------------
 // Result types (from completed experiments)
 // ---------------------------------------------------------------------------
