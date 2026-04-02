@@ -3,7 +3,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -42,45 +41,40 @@ export function FeatureImportanceChart({
     : "Feature Importance";
 
   return (
-    <ChartContainer title={title}>
-      <ResponsiveContainer
-        width="100%"
-        height={Math.max(data.length * 32, 200)}
+    <ChartContainer title={title} height={Math.max(data.length * 32, 200)}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ left: 20, right: 30 }}
       >
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ left: 20, right: 30 }}
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+        <XAxis type="number" tick={{ fontSize: 12 }} />
+        <YAxis
+          dataKey="feature"
+          type="category"
+          width={140}
+          tick={{ fontSize: 11 }}
+        />
+        <Tooltip
+          formatter={(value: number) => [value.toFixed(4), "Importance"]}
+        />
+        <Bar
+          dataKey="importance"
+          radius={[0, 4, 4, 0]}
+          label={{
+            position: "right",
+            fontSize: 11,
+            formatter: (val: number) => val.toFixed(3),
+          }}
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 12 }} />
-          <YAxis
-            dataKey="feature"
-            type="category"
-            width={140}
-            tick={{ fontSize: 11 }}
-          />
-          <Tooltip
-            formatter={(value: number) => [value.toFixed(4), "Importance"]}
-          />
-          <Bar
-            dataKey="importance"
-            radius={[0, 4, 4, 0]}
-            label={{
-              position: "right",
-              fontSize: 11,
-              formatter: (val: number) => val.toFixed(3),
-            }}
-          >
-            {data.map((entry, index) => {
-              // Blend chart-1 (high) → chart-2 (low) by importance ratio
-              const opacity = 0.3 + entry.ratio * 0.7;
-              const fill = entry.ratio > 0.5 ? c1 : c2;
-              return <Cell key={index} fill={fill} fillOpacity={opacity} />;
-            })}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+          {data.map((entry, index) => {
+            // Blend chart-1 (high) → chart-2 (low) by importance ratio
+            const opacity = 0.3 + entry.ratio * 0.7;
+            const fill = entry.ratio > 0.5 ? c1 : c2;
+            return <Cell key={index} fill={fill} fillOpacity={opacity} />;
+          })}
+        </Bar>
+      </BarChart>
     </ChartContainer>
   );
 }

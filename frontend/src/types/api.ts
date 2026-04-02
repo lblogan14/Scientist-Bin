@@ -185,29 +185,6 @@ export interface SummaryReportSections {
   chart_data?: ChartData;
 }
 
-export interface ModelRanking {
-  rank: number;
-  algorithm: string;
-  hyperparameters: Record<string, unknown>;
-  train_metrics: Record<string, number>;
-  val_metrics: Record<string, number>;
-  test_metrics: Record<string, number> | null;
-  training_time_seconds: number;
-  strengths: string[];
-  weaknesses: string[];
-}
-
-export interface CVStabilityEntry {
-  algorithm: string;
-  metric_name: string;
-  fold_scores: number[];
-  mean: number;
-  std: number;
-  cv_coefficient_of_variation: number;
-  min_fold: number;
-  max_fold: number;
-}
-
 export interface OverfitEntry {
   algorithm: string;
   metric_name: string;
@@ -216,14 +193,6 @@ export interface OverfitEntry {
   gap: number;
   gap_percentage: number;
   overfit_risk: "low" | "moderate" | "high";
-}
-
-export interface HyperparamSensitivityEntry {
-  algorithm: string;
-  param_name: string;
-  score_range: number;
-  best_value: unknown;
-  values_tried: number;
 }
 
 export interface ExperimentResult {

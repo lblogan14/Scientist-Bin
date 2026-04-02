@@ -88,6 +88,9 @@ Each record in `experiment_history` may include these optional diagnostic fields
 | `ModelRanking` | Single model assessment: rank, algorithm, metrics, strengths, weaknesses |
 | `ReviewAndRankResult` | Combined ranking + selection with reasoning (single LLM call output) |
 | `SummaryReport` | Full enriched report with 12 sections |
+| `ChartData` | Structured chart data for frontend visualization (model comparison, CV, features, confusion) |
+| `FeatureImportanceItem` | Single feature importance entry (feature name + importance value) |
+| `CVFoldScores` | Fold-level scores for a single metric (scores list + mean) |
 | `CVStabilityEntry` | CV stability metrics for diagnostics computation |
 | `OverfitEntry` | Train-val gap analysis for diagnostics computation |
 | `HyperparamSensitivityEntry` | Hyperparameter impact for diagnostics computation |

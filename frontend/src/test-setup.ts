@@ -1,5 +1,14 @@
 import "@testing-library/jest-dom/vitest";
 
+// Stub CSS custom properties used by chart components (useCssVars).
+// jsdom's getComputedStyle returns "" for CSS vars; charts need real values.
+const root = document.documentElement;
+root.style.setProperty("--chart-1", "hsl(220 70% 50%)");
+root.style.setProperty("--chart-2", "hsl(160 60% 45%)");
+root.style.setProperty("--chart-3", "hsl(30 80% 55%)");
+root.style.setProperty("--chart-4", "hsl(280 65% 60%)");
+root.style.setProperty("--chart-5", "hsl(340 75% 55%)");
+
 // Polyfill APIs missing in jsdom that Radix UI components depend on
 if (typeof globalThis.ResizeObserver === "undefined") {
   globalThis.ResizeObserver = class ResizeObserver {

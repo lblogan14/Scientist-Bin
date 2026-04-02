@@ -3,7 +3,6 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -32,45 +31,40 @@ export function OverfitGaugeChart({
   }));
 
   return (
-    <ChartContainer title={title}>
-      <ResponsiveContainer
-        width="100%"
-        height={Math.max(data.length * 50, 200)}
+    <ChartContainer title={title} height={Math.max(data.length * 50, 200)}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ left: 20, right: 40 }}
       >
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{ left: 20, right: 40 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-          <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, "auto"]} />
-          <YAxis
-            dataKey="name"
-            type="category"
-            width={150}
-            tick={{ fontSize: 11 }}
-          />
-          <Tooltip
-            formatter={(value: number, name: string) => [
-              value.toFixed(4),
-              name,
-            ]}
-          />
-          <Legend />
-          <Bar
-            dataKey="Train"
-            fill={c1}
-            radius={[0, 4, 4, 0]}
-            barSize={16}
-          />
-          <Bar
-            dataKey="Validation"
-            fill={c2}
-            radius={[0, 4, 4, 0]}
-            barSize={16}
-          />
-        </BarChart>
-      </ResponsiveContainer>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+        <XAxis type="number" tick={{ fontSize: 12 }} domain={[0, "auto"]} />
+        <YAxis
+          dataKey="name"
+          type="category"
+          width={150}
+          tick={{ fontSize: 11 }}
+        />
+        <Tooltip
+          formatter={(value: number, name: string) => [
+            value.toFixed(4),
+            name,
+          ]}
+        />
+        <Legend />
+        <Bar
+          dataKey="Train"
+          fill={c1}
+          radius={[0, 4, 4, 0]}
+          barSize={16}
+        />
+        <Bar
+          dataKey="Validation"
+          fill={c2}
+          radius={[0, 4, 4, 0]}
+          barSize={16}
+        />
+      </BarChart>
     </ChartContainer>
   );
 }

@@ -113,6 +113,7 @@ class BaseFrameworkAgent(ABC):
             # Control
             "phase": "execution",
             "experiment_id": experiment_id,
+            "framework_name": self.framework_name,
             "error": None,
             "progress_events": [],
         }

@@ -438,6 +438,145 @@ def test_list_experiments_offset_beyond_total(client):
 
 
 # ---------------------------------------------------------------------------
+# Data file validation tests
+# ---------------------------------------------------------------------------
+
+
+def test_create_train_invalid_file_extension(client, tmp_path):
+    """Reject data files with unsupported extensions."""
+    bad_file = tmp_path / "data.txt"
+    bad_file.write_text("some text")
+
+    with (
+        patch(
+            "scientist_bin_backend.api.routes._run_training",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "scientist_bin_backend.api.routes._resolve_data_file_path",
+            return_value=str(bad_file),
+        ),
+    ):
+        resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test bad extension", "data_file_path": "data.txt"},
+        )
+    assert resp.status_code == 400
+    assert "Unsupported file type" in resp.json()["detail"]
+
+
+def test_create_train_file_too_large(client, tmp_path):
+    """Reject data files exceeding the size limit."""
+    import os
+
+    big_file = tmp_path / "huge.csv"
+    big_file.write_text("a")  # Create a small file, then mock os.stat
+
+    real_stat = os.stat
+
+    def fake_stat(path, *args, **kwargs):
+        result = real_stat(path, *args, **kwargs)
+        if str(path) == str(big_file):
+            # Return a modified stat result with large size
+
+            return os.stat_result(
+                (
+                    result.st_mode,
+                    result.st_ino,
+                    result.st_dev,
+                    result.st_nlink,
+                    result.st_uid,
+                    result.st_gid,
+                    600 * 1024 * 1024,  # st_size
+                    int(result.st_atime),
+                    int(result.st_mtime),
+                    int(result.st_ctime),
+                )
+            )
+        return result
+
+    with (
+        patch(
+            "scientist_bin_backend.api.routes._run_training",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "scientist_bin_backend.api.routes._resolve_data_file_path",
+            return_value=str(big_file),
+        ),
+        patch("os.stat", side_effect=fake_stat),
+    ):
+        resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test oversized file", "data_file_path": "huge.csv"},
+        )
+    assert resp.status_code == 400
+    assert "too large" in resp.json()["detail"]
+
+
+def test_create_train_valid_csv(client, tmp_path):
+    """Accept data files with supported .csv extension."""
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("col1,col2\n1,2\n")
+
+    with (
+        patch(
+            "scientist_bin_backend.api.routes._run_training",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "scientist_bin_backend.api.routes._resolve_data_file_path",
+            return_value=str(csv_file),
+        ),
+    ):
+        resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test valid csv file", "data_file_path": "data.csv"},
+        )
+    assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Path traversal protection tests
+# ---------------------------------------------------------------------------
+
+
+def test_download_artifact_path_traversal(client):
+    """Reject experiment IDs that attempt path traversal."""
+    # Create a real experiment first, then try traversal on a different endpoint
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Path traversal test"},
+        )
+    assert create_resp.status_code == 200
+
+    # Attempt path traversal — experiment won't be found in store
+    resp = client.get("/api/v1/experiments/../../etc/passwd/artifacts/model")
+    assert resp.status_code in (400, 404, 422)
+
+
+def test_download_artifact_invalid_type(client):
+    """Reject unknown artifact types."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test invalid artifact type"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    resp = client.get(f"/api/v1/experiments/{exp_id}/artifacts/badtype")
+    assert resp.status_code == 400
+    assert "Unknown artifact type" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
 # best_run_id population tests
 # ---------------------------------------------------------------------------
 

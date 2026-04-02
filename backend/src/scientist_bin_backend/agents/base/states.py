@@ -123,5 +123,6 @@ class BaseMLState(TypedDict, total=False):
     # -- Control --
     phase: str
     experiment_id: str | None
+    framework_name: str | None  # Set by framework agent for model selection
     error: str | None
     progress_events: list[dict]
