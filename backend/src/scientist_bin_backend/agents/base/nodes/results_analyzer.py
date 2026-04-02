@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 
 from langchain_core.messages import HumanMessage
 
-from scientist_bin_backend.agents.base.prompts.templates import (
+from scientist_bin_backend.agents.base.prompts import (
     FINAL_REPORT_PROMPT,
     REFLECTION_PROMPT,
     RESULTS_ANALYZER_PROMPT,
@@ -47,8 +47,11 @@ async def analyze_results(state: dict) -> dict:
     # Get experiment journal for logging
     journal = get_journal_for_experiment(experiment_id)
 
-    # Parse results from execution output
-    results_json = parse_results_json(execution_output)
+    # Use pre-parsed results from code_executor (avoids truncation issues),
+    # falling back to re-parsing from execution_output for backwards compat.
+    results_json = state.get("execution_results_json")
+    if results_json is None:
+        results_json = parse_results_json(execution_output)
 
     # Build new experiment records from this iteration
     new_records = []
@@ -61,6 +64,13 @@ async def analyze_results(state: dict) -> dict:
                 "metrics": entry.get("metrics", {}),
                 "training_time_seconds": entry.get("training_time", 0),
                 "timestamp": datetime.now(UTC).isoformat(),
+                # Enriched diagnostic fields (optional — present when
+                # the generated code extracts them)
+                "cv_fold_scores": entry.get("cv_fold_scores"),
+                "cv_results_top_n": entry.get("cv_results_top_n"),
+                "feature_importances": entry.get("feature_importances"),
+                "confusion_matrix": entry.get("confusion_matrix"),
+                "residual_stats": entry.get("residual_stats"),
             }
             new_records.append(record)
 
@@ -211,15 +221,6 @@ async def analyze_results(state: dict) -> dict:
         ],
         "messages": [HumanMessage(content=decision_msg)],
     }
-
-
-def route_decision(state: dict) -> str:
-    """Deterministic routing based on analyze_results output."""
-    next_action = state.get("next_action", "abort")
-    if next_action in ("accept", "abort"):
-        return "finalize"
-    # All iteration actions route back to code generation
-    return "generate_code"
 
 
 async def finalize(state: dict) -> dict:

@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
+import logging
+
 from scientist_bin_backend.agents.central.graph import build_central_graph
 from scientist_bin_backend.agents.central.schemas import AgentResponse, TrainRequest
 from scientist_bin_backend.agents.central.utils import build_initial_state
 
+logger = logging.getLogger(__name__)
+
 
 class CentralAgent:
-    """Entrypoint for running the full agent pipeline."""
+    """Entrypoint for running the full agent pipeline.
 
-    def __init__(self) -> None:
-        self.graph = build_central_graph()
+    The pipeline is:
+        analyze → route → analyst → plan (HITL) → framework → summary → END
+    """
+
+    def __init__(self, checkpointer=None) -> None:
+        self.graph = build_central_graph(checkpointer=checkpointer)
 
     async def run(
         self, request: TrainRequest, *, experiment_id: str | None = None
@@ -24,11 +32,108 @@ class CentralAgent:
         return AgentResponse(
             framework=final_state.get("selected_framework") or "sklearn",
             plan=agent_resp.get("plan"),
+            plan_markdown=final_state.get("plan_markdown"),
             generated_code=agent_resp.get("generated_code"),
             evaluation_results=agent_resp.get("evaluation_results"),
             experiment_history=agent_resp.get("experiment_history", []),
-            data_profile=agent_resp.get("data_profile"),
-            problem_type=agent_resp.get("problem_type"),
+            data_profile=final_state.get("data_profile"),
+            problem_type=final_state.get("problem_type"),
             iterations=agent_resp.get("iterations", 0),
+            analysis_report=final_state.get("analysis_report"),
+            summary_report=final_state.get("summary_report"),
+            best_model=agent_resp.get("best_model"),
+            best_hyperparameters=agent_resp.get("best_hyperparameters"),
+            selection_reasoning=agent_resp.get("selection_reasoning"),
+            report_sections=agent_resp.get("report_sections"),
             status="failed" if final_state.get("error") else "completed",
         )
+
+
+# ---------------------------------------------------------------------------
+# Example use cases — run with: uv run python -m scientist_bin_backend.agents.central.agent
+# ---------------------------------------------------------------------------
+
+EXAMPLES = [
+    TrainRequest(
+        objective="Classify iris species from petal and sepal measurements",
+        data_description=(
+            "150 samples, 4 numeric features (sepal_length, sepal_width, "
+            "petal_length, petal_width), 3 balanced classes (setosa, "
+            "versicolor, virginica). No missing values."
+        ),
+    ),
+    TrainRequest(
+        objective="Predict house prices from property features",
+        data_description=(
+            "20,000 rows, 80 features including lot area, year built, "
+            "overall quality, garage size, neighborhood (categorical). "
+            "Target: SalePrice (continuous). Some features have up to "
+            "20% missing values."
+        ),
+    ),
+    TrainRequest(
+        objective="Segment customers into groups based on purchasing behavior",
+        data_description=(
+            "5,000 customers with features: total_spend, frequency, "
+            "recency, avg_order_value, product_categories (one-hot). "
+            "No target column — unsupervised task."
+        ),
+    ),
+    TrainRequest(
+        objective="Detect fraudulent credit card transactions",
+        data_description=(
+            "284,807 transactions with 30 numeric features (PCA-transformed). "
+            "Target: Class (0=normal, 1=fraud). Highly imbalanced — only "
+            "0.17% are fraud. No missing values."
+        ),
+    ),
+    TrainRequest(
+        objective="Build a text classifier for sentiment analysis on movie reviews",
+        data_description="50,000 IMDB reviews, binary labels (positive/negative).",
+        framework_preference="transformers",
+    ),
+]
+
+
+async def _run_examples() -> None:
+    """Run analyze + route on each example and log results."""
+    import json
+
+    from scientist_bin_backend.agents.central.nodes.analyzer import analyze
+    from scientist_bin_backend.agents.central.nodes.router import route
+    from scientist_bin_backend.agents.central.utils import build_initial_state
+
+    separator = "=" * 72
+
+    for i, request in enumerate(EXAMPLES, 1):
+        logger.info("\n%s", separator)
+        logger.info("  EXAMPLE %d: %s", i, request.objective[:60])
+        if request.framework_preference:
+            logger.info("  Framework preference: %s", request.framework_preference)
+        logger.info(separator)
+
+        state = build_initial_state(request)
+
+        # --- Step 1: Analyze ---
+        logger.info("--- Analyzer Output ---")
+        analysis_update = await analyze(state)
+        task_analysis = analysis_update["task_analysis"]
+        logger.info("%s", json.dumps(task_analysis, indent=2))
+
+        # Apply the analysis update to state for the router
+        state = {**state, **analysis_update}
+
+        # --- Step 2: Route ---
+        logger.info("--- Router Output ---")
+        route_update = await route(state)
+        selected = route_update.get("selected_framework")
+        msg = route_update["messages"][0].content
+        logger.info("Selected framework: %s", selected)
+        logger.info("Reasoning: %s", msg)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    asyncio.run(_run_examples())

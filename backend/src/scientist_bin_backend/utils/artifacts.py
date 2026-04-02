@@ -17,7 +17,7 @@ def save_experiment_artifacts(
     experiment_id: str,
     result_dict: dict,
 ) -> dict[str, str]:
-    """Save model, results JSON, and journal to top-level output directories.
+    """Save model, results JSON, journal, and reports to top-level output directories.
 
     Returns a dict mapping artifact type to saved file path.
     """
@@ -65,5 +65,49 @@ def save_experiment_artifacts(
                 saved["journal"] = str(dest)
             except Exception:
                 logger.exception("Failed to save journal for %s", experiment_id)
+
+    # Copy analysis report
+    analysis_src = runs_dir / "data" / "analysis_report.md"
+    if analysis_src.exists():
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+            dest = results_dir / f"{experiment_id}_analysis.md"
+            shutil.copy2(analysis_src, dest)
+            saved["analysis"] = str(dest)
+        except Exception:
+            logger.exception("Failed to save analysis report for %s", experiment_id)
+
+    # Copy summary report
+    summary_src = runs_dir / "summary" / "report.md"
+    if summary_src.exists():
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+            dest = results_dir / f"{experiment_id}_summary.md"
+            shutil.copy2(summary_src, dest)
+            saved["summary"] = str(dest)
+        except Exception:
+            logger.exception("Failed to save summary report for %s", experiment_id)
+
+    # Copy execution plan
+    plan_src = runs_dir / "plan" / "execution_plan.json"
+    if plan_src.exists():
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+            dest = results_dir / f"{experiment_id}_plan.json"
+            shutil.copy2(plan_src, dest)
+            saved["plan"] = str(dest)
+        except Exception:
+            logger.exception("Failed to save execution plan for %s", experiment_id)
+
+    # Copy chart data (for frontend visualisation)
+    chart_src = runs_dir / "summary" / "chart_data.json"
+    if chart_src.exists():
+        try:
+            results_dir.mkdir(parents=True, exist_ok=True)
+            dest = results_dir / f"{experiment_id}_charts.json"
+            shutil.copy2(chart_src, dest)
+            saved["charts"] = str(dest)
+        except Exception:
+            logger.exception("Failed to save chart data for %s", experiment_id)
 
     return saved

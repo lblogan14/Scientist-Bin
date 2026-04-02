@@ -4,6 +4,7 @@ import { listExperiments } from "../api";
 export function useExperiments() {
   return useQuery({
     queryKey: ["experiments"],
-    queryFn: listExperiments,
+    queryFn: () => listExperiments(),
+    select: (data) => data.experiments,
   });
 }

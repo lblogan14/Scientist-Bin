@@ -1,11 +1,18 @@
-"""Reusable graph topology factory for all ML framework subagents.
+"""Shared graph builder for ML framework subagents.
 
-The graph structure is the same for every framework:
-    classify_problem -> analyze_data -> plan_strategy -> generate_code
-    -> execute_code -> analyze_results -> (route) -> finalize | generate_code
+Builds the standard generate → validate → execute → analyze iteration loop
+with error-research side-path and test evaluation on acceptance.
 
-Framework-specific subagents provide their own plan_strategy and generate_code
-functions while reusing the base nodes for everything else.
+Flow::
+
+    START → generate_code → validate_code → [route_validation]
+        validation_ok  → execute_code → analyze_results → [route_decision]
+        validation_fail → generate_code  (loop, max retries then execute anyway)
+
+    route_decision:
+        accept / abort  → evaluate_on_test → finalize → END
+        fix_error       → error_research → generate_code
+        refine / new_algo / feature_eng → generate_code
 """
 
 from __future__ import annotations
@@ -15,73 +22,130 @@ from collections.abc import Callable
 from langgraph.graph import END, START, StateGraph
 
 from scientist_bin_backend.agents.base.nodes.code_executor import execute_code
-from scientist_bin_backend.agents.base.nodes.data_analyzer import (
-    analyze_data,
-    classify_problem,
+from scientist_bin_backend.agents.base.nodes.code_validator import (
+    MAX_VALIDATION_ATTEMPTS,
+    validate_code,
 )
 from scientist_bin_backend.agents.base.nodes.results_analyzer import (
     analyze_results,
     finalize,
-    route_decision,
 )
+from scientist_bin_backend.agents.base.nodes.test_evaluator import evaluate_on_test
 
 
-def build_ml_graph(
-    *,
-    plan_strategy_fn: Callable,
-    generate_code_fn: Callable,
-    state_schema: type,
-    classify_problem_fn: Callable | None = None,
-    analyze_data_fn: Callable | None = None,
-    execute_code_fn: Callable | None = None,
-    analyze_results_fn: Callable | None = None,
-    finalize_fn: Callable | None = None,
-    checkpointer: object | None = None,
-):
-    """Build and compile the standard ML pipeline graph.
+def _route_validation(state: dict) -> str:
+    """Route after code validation.
+
+    - No error → proceed to execution.
+    - Error but under retry limit → regenerate code.
+    - Error and at retry limit → proceed to execution anyway (let it fail
+      with a real error message).
+    """
+    validation_error = state.get("validation_error")
+    validation_attempts = state.get("validation_attempts", 0)
+
+    if not validation_error:
+        return "execute_code"
+    if validation_attempts >= MAX_VALIDATION_ATTEMPTS:
+        return "execute_code"
+    return "generate_code"
+
+
+def _route_decision(state: dict) -> str:
+    """Route based on the analyze_results decision.
+
+    - accept / abort → evaluate_on_test (then finalize)
+    - fix_error → error_research (web search before regenerating)
+    - refine_params / try_new_algo / feature_engineer → generate_code
+    """
+    next_action = state.get("next_action", "abort")
+    if next_action in ("accept", "abort"):
+        return "evaluate_on_test"
+    if next_action == "fix_error":
+        return "error_research"
+    return "generate_code"
+
+
+def build_framework_graph(
+    state_class: type,
+    generate_code_node: Callable,
+    error_research_node: Callable | None = None,
+    checkpointer=None,
+) -> object:
+    """Build and compile the standard framework subagent graph.
 
     Args:
-        plan_strategy_fn: Framework-specific strategy planning node.
-        generate_code_fn: Framework-specific code generation node.
-        state_schema: The TypedDict state class for this framework.
-        classify_problem_fn: Override for problem classification (default: base).
-        analyze_data_fn: Override for data analysis (default: base).
-        execute_code_fn: Override for code execution (default: base).
-        analyze_results_fn: Override for results analysis (default: base).
-        finalize_fn: Override for finalization (default: base).
+        state_class: The TypedDict state schema for the graph.
+        generate_code_node: Framework-specific code generation node function.
+        error_research_node: Framework-specific error research node function.
+            If ``None``, the ``fix_error`` path routes directly to
+            ``generate_code`` (error context is still available via state).
         checkpointer: Optional LangGraph checkpointer for persistence.
 
     Returns:
-        Compiled LangGraph StateGraph.
+        Compiled LangGraph ``StateGraph``.
     """
-    builder = StateGraph(state_schema)
+    builder = StateGraph(state_class)
 
-    # Register nodes (use base defaults unless overridden)
-    builder.add_node("classify_problem", classify_problem_fn or classify_problem)
-    builder.add_node("analyze_data", analyze_data_fn or analyze_data)
-    builder.add_node("plan_strategy", plan_strategy_fn)
-    builder.add_node("generate_code", generate_code_fn)
-    builder.add_node("execute_code", execute_code_fn or execute_code)
-    builder.add_node("analyze_results", analyze_results_fn or analyze_results)
-    builder.add_node("finalize", finalize_fn or finalize)
+    # Register nodes
+    builder.add_node("generate_code", generate_code_node)
+    builder.add_node("validate_code", validate_code)
+    builder.add_node("execute_code", execute_code)
+    builder.add_node("analyze_results", analyze_results)
+    builder.add_node("evaluate_on_test", evaluate_on_test)
+    builder.add_node("finalize", finalize)
 
-    # Linear flow through phases
-    builder.add_edge(START, "classify_problem")
-    builder.add_edge("classify_problem", "analyze_data")
-    builder.add_edge("analyze_data", "plan_strategy")
-    builder.add_edge("plan_strategy", "generate_code")
-    builder.add_edge("generate_code", "execute_code")
-    builder.add_edge("execute_code", "analyze_results")
+    if error_research_node is not None:
+        builder.add_node("error_research", error_research_node)
 
-    # Conditional routing from analyze_results
+    # Edges: START → generate_code → validate_code → (routing)
+    builder.add_edge(START, "generate_code")
+    builder.add_edge("generate_code", "validate_code")
+
+    # Validation routing
     builder.add_conditional_edges(
-        "analyze_results",
-        route_decision,
+        "validate_code",
+        _route_validation,
         {
+            "execute_code": "execute_code",
             "generate_code": "generate_code",
-            "finalize": "finalize",
         },
     )
+
+    # execute → analyze → (routing)
+    builder.add_edge("execute_code", "analyze_results")
+
+    # Decision routing after analysis
+    if error_research_node is not None:
+        builder.add_conditional_edges(
+            "analyze_results",
+            _route_decision,
+            {
+                "generate_code": "generate_code",
+                "error_research": "error_research",
+                "evaluate_on_test": "evaluate_on_test",
+            },
+        )
+        builder.add_edge("error_research", "generate_code")
+    else:
+        # Without error research, fix_error routes directly to generate_code
+        def _route_decision_no_research(state: dict) -> str:
+            next_action = state.get("next_action", "abort")
+            if next_action in ("accept", "abort"):
+                return "evaluate_on_test"
+            return "generate_code"
+
+        builder.add_conditional_edges(
+            "analyze_results",
+            _route_decision_no_research,
+            {
+                "generate_code": "generate_code",
+                "evaluate_on_test": "evaluate_on_test",
+            },
+        )
+
+    # evaluate_on_test → finalize → END
+    builder.add_edge("evaluate_on_test", "finalize")
     builder.add_edge("finalize", END)
 
     return builder.compile(checkpointer=checkpointer)

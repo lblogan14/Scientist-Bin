@@ -30,6 +30,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("GOOGLE_API_KEY", "SCIENTIST_BIN_GOOGLE_API_KEY"),
     )
     gemini_model: str = "gemini-2.0-flash"
+    gemini_model_flash: str = "gemini-3-flash-preview"
+    gemini_model_pro: str = "gemini-3.1-pro-preview"
     debug: bool = False
     cors_origins: list[str] = ["http://localhost:5173"]
 

@@ -70,3 +70,50 @@ async def test_sse_format():
     sse = event.sse_format()
     assert sse["event"] == "metric_update"
     assert '"value":42' in sse["data"]
+
+
+async def test_pre_register_receives_early_events(bus):
+    """Events emitted before consume() starts are not lost."""
+    # Pre-register BEFORE any events
+    queue = bus.pre_register("exp1")
+
+    # Emit events immediately — no consumer running yet
+    await bus.emit("exp1", ExperimentEvent(event_type="phase_change", data={"phase": "init"}))
+    await bus.emit("exp1", ExperimentEvent(event_type="run_started", data={"run_id": "r1"}))
+
+    # Now consume — both events should be there
+    received = []
+
+    async def consumer():
+        async for event in bus.consume("exp1", queue):
+            received.append(event)
+
+    # Close after a brief delay to let consumer drain
+    async def close_soon():
+        await asyncio.sleep(0.01)
+        await bus.close("exp1")
+
+    task = asyncio.create_task(consumer())
+    asyncio.create_task(close_soon())
+    await task
+
+    assert len(received) == 2
+    assert received[0].event_type == "phase_change"
+    assert received[1].event_type == "run_started"
+
+
+async def test_queue_cleanup_after_consume(bus):
+    """After consume finishes, the queue is removed from internal tracking."""
+    queue = bus.pre_register("exp1")
+
+    # The queue should be registered
+    assert len(bus._queues.get("exp1", [])) == 1
+
+    # Immediately close to end the consumer
+    await bus.close("exp1")
+
+    async for _ in bus.consume("exp1", queue):
+        pass  # drain
+
+    # After consume finishes, queue should be cleaned up
+    assert queue not in bus._queues.get("exp1", [])

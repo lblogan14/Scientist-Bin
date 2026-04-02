@@ -20,23 +20,40 @@ class EventBus:
         for q in queues:
             await q.put(event)
 
-    async def subscribe(self, experiment_id: str) -> AsyncIterator[ExperimentEvent]:
-        """Subscribe to events for an experiment. Yields events until closed."""
-        q: asyncio.Queue[ExperimentEvent | None] = asyncio.Queue()
-        if experiment_id not in self._queues:
-            self._queues[experiment_id] = []
-        self._queues[experiment_id].append(q)
+    def pre_register(self, experiment_id: str) -> asyncio.Queue[ExperimentEvent | None]:
+        """Pre-register a queue before the agent starts emitting events.
 
+        Call this *before* launching the agent so that no early events are lost.
+        Pass the returned queue to :meth:`consume` to iterate over events.
+        """
+        q: asyncio.Queue[ExperimentEvent | None] = asyncio.Queue()
+        self._queues.setdefault(experiment_id, []).append(q)
+        return q
+
+    async def consume(
+        self, experiment_id: str, queue: asyncio.Queue[ExperimentEvent | None]
+    ) -> AsyncIterator[ExperimentEvent]:
+        """Iterate over events from a pre-registered queue until closed."""
         try:
             while True:
-                event = await q.get()
+                event = await queue.get()
                 if event is None:
                     break
                 yield event
         finally:
-            self._queues.get(experiment_id, []).remove(q) if q in self._queues.get(
-                experiment_id, []
-            ) else None
+            queues = self._queues.get(experiment_id, [])
+            if queue in queues:
+                queues.remove(queue)
+
+    async def subscribe(self, experiment_id: str) -> AsyncIterator[ExperimentEvent]:
+        """Subscribe to events for an experiment. Yields events until closed.
+
+        For cases where you need to guarantee no events are missed, use
+        :meth:`pre_register` + :meth:`consume` instead.
+        """
+        q = self.pre_register(experiment_id)
+        async for event in self.consume(experiment_id, q):
+            yield event
 
     async def close(self, experiment_id: str) -> None:
         """Signal all subscribers that no more events will be sent."""

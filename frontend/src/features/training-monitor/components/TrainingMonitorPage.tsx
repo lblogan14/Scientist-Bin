@@ -26,7 +26,7 @@ export default function TrainingMonitorPage() {
   const { data: latestExperiment } = useQuery({
     queryKey: ["experiments", "latest-active"],
     queryFn: async () => {
-      const all = await listExperiments();
+      const { experiments: all } = await listExperiments();
       return (
         all.find((e) => e.status === "running" || e.status === "pending") ??
         all[0] ??
