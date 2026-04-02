@@ -101,6 +101,8 @@ class AgentResponse(BaseModel):
     summary_report: str | None = None
     best_model: str | None = None
     best_hyperparameters: dict | None = None
+    test_metrics: dict | None = None
+    test_diagnostics: dict | None = None
     selection_reasoning: str | None = None
     report_sections: dict | None = None
     status: str = "completed"

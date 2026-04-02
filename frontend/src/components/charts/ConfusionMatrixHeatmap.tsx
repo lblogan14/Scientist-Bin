@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ConfusionMatrixHeatmapProps {
@@ -55,10 +56,9 @@ export function ConfusionMatrixHeatmap({
 
             {/* Rows */}
             {matrix.map((row, rowIdx) => (
-              <>
+              <Fragment key={`row-${rowIdx}`}>
                 {/* Row header */}
                 <div
-                  key={`row-${labels[rowIdx]}`}
                   className="text-muted-foreground flex items-center justify-end pr-2 text-xs font-medium"
                   title={labels[rowIdx]}
                 >
@@ -74,7 +74,7 @@ export function ConfusionMatrixHeatmap({
                     {value}
                   </div>
                 ))}
-              </>
+              </Fragment>
             ))}
           </div>
           {/* Row headers label */}

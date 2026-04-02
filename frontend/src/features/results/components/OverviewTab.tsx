@@ -2,6 +2,7 @@ import { Award, Target, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
+import { ParetoFrontierChart } from "@/components/charts/ParetoFrontierChart";
 import type { ExperimentResult } from "@/types/api";
 import { MetricCards } from "./MetricCards";
 
@@ -20,6 +21,24 @@ export function OverviewTab({ result }: OverviewTabProps) {
     (e) => e.algorithm === bestModel,
   );
   const bestMetrics = bestExperiment?.metrics ?? null;
+
+  // Build Pareto data from experiment history
+  const paretoData = result.experiment_history
+    ?.filter((r) => r.training_time_seconds > 0)
+    .map((r) => {
+      const primaryMetric =
+        r.metrics.val_accuracy ??
+        r.metrics.accuracy ??
+        r.metrics.val_f1_macro ??
+        Object.values(r.metrics)[0] ??
+        0;
+      return {
+        name: r.algorithm,
+        performance: primaryMetric,
+        time: r.training_time_seconds,
+        isPareto: r.algorithm === bestModel,
+      };
+    }) ?? [];
 
   return (
     <div className="space-y-6">
@@ -69,6 +88,9 @@ export function OverviewTab({ result }: OverviewTabProps) {
 
       {/* Key Metrics */}
       {bestMetrics && <MetricCards metrics={bestMetrics} />}
+
+      {/* Performance vs Training Time */}
+      {paretoData.length > 1 && <ParetoFrontierChart data={paretoData} />}
 
       {/* Selection Reasoning */}
       {reasoning && (

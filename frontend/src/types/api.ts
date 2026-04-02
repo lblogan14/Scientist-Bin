@@ -241,6 +241,8 @@ export interface ExperimentResult {
   summary_report: string | null;
   best_model: string | null;
   best_hyperparameters: Record<string, unknown> | null;
+  test_metrics: Record<string, number> | null;
+  test_diagnostics: Record<string, unknown> | null;
   selection_reasoning: string | null;
   report_sections: SummaryReportSections | null;
   status: string;
@@ -297,16 +299,6 @@ export interface DataProfile {
   target_stats: Record<string, number> | null;
   statistics_summary: string;
   data_quality_issues: string[];
-}
-
-// ---------------------------------------------------------------------------
-// Plan review types
-// ---------------------------------------------------------------------------
-
-export interface PendingReview {
-  plan_markdown: string;
-  message: string;
-  revision_count: number;
 }
 
 // ---------------------------------------------------------------------------
