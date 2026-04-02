@@ -3,6 +3,7 @@ import { Outlet } from "react-router";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Header } from "@/components/layout/Header";
+import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 
 export function Layout() {
@@ -13,9 +14,11 @@ export function Layout() {
         <div className="flex flex-1 flex-col">
           <Header />
           <main className="flex-1 p-6">
-            <Suspense fallback={<LoadingSpinner />}>
-              <Outlet />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Outlet />
+              </Suspense>
+            </ErrorBoundary>
           </main>
         </div>
       </div>

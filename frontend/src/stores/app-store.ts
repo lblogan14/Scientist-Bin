@@ -7,9 +7,6 @@ interface AppState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
 
-  selectedExperimentId: string | null;
-  setSelectedExperimentId: (id: string | null) => void;
-
   theme: Theme;
   setTheme: (theme: Theme) => void;
 }
@@ -34,9 +31,6 @@ export const useAppStore = create<AppState>((set) => ({
   sidebarOpen: true,
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
-
-  selectedExperimentId: null,
-  setSelectedExperimentId: (id) => set({ selectedExperimentId: id }),
 
   theme: getInitialTheme(),
   setTheme: (theme) => {

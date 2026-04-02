@@ -252,7 +252,11 @@ def _compute_pareto_frontier(experiment_history: list[dict], problem_type: str) 
 
 
 def _build_chart_data(ctx: dict, problem_type: str) -> dict:
-    """Build JSON-serializable chart data for the frontend."""
+    """Build JSON-serializable chart data for the frontend.
+
+    Returns a plain dict matching the ChartData schema from
+    ``agents.summary.schemas``.
+    """
     charts: dict = {}
 
     experiment_history = ctx.get("experiment_history", [])

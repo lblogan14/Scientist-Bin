@@ -18,6 +18,8 @@ interface ExperimentEvents {
   isConnected: boolean;
   /** Whether the experiment is done (no more events expected) */
   isDone: boolean;
+  /** Whether the connection dropped and is attempting to reconnect */
+  isReconnecting: boolean;
   /** Plan review data when plan_review_pending fires */
   planReview: PlanReviewData | null;
   /** Execution plan JSON when plan_completed fires */
@@ -44,6 +46,7 @@ export function useExperimentEvents(
   const [metrics, setMetrics] = useState<Map<string, MetricPoint[]>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [planReview, setPlanReview] = useState<PlanReviewData | null>(null);
   const [executionPlan, setExecutionPlan] = useState<Record<
     string,
@@ -102,6 +105,7 @@ export function useExperimentEvents(
     setMetrics(new Map());
     setIsConnected(false);
     setIsDone(false);
+    setIsReconnecting(false);
     setPlanReview(null);
     setExecutionPlan(null);
     setAnalysisReport(null);
@@ -113,6 +117,7 @@ export function useExperimentEvents(
     source.onopen = () => {
       hasOpened = true;
       setIsConnected(true);
+      setIsReconnecting(false);
     };
     source.onerror = () => {
       setIsConnected(false);
@@ -120,6 +125,9 @@ export function useExperimentEvents(
       // error (e.g. 404). Close to prevent the browser's auto-reconnect loop.
       if (!hasOpened) {
         source.close();
+      } else {
+        // Connection was established but dropped — browser will auto-reconnect
+        setIsReconnecting(true);
       }
     };
 
@@ -259,6 +267,20 @@ export function useExperimentEvents(
       scheduleFlush();
     });
 
+    source.addEventListener("framework_completed", (e: MessageEvent) => {
+      const event: ProgressEvent = JSON.parse(e.data);
+      const fw = (event.data.framework as string) ?? "framework";
+      const iters = event.data.iterations as number | undefined;
+      pendingActivities.current.push({
+        agent: fw,
+        action: "Training complete",
+        timestamp: event.timestamp,
+        details: iters != null ? `${iters} iteration(s)` : undefined,
+        data: event.data,
+      });
+      scheduleFlush();
+    });
+
     source.addEventListener("summary_completed", (e: MessageEvent) => {
       const event: ProgressEvent = JSON.parse(e.data);
       setSummaryReport((event.data.summary_report as string) ?? null);
@@ -298,6 +320,7 @@ export function useExperimentEvents(
     metrics,
     isConnected,
     isDone,
+    isReconnecting,
     planReview,
     executionPlan,
     analysisReport,

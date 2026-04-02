@@ -353,10 +353,29 @@ async def create_train(body: TrainRequestBody, background_tasks: BackgroundTasks
     if body.data_file_path and resolved_data_file:
         from pathlib import Path
 
-        if not Path(resolved_data_file).is_file():
+        data_path = Path(resolved_data_file)
+        if not data_path.is_file():
             raise HTTPException(
                 status_code=400,
                 detail=f"Data file not found: {body.data_file_path}",
+            )
+        # Validate file extension
+        _ALLOWED_EXTENSIONS = {".csv", ".tsv", ".parquet", ".xlsx", ".xls", ".json"}
+        if data_path.suffix.lower() not in _ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Unsupported file type '{data_path.suffix}'. "
+                    f"Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}"
+                ),
+            )
+        # Validate file size (default limit: 500 MB)
+        _MAX_FILE_SIZE = 500 * 1024 * 1024
+        file_size = data_path.stat().st_size
+        if file_size > _MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Data file too large ({file_size / 1024 / 1024:.1f} MB). Maximum: 500 MB.",
             )
 
     experiment = experiment_store.create(
@@ -513,7 +532,11 @@ async def download_artifact(experiment_id: str, artifact_type: str) -> FileRespo
 
     subdir, pattern, media_type = spec
     filename = pattern.format(id=experiment_id)
-    path = _OUTPUTS_DIR / subdir / filename
+    path = (_OUTPUTS_DIR / subdir / filename).resolve()
+
+    # Guard against path traversal via crafted experiment IDs
+    if not str(path).startswith(str(_OUTPUTS_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid experiment ID")
 
     if not path.is_file():
         raise HTTPException(

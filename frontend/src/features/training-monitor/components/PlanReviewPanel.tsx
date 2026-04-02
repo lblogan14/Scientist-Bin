@@ -21,7 +21,7 @@ export function PlanReviewPanel({
 }: PlanReviewPanelProps) {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const { mutate, isPending } = usePlanReview(experimentId);
+  const { mutate, isPending, errorMessage } = usePlanReview(experimentId);
 
   const handleApprove = () => {
     mutate("approve");
@@ -91,6 +91,12 @@ export function PlanReviewPanel({
               </Button>
             </div>
           </div>
+        )}
+
+        {errorMessage && (
+          <p className="text-destructive text-sm" role="alert">
+            {errorMessage}
+          </p>
         )}
 
         <div className="flex gap-3">

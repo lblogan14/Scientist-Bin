@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { FlaskConical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { useExperiments } from "../hooks/use-experiments";
 
@@ -15,7 +16,24 @@ const statusColors: Record<string, string> = {
 export function RecentExperiments() {
   const { data: experiments, isLoading } = useExperiments();
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-4 w-36" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 p-2">
+              <Skeleton className="size-2 rounded-full" />
+              <Skeleton className="h-4 flex-1" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
 
   const recent = experiments?.slice(0, 5) ?? [];
 

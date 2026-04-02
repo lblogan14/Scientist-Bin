@@ -56,8 +56,15 @@ export default function TrainingMonitorPage() {
   const isNotFound =
     isError && error instanceof HTTPError && error.response.status === 404;
 
-  const { activities, logLines, metrics, isConnected, isDone, planReview } =
-    useExperimentEvents(experimentId, !isNotFound);
+  const {
+    activities,
+    logLines,
+    metrics,
+    isConnected,
+    isDone,
+    isReconnecting,
+    planReview,
+  } = useExperimentEvents(experimentId, !isNotFound);
 
   // Use SSE activities when live, fall back to stored progress_events.
   // This hook must be before any early returns to satisfy React's rules of hooks.
@@ -172,6 +179,12 @@ export default function TrainingMonitorPage() {
           <span className="flex items-center gap-2 text-sm text-success">
             <span className="size-2 animate-pulse rounded-full bg-success" />
             Live
+          </span>
+        )}
+        {isReconnecting && (
+          <span className="flex items-center gap-2 text-sm text-amber-500">
+            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
+            Reconnecting...
           </span>
         )}
       </div>

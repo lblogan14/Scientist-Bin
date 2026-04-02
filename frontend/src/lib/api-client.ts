@@ -14,6 +14,28 @@ const api = ky.create({
   timeout: 120_000,
 });
 
+/**
+ * Extract a human-readable error message from a ky HTTPError or generic Error.
+ */
+export async function extractErrorMessage(error: unknown): Promise<string> {
+  if (
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response instanceof Response
+  ) {
+    try {
+      const body = await error.response.json();
+      if (body.detail) return String(body.detail);
+    } catch {
+      // Response body not JSON
+    }
+    return `Request failed (${error.response.status})`;
+  }
+  if (error instanceof Error) return error.message;
+  return "An unexpected error occurred";
+}
+
 export async function submitTrainRequest(
   request: TrainRequest,
 ): Promise<Experiment> {
@@ -53,25 +75,6 @@ export async function getExperimentJournal(
   id: string,
 ): Promise<JournalEntry[]> {
   return api.get(`experiments/${id}/journal`).json<JournalEntry[]>();
-}
-
-export async function getExperimentPlan(
-  id: string,
-): Promise<{ execution_plan: Record<string, unknown> | null }> {
-  return api.get(`experiments/${id}/plan`).json();
-}
-
-export async function getExperimentAnalysis(id: string): Promise<{
-  analysis_report: string | null;
-  split_data_paths: Record<string, string> | null;
-}> {
-  return api.get(`experiments/${id}/analysis`).json();
-}
-
-export async function getExperimentSummary(
-  id: string,
-): Promise<{ summary_report: string | null }> {
-  return api.get(`experiments/${id}/summary`).json();
 }
 
 export async function submitPlanReview(

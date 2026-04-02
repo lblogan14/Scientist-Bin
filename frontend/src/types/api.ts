@@ -33,7 +33,6 @@ export type ProgressEventType =
   | "plan_review_submitted"
   | "plan_completed"
   | "analysis_completed"
-  | "sklearn_completed"
   | "framework_completed"
   | "summary_completed";
 

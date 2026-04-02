@@ -18,7 +18,7 @@ export function ExperimentDetail({
   onDeleted,
 }: ExperimentDetailProps) {
   const { data: experiment, isLoading } = useExperiment(experimentId);
-  const { mutate: remove, isPending } = useDeleteExperiment();
+  const { mutate: remove, isPending, errorMessage } = useDeleteExperiment();
 
   if (isLoading) return <LoadingSpinner />;
   if (!experiment) return null;
@@ -125,6 +125,11 @@ export function ExperimentDetail({
             {isPending ? "Deleting..." : "Delete"}
           </Button>
         </div>
+        {errorMessage && (
+          <p className="text-destructive text-sm" role="alert">
+            {errorMessage}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
