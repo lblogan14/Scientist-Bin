@@ -1,14 +1,18 @@
+import { ActiveExperimentBanner } from "./ActiveExperimentBanner";
 import { DashboardStats } from "./DashboardStats";
 import { ObjectiveForm } from "./ObjectiveForm";
 import { RecentExperiments } from "./RecentExperiments";
 
 export default function DashboardPage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <h2 className="text-2xl font-bold">Dashboard</h2>
+      <ActiveExperimentBanner />
       <DashboardStats />
-      <ObjectiveForm />
-      <RecentExperiments />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ObjectiveForm />
+        <RecentExperiments />
+      </div>
     </div>
   );
 }

@@ -49,10 +49,7 @@ export function JournalViewer({ experimentId }: JournalViewerProps) {
           ) : (
             <div className="space-y-3">
               {entries.map((entry, i) => (
-                <div
-                  key={i}
-                  className="border-border border-l-2 pl-3 text-sm"
-                >
+                <div key={i} className="border-border border-l-2 pl-3 text-sm">
                   <div className="flex items-center gap-2">
                     <Badge
                       variant={getEventVariant(entry.event)}

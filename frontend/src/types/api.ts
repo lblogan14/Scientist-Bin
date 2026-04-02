@@ -1,8 +1,4 @@
-export type ExperimentStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "failed";
+export type ExperimentStatus = "pending" | "running" | "completed" | "failed";
 
 export type Framework =
   | "sklearn"
@@ -147,6 +143,90 @@ export function isExperimentError(
 // Result types (from completed experiments)
 // ---------------------------------------------------------------------------
 
+export interface ExecutionPlan {
+  approach_summary: string;
+  problem_type: string;
+  target_column: string | null;
+  algorithms_to_try: string[];
+  pipeline_preprocessing_steps: string[];
+  feature_engineering_steps: string[];
+  evaluation_metrics: string[];
+  cv_strategy: string;
+  success_criteria: Record<string, number>;
+  hyperparameter_tuning_approach: string;
+}
+
+export interface ChartData {
+  model_comparison?: Array<Record<string, unknown>>;
+  cv_fold_scores?: Record<
+    string,
+    Record<string, { scores: number[]; mean: number }>
+  >;
+  feature_importances?: { algorithm: string; features: FeatureImportance[] };
+  confusion_matrices?: Record<string, ConfusionMatrix>;
+  training_times?: Array<{ algorithm: string; time_seconds: number }>;
+  hyperparam_search?: Record<string, CVResultEntry[]>;
+  residual_stats?: Record<string, ResidualStats>;
+}
+
+export interface SummaryReportSections {
+  title: string;
+  executive_summary: string;
+  dataset_overview: string;
+  methodology: string;
+  model_comparison_table: string;
+  cv_stability_analysis: string;
+  best_model_analysis: string;
+  feature_importance_analysis: string;
+  hyperparameter_analysis: string;
+  error_analysis: string;
+  conclusions: string;
+  recommendations: string[];
+  reproducibility_notes: string;
+  chart_data?: ChartData;
+}
+
+export interface ModelRanking {
+  rank: number;
+  algorithm: string;
+  hyperparameters: Record<string, unknown>;
+  train_metrics: Record<string, number>;
+  val_metrics: Record<string, number>;
+  test_metrics: Record<string, number> | null;
+  training_time_seconds: number;
+  strengths: string[];
+  weaknesses: string[];
+}
+
+export interface CVStabilityEntry {
+  algorithm: string;
+  metric_name: string;
+  fold_scores: number[];
+  mean: number;
+  std: number;
+  cv_coefficient_of_variation: number;
+  min_fold: number;
+  max_fold: number;
+}
+
+export interface OverfitEntry {
+  algorithm: string;
+  metric_name: string;
+  train_value: number;
+  val_value: number;
+  gap: number;
+  gap_percentage: number;
+  overfit_risk: "low" | "moderate" | "high";
+}
+
+export interface HyperparamSensitivityEntry {
+  algorithm: string;
+  param_name: string;
+  score_range: number;
+  best_value: unknown;
+  values_tried: number;
+}
+
 export interface ExperimentResult {
   framework: string;
   plan: Record<string, unknown> | null;
@@ -161,7 +241,35 @@ export interface ExperimentResult {
   summary_report: string | null;
   best_model: string | null;
   best_hyperparameters: Record<string, unknown> | null;
+  test_metrics: Record<string, number> | null;
+  test_diagnostics: Record<string, unknown> | null;
+  selection_reasoning: string | null;
+  report_sections: SummaryReportSections | null;
   status: string;
+}
+
+export interface CVResultEntry {
+  params: Record<string, unknown>;
+  mean_score: number;
+  std_score: number;
+  rank: number;
+}
+
+export interface FeatureImportance {
+  feature: string;
+  importance: number;
+}
+
+export interface ConfusionMatrix {
+  labels: string[];
+  matrix: number[][];
+}
+
+export interface ResidualStats {
+  mean_residual: number;
+  std_residual: number;
+  max_abs_residual: number;
+  residual_percentiles: Record<string, number>;
 }
 
 export interface ExperimentRecord {
@@ -171,6 +279,11 @@ export interface ExperimentRecord {
   metrics: Record<string, number>;
   training_time_seconds: number;
   timestamp: string;
+  cv_fold_scores?: Record<string, number[]>;
+  cv_results_top_n?: CVResultEntry[];
+  feature_importances?: FeatureImportance[];
+  confusion_matrix?: ConfusionMatrix;
+  residual_stats?: ResidualStats;
 }
 
 export interface DataProfile {
@@ -186,16 +299,6 @@ export interface DataProfile {
   target_stats: Record<string, number> | null;
   statistics_summary: string;
   data_quality_issues: string[];
-}
-
-// ---------------------------------------------------------------------------
-// Plan review types
-// ---------------------------------------------------------------------------
-
-export interface PendingReview {
-  plan_markdown: string;
-  message: string;
-  revision_count: number;
 }
 
 // ---------------------------------------------------------------------------

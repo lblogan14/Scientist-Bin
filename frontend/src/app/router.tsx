@@ -26,6 +26,7 @@ export const router = createBrowserRouter([
       { path: "experiments", element: <ExperimentSetupPage /> },
       { path: "monitor", element: <TrainingMonitorPage /> },
       { path: "results", element: <ResultsPage /> },
+      { path: "results/:id", element: <ResultsPage /> },
       { path: "models", element: <ModelSelectionPage /> },
     ],
   },

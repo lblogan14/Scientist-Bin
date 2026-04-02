@@ -32,7 +32,9 @@ export function DataProfileCard({ profile }: DataProfileCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium">Data Profile (EDA)</CardTitle>
+        <CardTitle className="text-sm font-medium">
+          Data Profile (EDA)
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Key stats */}
@@ -47,7 +49,9 @@ export function DataProfileCard({ profile }: DataProfileCardProps) {
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Numeric</p>
-            <p className="text-lg font-bold">{profile.numeric_columns.length}</p>
+            <p className="text-lg font-bold">
+              {profile.numeric_columns.length}
+            </p>
           </div>
           <div>
             <p className="text-muted-foreground text-xs">Categorical</p>
@@ -104,7 +108,7 @@ export function DataProfileCard({ profile }: DataProfileCardProps) {
             </p>
             <ul className="list-inside list-disc text-sm">
               {profile.data_quality_issues.map((issue, i) => (
-                <li key={i} className="text-yellow-600">
+                <li key={i} className="text-warning">
                   {issue}
                 </li>
               ))}

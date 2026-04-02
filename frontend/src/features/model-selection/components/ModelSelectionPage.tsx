@@ -4,6 +4,7 @@ import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
 import { useModels } from "../hooks/use-models";
 import { ModelComparisonTable } from "./ModelComparisonTable";
 import { ModelMetricChart } from "./ModelMetricChart";
+import { ModelRankingCard } from "./ModelRankingCard";
 import { ModelTradeoffScatter } from "./ModelTradeoffScatter";
 
 export default function ModelSelectionPage() {
@@ -22,6 +23,7 @@ export default function ModelSelectionPage() {
         />
       ) : (
         <>
+          <ModelRankingCard models={models} />
           <div className="grid gap-4 md:grid-cols-2">
             <ModelMetricChart models={models} />
             <ModelTradeoffScatter models={models} />

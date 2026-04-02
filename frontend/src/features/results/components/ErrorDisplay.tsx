@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ErrorDisplayProps {
   error: string;

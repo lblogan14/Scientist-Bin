@@ -56,6 +56,7 @@ async def _analyst_delegate(state: PipelineState) -> dict:
             ExperimentEvent(
                 event_type="analysis_completed",
                 data={
+                    "analysis_report": result.get("analysis_report"),
                     "has_report": bool(result.get("analysis_report")),
                     "classification_confidence": result.get("classification_confidence"),
                 },
@@ -105,7 +106,10 @@ async def _plan_delegate(state: PipelineState) -> dict:
             experiment_id,
             ExperimentEvent(
                 event_type="plan_completed",
-                data={"plan_approved": result.get("plan_approved", False)},
+                data={
+                    "execution_plan": result.get("execution_plan"),
+                    "plan_approved": result.get("plan_approved", False),
+                },
             ),
         )
 
@@ -201,7 +205,11 @@ async def _summary_delegate(state: PipelineState) -> dict:
         await event_bus.emit(
             experiment_id,
             ExperimentEvent(
-                event_type="summary_completed", data={"best_model": result.get("best_model")}
+                event_type="summary_completed",
+                data={
+                    "summary_report": result.get("summary_report"),
+                    "best_model": result.get("best_model"),
+                },
             ),
         )
 
