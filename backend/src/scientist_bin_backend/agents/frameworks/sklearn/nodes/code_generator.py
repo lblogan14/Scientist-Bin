@@ -15,7 +15,11 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage
 
 from scientist_bin_backend.agents.base.utils import strip_code_fences
-from scientist_bin_backend.agents.frameworks.sklearn.prompts import CODE_GENERATOR_PROMPT
+from scientist_bin_backend.agents.frameworks.sklearn.prompts import (
+    CLUSTERING_CODE_GENERATOR_PROMPT,
+    CODE_GENERATOR_PROMPT,
+    REGRESSION_CODE_GENERATOR_PROMPT,
+)
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.utils.llm import extract_text_content, get_agent_model
@@ -104,17 +108,40 @@ async def generate_code(state: dict) -> dict:
         analysis_context = f"\n== DATA ANALYSIS REPORT ==\n{analysis_report[:2000]}\n"
 
     llm = get_agent_model("sklearn")
-    prompt = CODE_GENERATOR_PROMPT.format(
-        objective=state.get("objective", ""),
-        problem_type=state.get("problem_type", "classification"),
-        data_profile=data_profile_str,
-        strategy=strategy_str,
-        train_file_path=train_path,
-        val_file_path=val_path,
-        test_file_path=test_path,
-        analysis_context=analysis_context,
-        retry_context=retry_context,
-    )
+    problem_type = state.get("problem_type", "classification")
+
+    if problem_type == "clustering":
+        prompt = CLUSTERING_CODE_GENERATOR_PROMPT.format(
+            objective=state.get("objective", ""),
+            data_profile=data_profile_str,
+            strategy=strategy_str,
+            train_file_path=train_path,
+            analysis_context=analysis_context,
+            retry_context=retry_context,
+        )
+    elif problem_type == "regression":
+        prompt = REGRESSION_CODE_GENERATOR_PROMPT.format(
+            objective=state.get("objective", ""),
+            data_profile=data_profile_str,
+            strategy=strategy_str,
+            train_file_path=train_path,
+            val_file_path=val_path,
+            test_file_path=test_path,
+            analysis_context=analysis_context,
+            retry_context=retry_context,
+        )
+    else:
+        prompt = CODE_GENERATOR_PROMPT.format(
+            objective=state.get("objective", ""),
+            problem_type=problem_type,
+            data_profile=data_profile_str,
+            strategy=strategy_str,
+            train_file_path=train_path,
+            val_file_path=val_path,
+            test_file_path=test_path,
+            analysis_context=analysis_context,
+            retry_context=retry_context,
+        )
     response = await llm.ainvoke([HumanMessage(content=prompt)])
     code = strip_code_fences(extract_text_content(response.content))
 

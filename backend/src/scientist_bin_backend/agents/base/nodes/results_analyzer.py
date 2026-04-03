@@ -71,6 +71,17 @@ async def analyze_results(state: dict) -> dict:
                 "feature_importances": entry.get("feature_importances"),
                 "confusion_matrix": entry.get("confusion_matrix"),
                 "residual_stats": entry.get("residual_stats"),
+                # Clustering-specific fields
+                "cluster_scatter": entry.get("cluster_scatter"),
+                "elbow_data": entry.get("elbow_data"),
+                "cluster_sizes": entry.get("cluster_sizes"),
+                "n_clusters": entry.get("n_clusters"),
+                "silhouette_per_sample": entry.get("silhouette_per_sample"),
+                "cluster_profiles": entry.get("cluster_profiles"),
+                # Regression-specific fields
+                "actual_vs_predicted": entry.get("actual_vs_predicted"),
+                "coefficients": entry.get("coefficients"),
+                "learning_curve": entry.get("learning_curve"),
             }
             new_records.append(record)
 

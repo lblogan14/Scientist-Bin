@@ -597,3 +597,71 @@ async def get_summary(experiment_id: str) -> dict:
 async def health_check() -> dict:
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Mock deployment endpoints
+# ---------------------------------------------------------------------------
+
+# In-memory deployment state (mock — not persisted)
+_deployments: dict[str, dict] = {}
+
+
+class DeployRequest(BaseModel):
+    model_version: str = "v1.0"
+
+
+@router.post("/experiments/{experiment_id}/deploy")
+async def deploy_model(experiment_id: str, body: DeployRequest | None = None) -> dict:
+    """Mock model deployment — simulates deploying the trained model to a server."""
+    experiment = experiment_store.get(experiment_id)
+    if experiment is None:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+    if experiment.status != ExperimentStatus.completed:
+        raise HTTPException(status_code=400, detail="Only completed experiments can be deployed")
+
+    version = body.model_version if body else "v1.0"
+    deployment_info = {
+        "status": "deployed",
+        "endpoint_url": f"/api/v1/predict/{experiment_id}",
+        "deployed_at": datetime.now(UTC).isoformat(),
+        "model_version": version,
+        "experiment_id": experiment_id,
+    }
+    _deployments[experiment_id] = deployment_info
+    return deployment_info
+
+
+@router.post("/experiments/{experiment_id}/undeploy")
+async def undeploy_model(experiment_id: str) -> dict:
+    """Mock model undeployment — removes the deployed model."""
+    if experiment_id not in _deployments:
+        raise HTTPException(status_code=404, detail="Model is not deployed")
+
+    _deployments.pop(experiment_id, None)
+    return {"status": "not_deployed", "experiment_id": experiment_id}
+
+
+@router.get("/experiments/{experiment_id}/deployment")
+async def get_deployment(experiment_id: str) -> dict:
+    """Get deployment status for a model."""
+    deployment = _deployments.get(experiment_id)
+    if deployment is None:
+        return {"status": "not_deployed", "experiment_id": experiment_id}
+    return deployment
+
+
+@router.post("/predict/{experiment_id}")
+async def predict(experiment_id: str) -> dict:
+    """Mock prediction endpoint — returns a placeholder response."""
+    deployment = _deployments.get(experiment_id)
+    if deployment is None:
+        raise HTTPException(status_code=404, detail="Model is not deployed")
+
+    return {
+        "prediction": "mock_prediction_result",
+        "model": experiment_id,
+        "model_version": deployment.get("model_version", "v1.0"),
+        "message": "This is a mock prediction endpoint. "
+        "In production, this would load the model and run inference.",
+    }

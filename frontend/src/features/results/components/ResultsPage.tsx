@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Download } from "lucide-react";
@@ -17,24 +17,10 @@ import {
 import { isExperimentError } from "@/types/api";
 import type { ExperimentResult, ChartData } from "@/types/api";
 import { useResult } from "../hooks/use-result";
-import { AlgorithmComparisonChart } from "./AlgorithmComparisonChart";
-import { AlgorithmRadarChart } from "./AlgorithmRadarChart";
-import { AnalysisTab } from "./AnalysisTab";
-import { CodeDisplay } from "./CodeDisplay";
-import { ConfusionMatrixTab } from "./ConfusionMatrixTab";
-import { CVStabilityTab } from "./CVStabilityTab";
-import { DataProfileCard } from "./DataProfileCard";
+import { getTabsForResult } from "../tab-registry";
+import type { TabContext } from "../tab-registry";
 import { ErrorDisplay } from "./ErrorDisplay";
-import { EvaluationReport } from "./EvaluationReport";
-import { FeatureImportanceTab } from "./FeatureImportanceTab";
-import { HyperparameterTab } from "./HyperparameterTab";
-import { JournalViewer } from "./JournalViewer";
 import { MetricCards } from "./MetricCards";
-import { OverfitAnalysisTab } from "./OverfitAnalysisTab";
-import { OverviewTab } from "./OverviewTab";
-import { PlanTab } from "./PlanTab";
-import { SummaryTab } from "./SummaryTab";
-import { TrainingTimeChart } from "./TrainingTimeChart";
 
 export default function ResultsPage() {
   const [searchParams] = useSearchParams();
@@ -102,7 +88,6 @@ export default function ResultsPage() {
     ? null
     : (result as ExperimentResult | null);
   const experimentHistory = successResult?.experiment_history ?? [];
-  const dataProfile = successResult?.data_profile ?? null;
   const evaluationResults = successResult?.evaluation_results as Record<
     string,
     unknown
@@ -111,24 +96,18 @@ export default function ResultsPage() {
     (evaluationResults?.metrics as Record<string, unknown>) ?? null;
   const chartData: ChartData | undefined =
     successResult?.report_sections?.chart_data;
-  const sections = successResult?.report_sections ?? null;
 
-  // Determine which diagnostic tabs have data
-  const hasConfusionMatrix =
-    (chartData?.confusion_matrices &&
-      Object.keys(chartData.confusion_matrices).length > 0) ||
-    experimentHistory.some((r) => r.confusion_matrix);
-  const hasCVFolds =
-    (chartData?.cv_fold_scores &&
-      Object.keys(chartData.cv_fold_scores).length > 0) ||
-    experimentHistory.some((r) => r.cv_fold_scores);
-  const hasFeatureImportance =
-    chartData?.feature_importances?.features?.length ||
-    experimentHistory.some((r) => r.feature_importances?.length);
-  const hasHyperparamSearch =
-    (chartData?.hyperparam_search &&
-      Object.keys(chartData.hyperparam_search).length > 0) ||
-    experimentHistory.some((r) => r.cv_results_top_n?.length);
+  // Build the tab context
+  const tabContext: TabContext = {
+    result: successResult,
+    chartData,
+    experimentHistory,
+    experimentId,
+    experiment,
+  };
+
+  // Get available tabs for this problem type
+  const tabs = getTabsForResult(successResult?.problem_type, tabContext);
 
   return (
     <div className="space-y-6">
@@ -173,181 +152,25 @@ export default function ResultsPage() {
       {/* Top-level metric cards */}
       <MetricCards metrics={bestMetrics} />
 
-      {/* Three-group tab layout: Overview | Analysis | Reports */}
-      <Tabs defaultValue="overview">
+      {/* Dynamic tabs driven by the tab registry */}
+      <Tabs defaultValue={tabs[0]?.id ?? "overview"}>
         <TabsList className="flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="experiments">Experiments</TabsTrigger>
-          {hasConfusionMatrix && (
-            <TabsTrigger value="confusion">Confusion Matrix</TabsTrigger>
-          )}
-          {hasCVFolds && (
-            <TabsTrigger value="cv-stability">CV Stability</TabsTrigger>
-          )}
-          <TabsTrigger value="overfit">Overfitting</TabsTrigger>
-          {hasFeatureImportance && (
-            <TabsTrigger value="features">Features</TabsTrigger>
-          )}
-          {hasHyperparamSearch && (
-            <TabsTrigger value="hyperparams">Hyperparams</TabsTrigger>
-          )}
-          <TabsTrigger value="plan">Plan</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="code">Code</TabsTrigger>
-          {dataProfile && <TabsTrigger value="data">Data</TabsTrigger>}
-          <TabsTrigger value="journal">Journal</TabsTrigger>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {/* Overview */}
-        <TabsContent value="overview" className="mt-4">
-          <ErrorBoundary>
-            {successResult ? (
-              <OverviewTab result={successResult} />
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                No results available.
-              </p>
-            )}
-          </ErrorBoundary>
-        </TabsContent>
-
-        {/* Experiments (existing) */}
-        <TabsContent value="experiments" className="mt-4 space-y-4">
-          <ErrorBoundary>
-            <EvaluationReport
-              evaluation={evaluationResults}
-              experimentHistory={experimentHistory}
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              <AlgorithmComparisonChart history={experimentHistory} />
-              <TrainingTimeChart history={experimentHistory} />
-            </div>
-            <AlgorithmRadarChart history={experimentHistory} />
-          </ErrorBoundary>
-        </TabsContent>
-
-        {/* Confusion Matrix */}
-        {hasConfusionMatrix && (
-          <TabsContent value="confusion" className="mt-4">
+        {tabs.map((tab) => (
+          <TabsContent key={tab.id} value={tab.id} className="mt-4">
             <ErrorBoundary>
-              <ConfusionMatrixTab
-                matrices={chartData?.confusion_matrices}
-                history={experimentHistory}
-              />
+              <Suspense fallback={<LoadingSpinner message="Loading..." />}>
+                <tab.component {...tabContext} />
+              </Suspense>
             </ErrorBoundary>
           </TabsContent>
-        )}
-
-        {/* CV Stability */}
-        {hasCVFolds && (
-          <TabsContent value="cv-stability" className="mt-4">
-            <ErrorBoundary>
-              <CVStabilityTab
-                chartData={chartData}
-                history={experimentHistory}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-        )}
-
-        {/* Overfitting Analysis */}
-        <TabsContent value="overfit" className="mt-4">
-          <ErrorBoundary>
-            <OverfitAnalysisTab history={experimentHistory} />
-          </ErrorBoundary>
-        </TabsContent>
-
-        {/* Feature Importance */}
-        {hasFeatureImportance && (
-          <TabsContent value="features" className="mt-4">
-            <ErrorBoundary>
-              <FeatureImportanceTab
-                chartData={chartData}
-                history={experimentHistory}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-        )}
-
-        {/* Hyperparameters */}
-        {hasHyperparamSearch && (
-          <TabsContent value="hyperparams" className="mt-4">
-            <ErrorBoundary>
-              <HyperparameterTab
-                chartData={chartData}
-                history={experimentHistory}
-                result={successResult ?? undefined}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-        )}
-
-        {/* Plan */}
-        <TabsContent value="plan" className="mt-4">
-          <ErrorBoundary>
-            <PlanTab
-              executionPlan={
-                experiment.execution_plan ?? successResult?.plan ?? null
-              }
-              planMarkdown={successResult?.plan_markdown ?? null}
-              experimentId={experimentId}
-            />
-          </ErrorBoundary>
-        </TabsContent>
-
-        {/* Analysis Report */}
-        <TabsContent value="analysis" className="mt-4">
-          <ErrorBoundary>
-            <AnalysisTab
-              analysisReport={
-                experiment.analysis_report ??
-                successResult?.analysis_report ??
-                null
-              }
-              splitDataPaths={experiment.split_data_paths}
-              experimentId={experimentId}
-            />
-          </ErrorBoundary>
-        </TabsContent>
-
-        {/* Summary Report */}
-        <TabsContent value="summary" className="mt-4">
-          <ErrorBoundary>
-            <SummaryTab
-              summaryReport={
-                experiment.summary_report ??
-                successResult?.summary_report ??
-                null
-              }
-              sections={sections}
-              experimentId={experimentId}
-            />
-          </ErrorBoundary>
-        </TabsContent>
-
-        {/* Code */}
-        <TabsContent value="code" className="mt-4">
-          <ErrorBoundary>
-            <CodeDisplay code={successResult?.generated_code ?? null} />
-          </ErrorBoundary>
-        </TabsContent>
-
-        {/* Data Profile */}
-        {dataProfile && (
-          <TabsContent value="data" className="mt-4">
-            <ErrorBoundary>
-              <DataProfileCard profile={dataProfile} />
-            </ErrorBoundary>
-          </TabsContent>
-        )}
-
-        {/* Journal */}
-        <TabsContent value="journal" className="mt-4">
-          <ErrorBoundary>
-            <JournalViewer experimentId={experimentId} />
-          </ErrorBoundary>
-        </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

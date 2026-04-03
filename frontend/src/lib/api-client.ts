@@ -1,6 +1,7 @@
 import ky from "ky";
 import type {
   ArtifactType,
+  DeploymentInfo,
   Experiment,
   HealthResponse,
   JournalEntry,
@@ -130,4 +131,26 @@ export async function getExperimentSummary(
   id: string,
 ): Promise<{ summary_report: string | null }> {
   return api.get(`experiments/${id}/summary`).json();
+}
+
+// ---------------------------------------------------------------------------
+// Deployment endpoints
+// ---------------------------------------------------------------------------
+
+export async function deployModel(
+  experimentId: string,
+): Promise<DeploymentInfo> {
+  return api.post(`experiments/${experimentId}/deploy`).json<DeploymentInfo>();
+}
+
+export async function undeployModel(
+  experimentId: string,
+): Promise<{ status: string }> {
+  return api.post(`experiments/${experimentId}/undeploy`).json();
+}
+
+export async function getDeployment(
+  experimentId: string,
+): Promise<DeploymentInfo & { experiment_id?: string }> {
+  return api.get(`experiments/${experimentId}/deployment`).json();
 }

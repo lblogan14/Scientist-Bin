@@ -1,14 +1,16 @@
-import { Award } from "lucide-react";
+import { Award, Rocket } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Experiment, ExperimentResult } from "@/types/api";
 import { isExperimentError } from "@/types/api";
 
 interface ModelRankingCardProps {
   models: Experiment[];
+  onDeployClick?: (experimentId: string) => void;
 }
 
-export function ModelRankingCard({ models }: ModelRankingCardProps) {
+export function ModelRankingCard({ models, onDeployClick }: ModelRankingCardProps) {
   // Extract best model info per completed experiment
   const rankings = models
     .filter((m) => m.result && !isExperimentError(m.result))
@@ -65,9 +67,22 @@ export function ModelRankingCard({ models }: ModelRankingCardProps) {
                 </Badge>
               </div>
             )}
-            <p className="text-muted-foreground text-xs">
-              {r.trainingTime.toFixed(1)}s training time
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-xs">
+                {r.trainingTime.toFixed(1)}s training time
+              </p>
+              {onDeployClick && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => onDeployClick(r.id)}
+                >
+                  <Rocket className="mr-1 size-3" />
+                  Deploy
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       ))}
