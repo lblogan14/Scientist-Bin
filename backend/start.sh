@@ -46,4 +46,4 @@ echo "[2/2] Starting Scientist-Bin backend on port ${PORT}..."
 echo "       API docs: http://localhost:${PORT}/docs"
 echo "       Health:   http://localhost:${PORT}/api/v1/health"
 echo ""
-uv run uvicorn scientist_bin_backend.main:app --host 0.0.0.0 --port "${PORT}" --reload --reload-exclude "**/data/**" --reload-exclude "**/outputs/**"
+uv run uvicorn scientist_bin_backend.main:app --host 0.0.0.0 --port "${PORT}" --reload --reload-dir src
