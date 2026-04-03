@@ -22,7 +22,7 @@ def serve(
         host=host,
         port=port,
         reload=reload,
-        reload_excludes=["data/*", "outputs/*"] if reload else None,
+        reload_excludes=["**/data/**", "**/outputs/**"] if reload else None,
     )
 
 
