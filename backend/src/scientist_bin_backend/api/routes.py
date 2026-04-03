@@ -79,10 +79,9 @@ async def _sync_events_from_queue(
             phase_str = event.data.get("phase")
             if phase_str:
                 try:
-                    phase = ExperimentPhase(phase_str)
+                    experiment_store.update(experiment_id, phase=ExperimentPhase(phase_str))
                 except ValueError:
-                    phase = phase_str  # type: ignore[assignment]
-                experiment_store.update(experiment_id, phase=phase)
+                    pass  # Sub-agent phase names (e.g. "cleaning") don't map to ExperimentPhase
             experiment_store.append_events(experiment_id, [event_dict])
 
         elif event.event_type == "run_started":
