@@ -159,7 +159,9 @@ export function CVStabilityTab({ chartData, history }: CVStabilityTabProps) {
         <TableBody>
           {tableData.map((row) => (
             <TableRow key={row.algorithm}>
-              <TableCell className="font-medium">{row.algorithm}</TableCell>
+              <TableCell className="font-medium">
+                <span className="block max-w-[180px] truncate">{row.algorithm}</span>
+              </TableCell>
               <TableCell className="text-right font-mono">
                 {row.mean.toFixed(4)}
               </TableCell>

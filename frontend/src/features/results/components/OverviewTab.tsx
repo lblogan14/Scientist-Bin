@@ -72,8 +72,8 @@ export function OverviewTab({ result }: OverviewTabProps) {
             {bestParams && Object.keys(bestParams).length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(bestParams).map(([key, val]) => (
-                  <Badge key={key} variant="outline" className="text-xs">
-                    {key}: {String(val)}
+                  <Badge key={key} variant="outline" className="max-w-48 text-xs">
+                    <span className="truncate">{key}: {String(val)}</span>
                   </Badge>
                 ))}
               </div>

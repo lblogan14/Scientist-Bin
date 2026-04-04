@@ -176,7 +176,7 @@ export default function TrainingMonitorPage() {
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Training</h2>
           <ExperimentSelector
-            statusFilter={["running", "pending"]}
+            statusFilter={["running", "pending", "completed", "failed"]}
             value={experimentId}
             onChange={setExperimentId}
             className="w-64"

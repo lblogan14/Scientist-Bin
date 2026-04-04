@@ -123,12 +123,7 @@ class TestValidateCodeValid:
         assert event.data["result"] == "passed"
 
     async def test_valid_code_preserves_attempt_count(self, _mock_event_bus):
-        code = (
-            "import os\n"
-            "report_metric('f1', 0.88)\n"
-            'print("===RESULTS===")\n'
-            "print('{}')\n"
-        )
+        code = "import os\nreport_metric('f1', 0.88)\nprint(\"===RESULTS===\")\nprint('{}')\n"
         state = {
             "generated_code": code,
             "experiment_id": "test-exp",
@@ -150,11 +145,7 @@ class TestValidateCodeNoExperimentId:
         _mock_event_bus.emit.assert_not_called()
 
     async def test_valid_code_no_experiment_id(self, _mock_event_bus):
-        code = (
-            "report_metric('acc', 1.0)\n"
-            'print("===RESULTS===")\n'
-            "print('{}')\n"
-        )
+        code = "report_metric('acc', 1.0)\nprint(\"===RESULTS===\")\nprint('{}')\n"
         state = {"generated_code": code, "validation_attempts": 0}
         result = await validate_code(state)
 

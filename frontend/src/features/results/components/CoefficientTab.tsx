@@ -34,6 +34,12 @@ export function CoefficientTab({ chartData, experimentHistory }: TabContext) {
   // Top 20 for the chart
   const chartCoeffs = sorted.slice(0, 20);
 
+  const longestLabel = Math.max(
+    ...chartCoeffs.map((c) => c.feature.length),
+    0,
+  );
+  const yAxisWidth = Math.min(Math.max(longestLabel * 7, 80), 200);
+
   return (
     <div className="space-y-4">
       {/* Horizontal bar chart */}
@@ -44,14 +50,14 @@ export function CoefficientTab({ chartData, experimentHistory }: TabContext) {
         <BarChart
           data={chartCoeffs}
           layout="vertical"
-          margin={{ top: 10, right: 30, bottom: 10, left: 120 }}
+          margin={{ top: 10, right: 30, bottom: 10, left: 20 }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis type="number" />
           <YAxis
             type="category"
             dataKey="feature"
-            width={110}
+            width={yAxisWidth}
             tick={{ fontSize: 11 }}
           />
           <Tooltip
@@ -98,7 +104,9 @@ export function CoefficientTab({ chartData, experimentHistory }: TabContext) {
               {sorted.map((c, i) => (
                 <TableRow key={c.feature}>
                   <TableCell>{i + 1}</TableCell>
-                  <TableCell className="font-medium">{c.feature}</TableCell>
+                  <TableCell className="font-medium">
+                    <span className="block max-w-[200px] truncate">{c.feature}</span>
+                  </TableCell>
                   <TableCell
                     className={
                       c.coefficient >= 0 ? "text-green-600" : "text-red-600"

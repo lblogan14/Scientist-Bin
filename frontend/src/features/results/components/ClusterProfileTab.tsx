@@ -115,7 +115,9 @@ export function ClusterProfileTab({
                 <TableHead>Cluster</TableHead>
                 <TableHead>Size</TableHead>
                 {features.map((f) => (
-                  <TableHead key={f}>{f}</TableHead>
+                  <TableHead key={f}>
+                    <span className="block max-w-[120px] truncate">{f}</span>
+                  </TableHead>
                 ))}
               </TableRow>
             </TableHeader>

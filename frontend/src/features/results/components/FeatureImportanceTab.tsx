@@ -55,7 +55,9 @@ export function FeatureImportanceTab({
             .map((f, i) => (
               <TableRow key={f.feature}>
                 <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                <TableCell className="font-medium">{f.feature}</TableCell>
+                <TableCell className="font-medium">
+                  <span className="block max-w-[200px] truncate">{f.feature}</span>
+                </TableCell>
                 <TableCell className="text-right font-mono">
                   {f.importance.toFixed(4)}
                 </TableCell>

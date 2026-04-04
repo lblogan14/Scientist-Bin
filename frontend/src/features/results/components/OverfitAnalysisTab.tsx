@@ -91,7 +91,9 @@ export function OverfitAnalysisTab({
         <TableBody>
           {data.map((e, i) => (
             <TableRow key={i}>
-              <TableCell className="font-medium">{e.algorithm}</TableCell>
+              <TableCell className="font-medium">
+                <span className="block max-w-[180px] truncate">{e.algorithm}</span>
+              </TableCell>
               <TableCell>{e.metric_name}</TableCell>
               <TableCell className="text-right font-mono">
                 {e.train_value.toFixed(4)}

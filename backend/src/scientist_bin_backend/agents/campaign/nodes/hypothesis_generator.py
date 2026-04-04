@@ -41,13 +41,9 @@ async def generate_hypotheses(state: dict) -> dict:
         if similar:
             store_lines = []
             for f in similar:
-                store_lines.append(
-                    f"- {f.get('text', '')} "
-                    f"(distance: {f.get('distance', '?')})"
-                )
-            store_context = (
-                "\n\n## Cross-Campaign Findings (from memory)\n"
-                + "\n".join(store_lines)
+                store_lines.append(f"- {f.get('text', '')} (distance: {f.get('distance', '?')})")
+            store_context = "\n\n## Cross-Campaign Findings (from memory)\n" + "\n".join(
+                store_lines
             )
     except Exception:
         logger.debug("FindingsStore not available — skipping", exc_info=True)

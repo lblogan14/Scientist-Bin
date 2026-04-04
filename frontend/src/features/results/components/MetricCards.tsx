@@ -23,7 +23,7 @@ export function MetricCards({ metrics }: MetricCardsProps) {
         return (
           <Card key={key}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground text-xs font-medium uppercase">
+              <CardTitle className="text-muted-foreground truncate text-xs font-medium uppercase">
                 {key}
               </CardTitle>
             </CardHeader>

@@ -262,8 +262,7 @@ async def _run_training(
 
             if not data_file_path:
                 raise ValueError(
-                    "Deep Research requires a data file path "
-                    "(data_file_path must be provided)."
+                    "Deep Research requires a data file path (data_file_path must be provided)."
                 )
 
             campaign_agent = CampaignAgent()
@@ -291,9 +290,7 @@ async def _run_training(
 
                 save_experiment_artifacts(experiment_id, result_dict)
             except Exception as save_exc:
-                logger.exception(
-                    "Failed to save artifacts for %s", experiment_id
-                )
+                logger.exception("Failed to save artifacts for %s", experiment_id)
                 experiment_store.update(
                     experiment_id,
                     result={

@@ -87,8 +87,7 @@ def generate_deploy_artifacts(
 
     if not model_path.exists():
         raise FileNotFoundError(
-            f"Model not found: {model_path}\n"
-            f"Run 'scientist-bin train' first to produce a model."
+            f"Model not found: {model_path}\nRun 'scientist-bin train' first to produce a model."
         )
 
     if output_dir is None:
@@ -171,9 +170,7 @@ def build_docker_image(
     )
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"Docker build failed (exit code {result.returncode}):\n{result.stderr}"
-        )
+        raise RuntimeError(f"Docker build failed (exit code {result.returncode}):\n{result.stderr}")
 
     logger.info("Docker image built: %s", tag)
     return tag
@@ -197,8 +194,6 @@ def push_docker_image(tag: str) -> None:
     )
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"Docker push failed (exit code {result.returncode}):\n{result.stderr}"
-        )
+        raise RuntimeError(f"Docker push failed (exit code {result.returncode}):\n{result.stderr}")
 
     logger.info("Docker image pushed: %s", tag)

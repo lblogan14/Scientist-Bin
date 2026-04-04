@@ -30,6 +30,7 @@ def _reset_lazy_agent_models(mock_settings):
     AGENT_MODELS.clear()
     AGENT_MODELS._loaded = False
 
+
 # ---------------------------------------------------------------------------
 # extract_text_content tests
 # ---------------------------------------------------------------------------

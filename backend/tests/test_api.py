@@ -631,3 +631,317 @@ def test_artifact_save_failure_surfaces_warnings(client):
     resp = client.get(f"/api/v1/experiments/{exp_id}")
     data = resp.json()
     assert data["result"]["_warnings"] == ["Artifact save failed: disk full"]
+
+
+# ---------------------------------------------------------------------------
+# Deep Research training path tests
+# ---------------------------------------------------------------------------
+
+
+def test_create_experiment_deep_research(client):
+    """POST /train with deep_research=True should be accepted and passed through."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ) as mock_run:
+        resp = client.post(
+            "/api/v1/train",
+            json={
+                "objective": "Classify iris with deep research",
+                "deep_research": True,
+            },
+        )
+    assert resp.status_code == 200
+    mock_run.assert_called_once()
+    call_args = mock_run.call_args
+    # _run_training positional args:
+    # (experiment_id, objective, data_description, data_file_path,
+    #  framework, auto_approve_plan, deep_research,
+    #  budget_max_iterations, budget_time_limit_seconds)
+    assert call_args[0][6] is True  # deep_research
+
+
+def test_create_experiment_deep_research_default_false(client):
+    """When deep_research is not specified, it defaults to False."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ) as mock_run:
+        resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Normal training"},
+        )
+    assert resp.status_code == 200
+    mock_run.assert_called_once()
+    call_args = mock_run.call_args
+    assert call_args[0][6] is False  # deep_research
+
+
+def test_create_experiment_budget_params(client):
+    """budget_max_iterations and budget_time_limit_seconds should be passed through."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ) as mock_run:
+        resp = client.post(
+            "/api/v1/train",
+            json={
+                "objective": "Deep research with budget",
+                "deep_research": True,
+                "budget_max_iterations": 5,
+                "budget_time_limit_seconds": 3600.0,
+            },
+        )
+    assert resp.status_code == 200
+    mock_run.assert_called_once()
+    call_args = mock_run.call_args
+    assert call_args[0][7] == 5  # budget_max_iterations
+    assert call_args[0][8] == 3600.0  # budget_time_limit_seconds
+
+
+def test_create_experiment_budget_defaults(client):
+    """Budget params have correct defaults when not specified."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ) as mock_run:
+        resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Default budget"},
+        )
+    assert resp.status_code == 200
+    mock_run.assert_called_once()
+    call_args = mock_run.call_args
+    assert call_args[0][7] == 10  # budget_max_iterations default
+    assert call_args[0][8] == 14400.0  # budget_time_limit_seconds default
+
+
+# ---------------------------------------------------------------------------
+# Problem type filtering tests
+# ---------------------------------------------------------------------------
+
+
+def test_list_experiments_filter_by_problem_type(client):
+    """Filter experiments by problem_type."""
+    from scientist_bin_backend.api.experiments import experiment_store
+
+    # Create experiments with different problem types
+    exps = _create_experiments(
+        client,
+        [
+            ("Classify flowers", "sklearn"),
+            ("Predict prices", "sklearn"),
+            ("Cluster customers", "sklearn"),
+        ],
+    )
+
+    # Set problem_type on each experiment via the store
+    experiment_store.update(exps[0]["id"], problem_type="classification")
+    experiment_store.update(exps[1]["id"], problem_type="regression")
+    experiment_store.update(exps[2]["id"], problem_type="clustering")
+
+    # Filter for classification
+    resp = client.get("/api/v1/experiments", params={"problem_type": "classification"})
+    data = resp.json()
+    assert data["total"] >= 1
+    for exp in data["experiments"]:
+        assert exp["problem_type"] == "classification"
+
+    # Filter for regression
+    resp = client.get("/api/v1/experiments", params={"problem_type": "regression"})
+    data = resp.json()
+    assert data["total"] >= 1
+    for exp in data["experiments"]:
+        assert exp["problem_type"] == "regression"
+
+    # Filter for clustering
+    resp = client.get("/api/v1/experiments", params={"problem_type": "clustering"})
+    data = resp.json()
+    assert data["total"] >= 1
+    for exp in data["experiments"]:
+        assert exp["problem_type"] == "clustering"
+
+    # Non-existent problem type returns empty
+    resp = client.get("/api/v1/experiments", params={"problem_type": "anomaly_detection"})
+    data = resp.json()
+    assert data["total"] == 0
+
+
+def test_list_experiments_combined_filters(client):
+    """Combine problem_type with other filters."""
+    from scientist_bin_backend.api.experiments import ExperimentStatus, experiment_store
+
+    exps = _create_experiments(
+        client,
+        [
+            ("Classify iris A", "sklearn"),
+            ("Classify iris B", "sklearn"),
+        ],
+    )
+
+    experiment_store.update(
+        exps[0]["id"], problem_type="classification", status=ExperimentStatus.completed
+    )
+    experiment_store.update(
+        exps[1]["id"], problem_type="classification", status=ExperimentStatus.running
+    )
+
+    resp = client.get(
+        "/api/v1/experiments",
+        params={"problem_type": "classification", "status": "completed"},
+    )
+    data = resp.json()
+    assert data["total"] >= 1
+    for exp in data["experiments"]:
+        assert exp["problem_type"] == "classification"
+        assert exp["status"] == "completed"
+
+
+# ---------------------------------------------------------------------------
+# Deploy / Undeploy endpoint tests
+# ---------------------------------------------------------------------------
+
+
+def test_deploy_nonexistent_experiment(client):
+    """Deploy for a nonexistent experiment returns 404."""
+    resp = client.post("/api/v1/experiments/does-not-exist/deploy")
+    assert resp.status_code == 404
+
+
+def test_deploy_pending_experiment_rejected(client):
+    """Only completed experiments can be deployed."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test deploy pending"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    resp = client.post(f"/api/v1/experiments/{exp_id}/deploy")
+    assert resp.status_code == 400
+    assert "completed" in resp.json()["detail"].lower()
+
+
+def test_deploy_and_undeploy_completed_experiment(client):
+    """Deploy + undeploy lifecycle for a completed experiment."""
+    from scientist_bin_backend.api.experiments import ExperimentStatus, experiment_store
+
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test deploy lifecycle"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    # Mark as completed so deploy will succeed
+    experiment_store.update(exp_id, status=ExperimentStatus.completed)
+
+    # Deploy
+    deploy_resp = client.post(
+        f"/api/v1/experiments/{exp_id}/deploy",
+        json={"model_version": "v2.0"},
+    )
+    assert deploy_resp.status_code == 200
+    deploy_data = deploy_resp.json()
+    assert deploy_data["status"] == "deployed"
+    assert deploy_data["model_version"] == "v2.0"
+    assert deploy_data["experiment_id"] == exp_id
+    assert "endpoint_url" in deploy_data
+
+    # Get deployment status
+    status_resp = client.get(f"/api/v1/experiments/{exp_id}/deployment")
+    assert status_resp.status_code == 200
+    assert status_resp.json()["status"] == "deployed"
+
+    # Undeploy
+    undeploy_resp = client.post(f"/api/v1/experiments/{exp_id}/undeploy")
+    assert undeploy_resp.status_code == 200
+    assert undeploy_resp.json()["status"] == "not_deployed"
+
+    # Deployment status should now be not_deployed
+    status_resp = client.get(f"/api/v1/experiments/{exp_id}/deployment")
+    assert status_resp.status_code == 200
+    assert status_resp.json()["status"] == "not_deployed"
+
+
+def test_undeploy_not_deployed(client):
+    """Undeploy when not deployed returns 404."""
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test undeploy not deployed"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    resp = client.post(f"/api/v1/experiments/{exp_id}/undeploy")
+    assert resp.status_code == 404
+
+
+def test_predict_deployed_model(client):
+    """Mock predict endpoint works for deployed models."""
+    from scientist_bin_backend.api.experiments import ExperimentStatus, experiment_store
+
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test predict"},
+        )
+    exp_id = create_resp.json()["id"]
+
+    experiment_store.update(exp_id, status=ExperimentStatus.completed)
+    client.post(f"/api/v1/experiments/{exp_id}/deploy")
+
+    resp = client.post(f"/api/v1/predict/{exp_id}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["prediction"] == "mock_prediction_result"
+    assert data["model"] == exp_id
+
+
+def test_predict_not_deployed(client):
+    """Predict for a non-deployed model returns 404."""
+    resp = client.post("/api/v1/predict/does-not-exist")
+    assert resp.status_code == 404
+
+
+def test_deploy_default_version(client):
+    """Deploy without specifying model_version defaults to v1.0."""
+    from scientist_bin_backend.api.experiments import ExperimentStatus, experiment_store
+
+    with patch(
+        "scientist_bin_backend.api.routes._run_training",
+        new_callable=AsyncMock,
+    ):
+        create_resp = client.post(
+            "/api/v1/train",
+            json={"objective": "Test default version"},
+        )
+    exp_id = create_resp.json()["id"]
+    experiment_store.update(exp_id, status=ExperimentStatus.completed)
+
+    resp = client.post(f"/api/v1/experiments/{exp_id}/deploy")
+    assert resp.status_code == 200
+    assert resp.json()["model_version"] == "v1.0"
+
+
+# ---------------------------------------------------------------------------
+# Journal endpoint tests
+# ---------------------------------------------------------------------------
+
+
+def test_get_journal_nonexistent(client):
+    """Journal for nonexistent experiment returns 404."""
+    resp = client.get("/api/v1/experiments/does-not-exist/journal")
+    assert resp.status_code == 404

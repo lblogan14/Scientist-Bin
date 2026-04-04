@@ -615,16 +615,24 @@ def health(
 def deploy(
     experiment_id: str = typer.Argument(..., help="Experiment ID to deploy"),
     tag: str | None = typer.Option(
-        None, "--tag", help="Docker image tag",
+        None,
+        "--tag",
+        help="Docker image tag",
     ),
     push: bool = typer.Option(
-        False, "--push", help="Push image to registry after build",
+        False,
+        "--push",
+        help="Push image to registry after build",
     ),
     output_dir: str | None = typer.Option(
-        None, "--output-dir", help="Write artifacts only (no build)",
+        None,
+        "--output-dir",
+        help="Write artifacts only (no build)",
     ),
     build: bool = typer.Option(
-        True, "--build/--no-build", help="Build Docker image",
+        True,
+        "--build/--no-build",
+        help="Build Docker image",
     ),
 ) -> None:
     """Deploy a trained model as a Docker inference container.
@@ -674,16 +682,23 @@ def deploy(
 @app.command()
 def campaign(
     objective: str = typer.Argument(
-        ..., help="High-level research objective",
+        ...,
+        help="High-level research objective",
     ),
     data_file: str = typer.Option(
-        ..., "--data-file", help="Path to dataset file",
+        ...,
+        "--data-file",
+        help="Path to dataset file",
     ),
     budget: int = typer.Option(
-        10, "--budget", help="Maximum number of experiments",
+        10,
+        "--budget",
+        help="Maximum number of experiments",
     ),
     time_limit: str = typer.Option(
-        "4h", "--time-limit", help="Wall-clock time limit (e.g. 1h, 30m)",
+        "4h",
+        "--time-limit",
+        help="Wall-clock time limit (e.g. 1h, 30m)",
     ),
     data: str = typer.Option("", "--data", help="Data description"),
 ) -> None:

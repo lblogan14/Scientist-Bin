@@ -62,9 +62,7 @@ async def run_next_experiment(state: dict) -> dict:
     if not hypotheses:
         logger.warning("No hypotheses available to run — skipping experiment")
         return {
-            "messages": [
-                HumanMessage(content="No hypotheses to test. Skipping.")
-            ],
+            "messages": [HumanMessage(content="No hypotheses to test. Skipping.")],
         }
 
     hypothesis = hypotheses[0]  # Pick the top-ranked hypothesis
@@ -92,9 +90,7 @@ async def run_next_experiment(state: dict) -> dict:
     result_dict: dict
     try:
         agent = CentralAgent()
-        response = await agent.run(
-            request, experiment_id=sub_experiment_id
-        )
+        response = await agent.run(request, experiment_id=sub_experiment_id)
 
         # Extract metrics from the AgentResponse
         eval_results = response.evaluation_results or {}
@@ -104,11 +100,8 @@ async def run_next_experiment(state: dict) -> dict:
         result_dict = {
             "iteration": iteration,
             "hypothesis": description,
-            "algorithm": response.best_model or (
-                algorithm_suggestions[0]
-                if algorithm_suggestions
-                else "unknown"
-            ),
+            "algorithm": response.best_model
+            or (algorithm_suggestions[0] if algorithm_suggestions else "unknown"),
             "metrics": metrics,
             "best_model": response.best_model,
             "best_hyperparameters": response.best_hyperparameters,
@@ -137,11 +130,7 @@ async def run_next_experiment(state: dict) -> dict:
         result_dict = {
             "iteration": iteration,
             "hypothesis": description,
-            "algorithm": (
-                algorithm_suggestions[0]
-                if algorithm_suggestions
-                else "unknown"
-            ),
+            "algorithm": (algorithm_suggestions[0] if algorithm_suggestions else "unknown"),
             "metrics": {},
             "status": "failed",
             "error": str(exc),
@@ -157,11 +146,7 @@ async def run_next_experiment(state: dict) -> dict:
     best = state.get("best_result", {})
     new_score = _primary_metric_value(result_dict.get("metrics", {}))
     best_score = _primary_metric_value(best.get("metrics", {}))
-    if (
-        not best
-        or result_dict.get("status") != "failed"
-        and new_score > best_score
-    ):
+    if not best or result_dict.get("status") != "failed" and new_score > best_score:
         best = result_dict
 
     return {

@@ -81,12 +81,14 @@ export function EvaluationReport({
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        {record.algorithm}
-                        {isBestRow && (
-                          <Badge variant="default" className="ml-2 text-xs">
-                            Best
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="max-w-[200px] truncate">{record.algorithm}</span>
+                          {isBestRow && (
+                            <Badge variant="default" className="shrink-0 text-xs">
+                              Best
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       {metricNames.map((name) => (
                         <TableCell key={name} className="font-mono text-sm">

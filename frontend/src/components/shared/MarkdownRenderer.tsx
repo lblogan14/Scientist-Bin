@@ -12,10 +12,12 @@ const components: Components = {
     <h1 className="mt-6 mb-4 text-2xl font-bold text-foreground">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="mt-5 mb-3 text-xl font-bold text-foreground">{children}</h2>
+    <h2 className="mt-5 mb-3 border-l-4 border-primary pl-3 text-xl font-bold text-primary/90">
+      {children}
+    </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mt-4 mb-2 text-lg font-semibold text-foreground">
+    <h3 className="mt-4 mb-2 text-lg font-semibold text-primary/80">
       {children}
     </h3>
   ),
@@ -28,16 +30,16 @@ const components: Components = {
     <p className="mb-3 leading-relaxed text-foreground">{children}</p>
   ),
   ul: ({ children }) => (
-    <ul className="mb-4 list-disc space-y-1 pl-6 text-foreground">{children}</ul>
+    <ul className="mb-4 list-disc space-y-1.5 pl-6 text-foreground">{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="mb-4 list-decimal space-y-1 pl-6 text-foreground">
+    <ol className="mb-4 list-decimal space-y-1.5 pl-6 text-foreground">
       {children}
     </ol>
   ),
-  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  li: ({ children }) => <li className="leading-relaxed pl-1">{children}</li>,
   strong: ({ children }) => (
-    <strong className="font-semibold text-foreground">{children}</strong>
+    <strong className="font-semibold text-primary/90">{children}</strong>
   ),
   em: ({ children }) => <em className="italic text-foreground">{children}</em>,
   code: ({ children, className }) => {
@@ -59,7 +61,7 @@ const components: Components = {
     </pre>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="mb-4 border-l-4 border-primary/40 pl-4 italic text-muted-foreground">
+    <blockquote className="mb-4 rounded border-l-4 border-primary bg-primary/5 p-3 italic text-muted-foreground">
       {children}
     </blockquote>
   ),
@@ -101,7 +103,7 @@ const components: Components = {
       loading="lazy"
     />
   ),
-  hr: () => <hr className="my-6 border-border" />,
+  hr: () => <hr className="my-6 border-t border-primary/20" />,
 };
 
 export function MarkdownRenderer({

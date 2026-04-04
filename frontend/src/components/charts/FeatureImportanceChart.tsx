@@ -42,6 +42,9 @@ export function FeatureImportanceChart({
     ? `Feature Importance — ${algorithm}`
     : "Feature Importance";
 
+  const longestLabel = Math.max(...data.map((d) => d.feature.length), 0);
+  const yAxisWidth = Math.min(Math.max(longestLabel * 7, 80), 200);
+
   return (
     <ChartContainer title={title} height={Math.max(data.length * 32, 200)}>
       <BarChart
@@ -54,7 +57,7 @@ export function FeatureImportanceChart({
         <YAxis
           dataKey="feature"
           type="category"
-          width={140}
+          width={yAxisWidth}
           tick={{ fontSize: 11 }}
         />
         <Tooltip

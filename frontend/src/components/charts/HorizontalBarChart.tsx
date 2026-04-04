@@ -20,6 +20,9 @@ export function HorizontalBarChart({
 
   if (!data || data.length === 0) return null;
 
+  const longestLabel = Math.max(...data.map((d) => d.name.length), 0);
+  const yAxisWidth = Math.min(Math.max(longestLabel * 7, 80), 200);
+
   return (
     <ChartContainer title={title} height={height}>
       <BarChart data={data} layout="vertical">
@@ -28,7 +31,7 @@ export function HorizontalBarChart({
         <YAxis
           dataKey="name"
           type="category"
-          width={120}
+          width={yAxisWidth}
           tick={{ fontSize: 12 }}
         />
         <Tooltip cursor={{ fill: "transparent" }} />

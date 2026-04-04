@@ -75,17 +75,34 @@ export function ParetoFrontierChart({
           content={({ payload }) => {
             if (!payload?.[0]) return null;
             const d = payload[0].payload as ParetoPoint;
+            const displayName =
+              d.name.length > 30 ? d.name.slice(0, 27) + "..." : d.name;
             return (
-              <div className="bg-background rounded-md border p-2 text-xs shadow-md">
-                <p className="font-medium">{d.name}</p>
-                <p>
-                  {yLabel}: {d.performance.toFixed(4)}
+              <div className="bg-background rounded-md border border-border p-2.5 text-xs shadow-lg">
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  {d.isPareto && (
+                    <span className="text-primary text-sm" title="Pareto-optimal">
+                      ★
+                    </span>
+                  )}
+                  <p className="font-semibold">{displayName}</p>
+                </div>
+                <p className="text-muted-foreground">
+                  {yLabel}:{" "}
+                  <span className="text-foreground font-mono">
+                    {d.performance.toFixed(4)}
+                  </span>
                 </p>
-                <p>
-                  {xLabel}: {d.time.toFixed(2)}
+                <p className="text-muted-foreground">
+                  {xLabel}:{" "}
+                  <span className="text-foreground font-mono">
+                    {d.time.toFixed(1)}s
+                  </span>
                 </p>
                 {d.isPareto && (
-                  <p className="text-primary font-medium">Pareto-optimal</p>
+                  <p className="text-primary mt-1 text-[10px] font-medium uppercase tracking-wide">
+                    Pareto-optimal
+                  </p>
                 )}
               </div>
             );

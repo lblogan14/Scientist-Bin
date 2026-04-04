@@ -65,9 +65,7 @@ async def extract_insights(state: dict) -> dict:
                 insights=updated_findings,
             )
     except Exception:
-        logger.debug(
-            "FindingsStore not available — skipping persist", exc_info=True
-        )
+        logger.debug("FindingsStore not available — skipping persist", exc_info=True)
 
     return {
         "findings_summary": updated_findings,

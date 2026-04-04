@@ -77,10 +77,34 @@ export function BoxPlotChart({
               tickFormatter={(v: number) => v.toFixed(3)}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [
-                value.toFixed(4),
-                name,
-              ]}
+              content={({ payload, label }) => {
+                if (!payload?.length) return null;
+                return (
+                  <div className="bg-background rounded-md border border-border p-2.5 text-xs shadow-lg">
+                    <p className="mb-1.5 font-semibold">{label}</p>
+                    {payload.map((entry) => {
+                      const algoName = String(entry.name ?? "");
+                      const algoStats = stats.find((s) => s.name === algoName);
+                      return (
+                        <div key={algoName} className="mb-1 last:mb-0">
+                          <p style={{ color: String(entry.fill ?? entry.color) }} className="font-medium">
+                            {algoName.length > 30 ? algoName.slice(0, 27) + "..." : algoName}
+                          </p>
+                          <p className="text-muted-foreground">
+                            Score: <span className="text-foreground font-mono">{Number(entry.value ?? 0).toFixed(4)}</span>
+                          </p>
+                          {algoStats && (
+                            <p className="text-muted-foreground">
+                              Mean: <span className="font-mono">{algoStats.mean.toFixed(4)}</span>
+                              {" | "}Std: <span className="font-mono">{(algoStats.max - algoStats.min > 0 ? Math.sqrt(((algoStats.q3 - algoStats.q1) / 1.35) ** 2) : 0).toFixed(4)}</span>
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }}
             />
             <Legend />
             {data.map((d, i) => (
@@ -114,8 +138,9 @@ export function BoxPlotChart({
               {stats.map((s, i) => (
                 <tr key={s.name} className="border-b last:border-0">
                   <td
-                    className="px-2 py-1 font-medium"
+                    className="max-w-[180px] truncate px-2 py-1 font-medium"
                     style={{ color: chartVars[i % chartVars.length] }}
+                    title={s.name}
                   >
                     {s.name}
                   </td>
