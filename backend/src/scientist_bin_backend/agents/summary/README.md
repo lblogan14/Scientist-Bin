@@ -116,6 +116,32 @@ uv run python -m scientist_bin_backend.agents.summary.agent
 | `nodes/report_generator.py` | Enriched markdown report generation (1 LLM) |
 | `nodes/artifact_saver.py` | Save report + chart data to disk (0 LLM) |
 
+## Problem-Type-Specific Diagnostics
+
+The `collect_context` node (`nodes/context_collector.py`) extracts different diagnostic fields depending on the problem type. All fields are keyed by algorithm name.
+
+| Problem Type | Extracted Fields | Description |
+|---|---|---|
+| Classification | `confusion_matrices` | `{labels, matrix}` per algorithm + `__test__` key for test-set |
+| Regression | `residual_stats` | `{mean, std, max_abs, percentiles}` per algorithm + `__test__` |
+| Clustering | `cluster_scatter`, `elbow_data`, `cluster_sizes`, `cluster_profiles`, `silhouette_per_sample` | Visualization and profiling data per algorithm |
+
+### Clustering-Specific Context
+
+For clustering experiments, `context_collector.py` extracts five additional fields from each experiment record:
+
+- **`cluster_scatter`** -- 2D projection coordinates (PCA/t-SNE) with cluster labels for scatter-plot visualization
+- **`elbow_data`** -- Inertia values across different k values for elbow-method charts
+- **`cluster_sizes`** -- Number of samples per cluster
+- **`cluster_profiles`** -- Mean feature values per cluster for profiling
+- **`silhouette_per_sample`** -- Per-sample silhouette coefficients for detailed cluster quality analysis
+
+Test-set diagnostics from `test_diagnostics` are also mapped under a special `__test__` key for `cluster_scatter` and `cluster_profiles`.
+
+### Shared Fields (All Problem Types)
+
+All problem types share: `cv_fold_scores`, `cv_results` (top-N hyperparam combos), `feature_importances`. These are extracted regardless of problem type when present in experiment records.
+
 ## Model
 
 Uses `gemini-3-flash-preview` via `get_agent_model("summary")` for the 2 LLM calls. The flash model is sufficient for summarization and report generation tasks.

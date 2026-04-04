@@ -84,7 +84,7 @@ def test_extract_text_content_list_of_strings():
 
 def test_agent_models_registry_has_expected_keys():
     """Verify all expected agent names are in the registry."""
-    expected = {"central", "plan", "analyst", "sklearn", "summary"}
+    expected = {"central", "plan", "analyst", "sklearn", "summary", "campaign"}
     assert set(AGENT_MODELS.keys()) == expected
 
 

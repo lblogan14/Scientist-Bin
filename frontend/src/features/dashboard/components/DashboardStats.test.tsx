@@ -29,6 +29,7 @@ function makeExperiment(
     analysis_report: null,
     summary_report: null,
     split_data_paths: null,
+    problem_type: null,
     created_at: "2026-04-01T00:00:00Z",
     updated_at: "2026-04-01T00:00:00Z",
     ...overrides,
@@ -93,7 +94,7 @@ describe("DashboardStats", () => {
     expect(screen.getByText("Total Experiments")).toBeInTheDocument();
     expect(screen.getByText("Running")).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
-    expect(screen.getByText("Avg Best Accuracy")).toBeInTheDocument();
+    expect(screen.getByText("Avg Best Score")).toBeInTheDocument();
     expect(screen.getByText("Avg Training Time")).toBeInTheDocument();
   });
 

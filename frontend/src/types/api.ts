@@ -89,6 +89,7 @@ export interface Experiment {
   analysis_report: string | null;
   summary_report: string | null;
   split_data_paths: Record<string, string> | null;
+  problem_type: string | null;
   created_at: string;
   updated_at: string;
 }

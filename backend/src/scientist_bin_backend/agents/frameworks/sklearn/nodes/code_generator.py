@@ -5,11 +5,15 @@ Uses 1 LLM call. The generated code must follow the structured output convention
 
 The sklearn agent now receives pre-split data paths (train/val/test) from the
 analyst agent, so generated code loads data from those paths directly.
+
+Skill reference files (algorithm decision trees, parameter grids, evaluation
+guidance) are injected into the prompt when available, improving code quality.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from langchain_core.messages import HumanMessage
@@ -23,6 +27,43 @@ from scientist_bin_backend.agents.frameworks.sklearn.prompts import (
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.utils.llm import extract_text_content, get_agent_model
+from scientist_bin_backend.utils.skill_loader import discover_skills, match_skill
+
+logger = logging.getLogger(__name__)
+
+_SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
+
+# Maximum chars of reference content to inject (avoid blowing up context)
+_MAX_REFERENCE_CHARS = 6000
+
+
+def _load_skill_reference(problem_type: str) -> str:
+    """Load the skill reference content for a given problem type.
+
+    Returns the reference.md content (truncated to _MAX_REFERENCE_CHARS) if
+    found, otherwise an empty string.
+    """
+    skills = discover_skills(_SKILLS_DIR)
+    skill = match_skill(skills, problem_type)
+    if not skill:
+        return ""
+
+    for supporting_file in skill.supporting_files:
+        if supporting_file.name == "reference.md":
+            try:
+                content = supporting_file.read_text(encoding="utf-8")
+                if len(content) > _MAX_REFERENCE_CHARS:
+                    content = content[:_MAX_REFERENCE_CHARS] + "\n... (truncated)"
+                logger.info(
+                    "Loaded skill reference for %s (%d chars)",
+                    problem_type,
+                    len(content),
+                )
+                return content
+            except OSError:
+                logger.warning("Failed to read skill reference: %s", supporting_file)
+                return ""
+    return ""
 
 
 async def generate_code(state: dict) -> dict:
@@ -109,6 +150,16 @@ async def generate_code(state: dict) -> dict:
 
     llm = get_agent_model("sklearn")
     problem_type = state.get("problem_type", "classification")
+
+    # Load skill reference (algorithm decision trees, parameter grids, etc.)
+    skill_reference = _load_skill_reference(problem_type)
+    if skill_reference:
+        retry_context = (
+            f"== SKILL REFERENCE ({problem_type}) ==\n"
+            "Use the following algorithm selection guidance, parameter grids, "
+            "and best practices when generating code:\n\n"
+            f"{skill_reference}\n\n"
+        ) + retry_context
 
     if problem_type == "clustering":
         prompt = CLUSTERING_CODE_GENERATOR_PROMPT.format(

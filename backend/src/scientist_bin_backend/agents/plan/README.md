@@ -32,21 +32,37 @@ The `review_plan` node (highlighted) uses LangGraph `interrupt()` to pause the g
 
 **LLM calls (happy path): 2** — 1 search-grounded + 1 structured output.
 
-## HITL Pattern
-
-The plan review uses LangGraph's `interrupt()` mechanism:
-
-1. `review_plan` emits a `plan_review_pending` event with the plan markdown.
-2. The graph pauses and waits for the caller to resume with feedback.
-3. Approval tokens (`approve`, `yes`, `lgtm`, etc.) approve the plan.
-4. Any other text is treated as revision feedback.
-5. After `max_revisions` (default 3), the plan is auto-approved.
-
 ## Schemas
 
 | Schema | Purpose |
 |--------|---------|
 | `ExecutionPlan` | Structured output: approach summary, problem type, algorithms, pipeline preprocessing, feature engineering, metrics, CV strategy, success criteria, hyperparameter tuning approach |
+
+## Problem-Type-Specific Plans
+
+Execution plans differ by problem type in several key ways:
+
+| Aspect | Classification | Regression | Clustering |
+|---|---|---|---|
+| `target_column` | Required (categorical) | Required (continuous) | **None** (unsupervised) |
+| Algorithms | LogisticRegression, RF, GBM, SVM | Ridge, Lasso, RF, GBR, SVR | KMeans, DBSCAN, Agglomerative |
+| Metrics | accuracy, F1, ROC-AUC, precision, recall | MAE, RMSE, R2, explained variance | silhouette, Calinski-Harabasz, Davies-Bouldin |
+| CV strategy | StratifiedKFold | KFold | KFold (on internal metrics) |
+| Success criteria | Metric thresholds (e.g., F1 > 0.85) | Error thresholds (e.g., RMSE < X) | Internal quality thresholds |
+
+The plan agent receives `problem_type` from the analyst and uses it to guide algorithm selection, metric definition, and success criteria in the generated `ExecutionPlan`.
+
+## HITL Approval Flow
+
+The plan review uses LangGraph's `interrupt()` mechanism:
+
+1. `review_plan` emits a `plan_review_pending` event with the plan markdown
+2. The graph pauses and waits for the caller to resume with feedback
+3. Approval tokens (`approve`, `yes`, `lgtm`, etc.) approve the plan
+4. Any other text is treated as revision feedback, triggering `revise_plan`
+5. After `max_revisions` (default 3), the plan is auto-approved
+
+When `auto_approve=True` (set via CLI `--auto-approve` or API `auto_approve_plan`), the interrupt is skipped entirely and the plan proceeds directly to `save_plan`.
 
 ## Upstream Context
 

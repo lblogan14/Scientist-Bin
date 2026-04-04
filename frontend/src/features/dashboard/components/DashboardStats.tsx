@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExperimentError } from "@/types/api";
 import type { ExperimentResult } from "@/types/api";
+import { pickPrimaryMetric } from "@/lib/metric-utils";
 import { useExperiments } from "../hooks/use-experiments";
 
 export function DashboardStats() {
@@ -39,23 +40,26 @@ export function DashboardStats() {
   const completedCount = completed.length;
   const runningCount = experiments.filter((e) => e.status === "running").length;
 
-  // Average best accuracy across completed experiments
-  let avgBestAccuracy: number | null = null;
+  // Average best primary metric across completed experiments
+  let avgBestScore: number | null = null;
   // Average training time
   let avgTrainingTime: number | null = null;
   if (completedCount > 0) {
-    const accuracies: number[] = [];
+    const scores: number[] = [];
     const times: number[] = [];
     for (const exp of completed) {
       const result = exp.result;
       if (!result || isExperimentError(result)) continue;
       const successResult = result as ExperimentResult;
+      const problemType = successResult.problem_type ?? exp.problem_type;
       const history = successResult.experiment_history ?? [];
       for (const record of history) {
-        const acc = record.metrics?.accuracy ?? record.metrics?.val_accuracy;
-        if (acc != null) {
-          accuracies.push(acc);
-          break;
+        if (record.metrics && Object.keys(record.metrics).length > 0) {
+          const primary = pickPrimaryMetric(record.metrics, problemType);
+          if (primary.value != null) {
+            scores.push(primary.value);
+            break;
+          }
         }
       }
       const totalTime = history.reduce(
@@ -64,9 +68,8 @@ export function DashboardStats() {
       );
       if (totalTime > 0) times.push(totalTime);
     }
-    if (accuracies.length > 0) {
-      avgBestAccuracy =
-        accuracies.reduce((a, b) => a + b, 0) / accuracies.length;
+    if (scores.length > 0) {
+      avgBestScore = scores.reduce((a, b) => a + b, 0) / scores.length;
     }
     if (times.length > 0) {
       avgTrainingTime = times.reduce((a, b) => a + b, 0) / times.length;
@@ -94,8 +97,8 @@ export function DashboardStats() {
     },
     {
       icon: TrendingUp,
-      label: "Avg Best Accuracy",
-      value: avgBestAccuracy,
+      label: "Avg Best Score",
+      value: avgBestScore,
       format: (v: number) => v.toFixed(4),
     },
     {

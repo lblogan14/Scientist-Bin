@@ -99,6 +99,7 @@ class Experiment(BaseModel):
     analysis_report: str | None = None
     summary_report: str | None = None
     split_data_paths: dict | None = None
+    problem_type: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
@@ -177,6 +178,7 @@ class ExperimentStore:
         status: str | None = None,
         framework: str | None = None,
         search: str | None = None,
+        problem_type: str | None = None,
     ) -> list[Experiment]:
         """List experiments with optional filtering, most recent first."""
         with self._lock:
@@ -186,6 +188,8 @@ class ExperimentStore:
             results = [e for e in results if e.status == status]
         if framework:
             results = [e for e in results if e.framework == framework]
+        if problem_type:
+            results = [e for e in results if e.problem_type == problem_type]
         if search:
             search_lower = search.lower()
             results = [e for e in results if search_lower in e.objective.lower()]

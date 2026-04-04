@@ -63,15 +63,44 @@ After accepting a model, `evaluate_on_test` (base node) evaluates the best model
 - `data_profile` -- structured data profile (shape, columns, dtypes, etc.)
 - `problem_type` -- classification, regression, clustering, etc.
 
+## Multi-Problem-Type Support
+
+The sklearn agent supports three problem types, each with a dedicated prompt and skill reference:
+
+| Problem Type | Prompt Template | Skill Reference | Key Differences |
+|---|---|---|---|
+| Classification | `CODE_GENERATOR_PROMPT` | `skills/classification/reference.md` | Train/val/test splits, confusion matrix, class weights, stratified CV |
+| Regression | `REGRESSION_CODE_GENERATOR_PROMPT` | `skills/regression/reference.md` | Train/val/test splits, residual analysis, MAE/RMSE/R2 metrics |
+| Clustering | `CLUSTERING_CODE_GENERATOR_PROMPT` | `skills/clustering/reference.md` | Train-only (no val/test paths), silhouette/elbow metrics, cluster profiling |
+
+### Prompt Routing Logic
+
+In `nodes/code_generator.py`, the `generate_code` node selects the prompt based on `state["problem_type"]`:
+
+1. `problem_type == "clustering"` -- uses `CLUSTERING_CODE_GENERATOR_PROMPT` (only `train_file_path`, no val/test paths)
+2. `problem_type == "regression"` -- uses `REGRESSION_CODE_GENERATOR_PROMPT` (all three split paths)
+3. All other types (including classification) -- uses `CODE_GENERATOR_PROMPT` (all three split paths)
+
+### Skill Reference Injection
+
+Before selecting the prompt, `code_generator.py` loads skill-specific reference material via `skill_loader`:
+
+1. `discover_skills(_SKILLS_DIR)` scans the `skills/` directory for all `SKILL.md` files
+2. `match_skill(skills, problem_type)` finds the best-matching skill by name or description
+3. The matched skill's `reference.md` is read (truncated to 6000 chars) and prepended to the retry context as a `== SKILL REFERENCE ==` block
+4. This provides the LLM with algorithm decision trees, parameter grids, and best practices specific to the problem type
+
 ## Skills
 
-SKILL.md files in `skills/` follow the [Anthropic Agent Skills specification](https://agentskills.io/specification). Each skill defines capabilities, algorithms, metrics, and a recommended approach for a specific problem type.
+SKILL.md files in `skills/` follow the [Anthropic Agent Skills specification](https://agentskills.io/specification). Each skill defines capabilities, algorithms, metrics, and a recommended approach for a specific problem type. See `skills/README.md` for full details.
 
 ```
 skills/
 ├── classification/SKILL.md   — Binary/multi-class classification
 ├── regression/SKILL.md       — Continuous numeric prediction
-└── clustering/SKILL.md       — Unsupervised grouping
+├── clustering/SKILL.md       — Unsupervised grouping
+├── evaluation/SKILL.md       — Cross-validation and model selection patterns
+└── preprocessing/SKILL.md    — Data loading, feature engineering, pipeline construction
 ```
 
 ## Examples

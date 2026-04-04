@@ -64,6 +64,38 @@ Plan Agent
   save_plan   --> persists execution_plan.json to disk
 ```
 
+## Problem Type Detection
+
+The analyzer node uses `TaskAnalysis.task_type` (a `Literal` enum) to classify the request into one of five categories:
+
+| Task Type | Examples | Downstream Behavior |
+|---|---|---|
+| `classification` | Iris species, spam detection, churn prediction | Stratified splits, confusion matrix, F1/AUC metrics |
+| `regression` | House prices, sales forecast, temperature prediction | Random splits, residual analysis, MAE/RMSE/R2 |
+| `clustering` | Customer segmentation, document grouping | No target column, train/test only, silhouette/elbow metrics |
+| `dimensionality_reduction` | Feature reduction, visualization | Currently routes to sklearn |
+| `anomaly_detection` | Fraud detection, sensor anomalies | Currently routes to sklearn |
+
+The `task_subtype` field provides further detail (e.g., `"binary"`, `"multiclass"`, `"multi-label"`, `"ordinal"` for classification). The analyst agent then validates this classification against the actual data.
+
+## Framework Registry and Delegation
+
+The router node (`nodes/router.py`) contains `FRAMEWORK_REGISTRY`, a dict mapping framework names to fully-qualified agent class paths:
+
+```python
+FRAMEWORK_REGISTRY = {
+    "sklearn": "scientist_bin_backend.agents.frameworks.sklearn.agent.SklearnAgent",
+    # "pytorch": "...",  (planned)
+}
+```
+
+The generic `_framework_delegate` in `graph.py` reads `selected_framework` from state, looks up the class path in the registry, dynamically imports it, and invokes the agent. This means adding a new framework requires only one registry entry plus the agent implementation.
+
+Framework selection follows a 3-tier priority:
+1. **User preference** -- if `framework_preference` matches a supported framework, use it directly
+2. **Task analysis** -- pick the first supported framework from `task_analysis.suggested_frameworks`
+3. **LLM fallback** -- ask the LLM to select when the above are ambiguous
+
 ## Examples
 
 `agent.py` includes `EXAMPLES` and a `_run_examples()` entrypoint to validate the analyze + route nodes in isolation:

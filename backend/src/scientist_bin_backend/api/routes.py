@@ -306,6 +306,7 @@ async def _run_training(
             status=ExperimentStatus.completed,
             phase=ExperimentPhase.done,
             framework=result.framework,
+            problem_type=result.problem_type,
             iteration_count=result.iterations,
             result=result_dict,
             execution_plan=result.plan,
@@ -409,6 +410,7 @@ async def list_experiments(
     status: str | None = None,
     framework: str | None = None,
     search: str | None = None,
+    problem_type: str | None = None,
     offset: int = 0,
     limit: int = 50,
 ) -> dict:
@@ -418,6 +420,7 @@ async def list_experiments(
         status: Filter by experiment status (pending, running, completed, failed).
         framework: Filter by ML framework (sklearn, pytorch, ...).
         search: Search within the objective text (case-insensitive).
+        problem_type: Filter by problem type (classification, regression, clustering).
         offset: Number of results to skip (default 0).
         limit: Maximum number of results to return (default 50).
     """
@@ -425,6 +428,7 @@ async def list_experiments(
         status=status,
         framework=framework,
         search=search,
+        problem_type=problem_type,
     )
     total = len(experiments)
     page = experiments[offset : offset + limit]

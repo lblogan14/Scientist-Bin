@@ -4,37 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { ParetoFrontierChart } from "@/components/charts/ParetoFrontierChart";
 import type { ExperimentResult } from "@/types/api";
+import { pickPrimaryMetric } from "@/lib/metric-utils";
 import { MetricCards } from "./MetricCards";
-
-/**
- * Pick the most appropriate primary metric value based on problem type.
- */
-function pickPrimaryMetric(
-  metrics: Record<string, number>,
-  problemType: string | null | undefined,
-): number {
-  if (problemType === "regression") {
-    return (
-      metrics.val_r2 ?? metrics.r2 ?? metrics.val_rmse ?? Object.values(metrics)[0] ?? 0
-    );
-  }
-  if (problemType === "clustering") {
-    return (
-      metrics.silhouette_score ??
-      metrics.calinski_harabasz ??
-      Object.values(metrics)[0] ??
-      0
-    );
-  }
-  // Classification (default)
-  return (
-    metrics.val_accuracy ??
-    metrics.accuracy ??
-    metrics.val_f1_macro ??
-    Object.values(metrics)[0] ??
-    0
-  );
-}
 
 interface OverviewTabProps {
   result: ExperimentResult;
@@ -56,7 +27,7 @@ export function OverviewTab({ result }: OverviewTabProps) {
   const paretoData = result.experiment_history
     ?.filter((r) => r.training_time_seconds > 0)
     .map((r) => {
-      const primaryMetric = pickPrimaryMetric(r.metrics, result.problem_type);
+      const primaryMetric = pickPrimaryMetric(r.metrics, result.problem_type).value;
       return {
         name: r.algorithm,
         performance: primaryMetric,

@@ -28,6 +28,7 @@ function makeExperiment(overrides: Partial<Experiment> = {}): Experiment {
     analysis_report: null,
     summary_report: null,
     split_data_paths: null,
+    problem_type: null,
     created_at: "2026-04-01T00:00:00Z",
     updated_at: "2026-04-01T00:00:00Z",
     ...overrides,

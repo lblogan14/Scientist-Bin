@@ -13,6 +13,7 @@ import {
   type ExperimentRecord,
   isExperimentError,
 } from "@/types/api";
+import { getBestValue } from "@/lib/metric-utils";
 
 interface ModelComparisonTableProps {
   models: Experiment[];
@@ -60,12 +61,13 @@ export function ModelComparisonTable({ models }: ModelComparisonTableProps) {
   }
   const metricNames = Array.from(allMetricNames).slice(0, 4); // limit to 4
 
-  // Find best value per metric for highlighting
+  // Find best value per metric for highlighting (direction-aware)
   const bestValues: Record<string, number> = {};
   for (const name of metricNames) {
-    bestValues[name] = Math.max(
-      ...allRecords.map((r) => r.metrics[name] ?? -Infinity),
-    );
+    const values = allRecords
+      .map((r) => r.metrics[name])
+      .filter((v): v is number => v != null);
+    bestValues[name] = getBestValue(values, name);
   }
 
   return (
