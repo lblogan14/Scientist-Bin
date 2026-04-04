@@ -176,7 +176,7 @@ outputs/
 
 - **Python 3.11+** with **FastAPI** and **LangGraph**
 - **Google Gemini** via `langchain-google-genai` and `google-genai`
-- **ChromaDB** for findings memory (Deep Research mode)
+- **ChromaDB** for findings memory (Deep Research mode, optional)
 - **Pydantic** for schemas, **Typer** for CLI
 - **pandas**, **scikit-learn**, **matplotlib** for data science execution
 - **uv** for packages, **ruff** for linting, **pytest** for testing (469+ tests)
@@ -184,9 +184,9 @@ outputs/
 ### Frontend
 
 - **React 19** with **TypeScript 5.9** (strict mode)
-- **Vite 8**, **shadcn/ui** (Radix + Tailwind CSS v4)
+- **Vite 6**, **shadcn/ui** (Radix + Tailwind CSS v4)
 - **React Router v7**, **TanStack React Query**, **Zustand**
-- **Recharts** for visualizations (14 chart components)
+- **Recharts** for visualizations (13 chart components)
 - **pnpm** for packages, **Vitest** + **Testing Library** for testing (167+ tests)
 
 ## Test Datasets
@@ -211,7 +211,7 @@ Scientist-Bin/
 │   │   │   ├── analyst/             # Data profiling, cleaning, splitting
 │   │   │   ├── plan/                # Online search, plan creation, HITL
 │   │   │   ├── campaign/            # Deep Research campaign orchestrator
-│   │   │   ├── hypothesis/          # Hypothesis generation for campaigns
+│   │   │   ├── hypothesis/          # Hypothesis generation for campaigns (planned)
 │   │   │   ├── frameworks/
 │   │   │   │   └── sklearn/         # Scikit-learn code gen + execution
 │   │   │   └── summary/             # Best model selection + report

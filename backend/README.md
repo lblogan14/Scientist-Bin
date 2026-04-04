@@ -109,7 +109,7 @@ generate_hypotheses -> run_next_experiment -> extract_insights -> check_budget
 
 ### Findings Memory
 
-Campaign insights are stored in a **ChromaDB vector store** (`memory/findings_store.py`) so later iterations can retrieve relevant prior results. The **ERL journal** (`memory/erl_journal.py`) tracks decisions, reflections, and heuristics across the campaign.
+Campaign insights are stored in a **ChromaDB vector store** (`memory/findings_store.py`) so later iterations can retrieve relevant prior results. ChromaDB is an optional dependency — when not installed, the findings store degrades gracefully to a no-op. The **ERL journal** (`memory/erl_journal.py`) tracks decisions, reflections, and heuristics across the campaign.
 
 ### Activation
 
@@ -142,7 +142,7 @@ backend/
 │   │   ├── plan/                  # Plan agent (research, execution plan, HITL review)
 │   │   ├── analyst/               # Analyst agent (profile, clean, split, report)
 │   │   ├── campaign/              # Campaign orchestrator (Deep Research iterative loop)
-│   │   ├── hypothesis/            # Hypothesis generation for campaign mode
+│   │   ├── hypothesis/            # Hypothesis generation for campaign mode (planned, not yet implemented)
 │   │   ├── frameworks/
 │   │   │   └── sklearn/           # Sklearn agent (generate -> execute -> analyze loop)
 │   │   │       └── skills/        # 5 skills: classification, regression, clustering, evaluation, preprocessing
@@ -172,6 +172,10 @@ backend/
 | `GET` | `/api/v1/experiments/{id}/summary` | Get the summary report |
 | `GET` | `/api/v1/experiments/{id}/artifacts/{type}` | Download artifact (model, results, analysis, summary, plan, charts, journal) |
 | `DELETE` | `/api/v1/experiments/{id}` | Delete experiment |
+| `POST` | `/api/v1/experiments/{id}/deploy` | Deploy model (mock) |
+| `POST` | `/api/v1/experiments/{id}/undeploy` | Undeploy model (mock) |
+| `GET` | `/api/v1/experiments/{id}/deployment` | Get deployment status |
+| `POST` | `/api/v1/predict/{id}` | Mock prediction endpoint |
 | `GET` | `/api/v1/health` | Health check |
 
 Data file paths in train requests are resolved relative to `backend/data/` by default (e.g., `iris_data/Iris.csv`). Invalid paths are rejected with HTTP 400 before the agent starts.

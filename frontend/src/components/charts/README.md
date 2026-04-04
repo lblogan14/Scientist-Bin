@@ -24,7 +24,6 @@ These charts are used across multiple problem types and features.
 | `MetricLineChart` | Line chart | Live metrics stream (Training Monitor), learning curves |
 | `GroupedBarChart` | Grouped bar chart | Best metrics comparison (Model Selection) |
 | `MetricScatterChart` | Scatter plot | Metric vs. training time tradeoff (Model Selection) |
-| `MetricBarChart` | Single-series bar | Generic metric bar visualization |
 | `HorizontalBarChart` | Horizontal bar | Ranked metric display |
 | `MetricPieChart` | Pie chart | Proportion visualization |
 | `MetricRadarChart` | Radar chart | Multi-metric comparison |
