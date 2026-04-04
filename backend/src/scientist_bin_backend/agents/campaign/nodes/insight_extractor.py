@@ -47,6 +47,28 @@ async def extract_insights(state: dict) -> dict:
         len(updated_findings),
     )
 
+    # Persist to FindingsStore for cross-campaign learning (optional)
+    try:
+        from scientist_bin_backend.memory.findings_store import FindingsStore
+
+        experiment_id = latest.get("experiment_id", "")
+        algorithm = latest.get("algorithm", "unknown")
+        metrics = latest.get("metrics", {})
+        if experiment_id:
+            store = FindingsStore()
+            store.add_finding(
+                experiment_id=experiment_id,
+                objective=state["objective"],
+                problem_type=latest.get("problem_type", "unknown"),
+                algorithm=algorithm,
+                metrics=metrics,
+                insights=updated_findings,
+            )
+    except Exception:
+        logger.debug(
+            "FindingsStore not available — skipping persist", exc_info=True
+        )
+
     return {
         "findings_summary": updated_findings,
         "messages": [

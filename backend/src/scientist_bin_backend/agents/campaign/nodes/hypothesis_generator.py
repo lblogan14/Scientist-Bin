@@ -19,6 +19,8 @@ async def generate_hypotheses(state: dict) -> dict:
 
     Uses an LLM with structured output to produce :class:`HypothesisList`,
     then serialises the hypotheses into the state for downstream consumption.
+    When available, queries the ``FindingsStore`` for similar past findings
+    to enrich the prompt context.
 
     Returns:
         Partial state update with ``hypotheses`` (list[dict]).
@@ -28,6 +30,27 @@ async def generate_hypotheses(state: dict) -> dict:
 
     completed = state.get("completed_experiments", [])
     findings = state.get("findings_summary", "No experiments completed yet.")
+
+    # Query FindingsStore for cross-campaign learnings (optional)
+    store_context = ""
+    try:
+        from scientist_bin_backend.memory.findings_store import FindingsStore
+
+        store = FindingsStore()
+        similar = store.query_similar(state["objective"])
+        if similar:
+            store_lines = []
+            for f in similar:
+                store_lines.append(
+                    f"- {f.get('text', '')} "
+                    f"(distance: {f.get('distance', '?')})"
+                )
+            store_context = (
+                "\n\n## Cross-Campaign Findings (from memory)\n"
+                + "\n".join(store_lines)
+            )
+    except Exception:
+        logger.debug("FindingsStore not available — skipping", exc_info=True)
 
     # Build a concise summary of completed experiments for the prompt
     experiments_summary = (
@@ -47,10 +70,15 @@ async def generate_hypotheses(state: dict) -> dict:
         )
     )
 
+    # Append store context to findings if available
+    enriched_findings = findings
+    if store_context:
+        enriched_findings = findings + store_context
+
     prompt = HYPOTHESIS_GENERATION_PROMPT.format(
         objective=state["objective"],
         data_profile=state.get("data_description", "Not available."),
-        findings_summary=findings,
+        findings_summary=enriched_findings,
         completed_experiments=experiments_summary,
     )
 

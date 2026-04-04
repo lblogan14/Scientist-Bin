@@ -49,7 +49,13 @@ Uses `useExperiment(id)` for data fetching and `useDeleteExperiment()` for the d
 
 ### HyperparameterForm
 
-Form for configuring hyperparameter overrides (placeholder for future use).
+Displays actual hyperparameter data for completed experiments (no longer a placeholder). Shows three sections:
+
+- **Tuning Strategy** -- from the execution plan's `hyperparameter_tuning_approach`
+- **Best Hyperparameters** -- the overall best hyperparameters from the result, rendered as badges
+- **Per Algorithm** -- iterates through `experiment_history` and shows each algorithm's hyperparameters as outline badges
+
+Falls back to a prompt message when no experiment is selected or the experiment is not yet completed.
 
 ## Key Files
 

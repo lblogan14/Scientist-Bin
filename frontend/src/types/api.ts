@@ -62,6 +62,9 @@ export interface TrainRequest {
   data_file_path?: string;
   framework_preference?: Framework;
   auto_approve_plan?: boolean;
+  deep_research?: boolean;
+  budget_max_iterations?: number;
+  budget_time_limit_seconds?: number;
 }
 
 export interface ReviewRequest {

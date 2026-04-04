@@ -1,13 +1,15 @@
 import { Suspense, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Download } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
+import { ExperimentSelector } from "@/components/shared/ExperimentSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useExperimentIdSync } from "@/hooks/use-experiment-id-sync";
 import {
   getArtifactDownloadUrl,
   getModelDownloadUrl,
@@ -23,9 +25,15 @@ import { ErrorDisplay } from "./ErrorDisplay";
 import { MetricCards } from "./MetricCards";
 
 export default function ResultsPage() {
-  const [searchParams] = useSearchParams();
-  const experimentIdParam = searchParams.get("id");
-  const navigate = useNavigate();
+  const params = useParams<{ id: string }>();
+  const { experimentId, setExperimentId } = useExperimentIdSync();
+
+  // Handle /results/:id deep-link route
+  useEffect(() => {
+    if (params.id && params.id !== experimentId) {
+      setExperimentId(params.id);
+    }
+  }, [params.id, experimentId, setExperimentId]);
 
   // Auto-detect the latest completed/failed experiment when no ID is provided
   const { data: latestExperiment } = useQuery({
@@ -38,16 +46,14 @@ export default function ResultsPage() {
         null
       );
     },
-    enabled: !experimentIdParam,
+    enabled: !experimentId,
   });
 
   useEffect(() => {
-    if (!experimentIdParam && latestExperiment) {
-      navigate(`/results?id=${latestExperiment.id}`, { replace: true });
+    if (!experimentId && latestExperiment) {
+      setExperimentId(latestExperiment.id);
     }
-  }, [experimentIdParam, latestExperiment, navigate]);
-
-  const experimentId = experimentIdParam ?? latestExperiment?.id ?? null;
+  }, [experimentId, latestExperiment, setExperimentId]);
 
   const { data, isLoading, isError } = useResult(experimentId);
 
@@ -115,6 +121,12 @@ export default function ResultsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold">Results</h2>
+          <ExperimentSelector
+            statusFilter={["completed", "failed"]}
+            value={experimentId}
+            onChange={setExperimentId}
+            className="w-64"
+          />
           {successResult?.problem_type && (
             <Badge variant="secondary">{successResult.problem_type}</Badge>
           )}

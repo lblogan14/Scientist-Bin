@@ -48,6 +48,9 @@ class TrainRequestBody(BaseModel):
     data_file_path: str | None = None
     framework_preference: str | None = None
     auto_approve_plan: bool = False
+    deep_research: bool = False
+    budget_max_iterations: int = 10
+    budget_time_limit_seconds: float = 14400.0
 
 
 class ReviewBody(BaseModel):
@@ -216,12 +219,19 @@ async def _run_training(
     data_file_path: str | None,
     framework: str | None,
     auto_approve_plan: bool = False,
+    deep_research: bool = False,
+    budget_max_iterations: int = 10,
+    budget_time_limit_seconds: float = 14400.0,
 ) -> None:
-    """Run the central agent and update the experiment with results.
+    """Run the central agent (or campaign agent) and update the experiment.
 
-    When ``auto_approve_plan`` is ``False``, the plan agent will call
-    ``interrupt()`` and the graph pauses. This function waits for the
-    ``/review`` endpoint to supply feedback, then resumes the graph.
+    When ``deep_research`` is ``True``, the request is routed to the
+    ``CampaignAgent`` which runs an iterative experiment loop. Otherwise
+    the standard 5-agent ``CentralAgent`` pipeline is used.
+
+    When ``auto_approve_plan`` is ``False`` (standard path only), the plan
+    agent will call ``interrupt()`` and the graph pauses. This function
+    waits for the ``/review`` endpoint to supply feedback, then resumes.
     """
     from langgraph.checkpoint.memory import MemorySaver
     from langgraph.types import Command
@@ -244,6 +254,58 @@ async def _run_training(
     sync_task = asyncio.create_task(_sync_events_from_queue(experiment_id, sync_queue))
 
     try:
+        # -----------------------------------------------------------
+        # Deep Research path: delegate to CampaignAgent
+        # -----------------------------------------------------------
+        if deep_research:
+            from scientist_bin_backend.agents.campaign.agent import CampaignAgent
+
+            if not data_file_path:
+                raise ValueError(
+                    "Deep Research requires a data file path "
+                    "(data_file_path must be provided)."
+                )
+
+            campaign_agent = CampaignAgent()
+            campaign_result = await campaign_agent.run(
+                objective=objective,
+                data_file_path=data_file_path,
+                data_description=data_description,
+                budget_max_iterations=budget_max_iterations,
+                budget_time_limit_seconds=budget_time_limit_seconds,
+            )
+
+            result_dict = campaign_result.model_dump()
+            experiment_store.update(
+                experiment_id,
+                status=ExperimentStatus.completed,
+                phase=ExperimentPhase.done,
+                iteration_count=campaign_result.total_iterations,
+                result=result_dict,
+            )
+
+            try:
+                from scientist_bin_backend.utils.artifacts import (
+                    save_experiment_artifacts,
+                )
+
+                save_experiment_artifacts(experiment_id, result_dict)
+            except Exception as save_exc:
+                logger.exception(
+                    "Failed to save artifacts for %s", experiment_id
+                )
+                experiment_store.update(
+                    experiment_id,
+                    result={
+                        **result_dict,
+                        "_warnings": [f"Artifact save failed: {save_exc}"],
+                    },
+                )
+            return
+
+        # -----------------------------------------------------------
+        # Standard path: delegate to CentralAgent
+        # -----------------------------------------------------------
         checkpointer = MemorySaver()
         agent = CentralAgent(checkpointer=checkpointer)
         graph = agent.graph
@@ -401,6 +463,9 @@ async def create_train(body: TrainRequestBody, background_tasks: BackgroundTasks
         resolved_data_file,
         body.framework_preference,
         body.auto_approve_plan,
+        body.deep_research,
+        body.budget_max_iterations,
+        body.budget_time_limit_seconds,
     )
     return experiment.model_dump(mode="json")
 

@@ -37,7 +37,14 @@ Amber alert banner that appears when any experiment is in the `plan_review` phas
 
 ### ObjectiveForm
 
-Form with fields for training objective, data file path, data description, and an auto-approve toggle. Submits via `submitTrainRequest()` and navigates to the training monitor on success.
+Form with fields for training objective, data file path, data description, framework selector, auto-approve toggle, and a **Deep Research** toggle. Submits via `submitTrainRequest()` and navigates to the training monitor on success.
+
+**Deep Research toggle:** When enabled, the form submits `deep_research: true` which routes the backend to the `CampaignAgent` instead of a single pipeline run. Enabling Deep Research automatically turns on auto-approve (campaigns are autonomous). An "Advanced Campaign Settings" accordion expands with:
+
+- **Max iterations** (1-100, default 10) -- maps to `budget_max_iterations`
+- **Time limit** in hours (0.1-168, default 4) -- converted to `budget_time_limit_seconds`
+
+The submit button label changes to "Launch Deep Research" / "Launching Campaign..." when the toggle is active.
 
 ### RecentExperiments
 

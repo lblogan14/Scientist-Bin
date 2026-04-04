@@ -20,10 +20,10 @@ A 4-node loop with 2 LLM calls per iteration (hypothesis generation + insight ex
 
 | Node | LLM Calls | Description |
 |------|-----------|-------------|
-| `generate_hypotheses` | 1 (structured) | Produces a ranked `HypothesisList` based on the objective, data profile, and accumulated findings memory. Balances exploitation (refining what works) with exploration (novel approaches). |
-| `run_next_experiment` | 0 (delegates) | Picks the top-ranked hypothesis and runs the inner pipeline. **Currently a stub** returning mock results -- full integration with `CentralAgent` is pending. |
-| `extract_insights` | 1 | Analyzes the latest experiment result, identifies what worked and what failed, and produces an updated findings summary. This is the campaign's long-term memory. |
-| `check_budget` | 0 | Pure function that checks iteration count and wall-clock time against budget limits. Returns `"continue"` or `"stop"`. |
+| `generate_hypotheses` | 1 (structured) | Produces a ranked `HypothesisList` based on the objective, data profile, and accumulated findings memory. Queries `FindingsStore` for cross-campaign learnings. Balances exploitation with exploration. |
+| `run_next_experiment` | 0 (delegates) | Picks the top-ranked hypothesis, builds a `TrainRequest`, and invokes a fresh `CentralAgent` for the full 5-agent pipeline. Runs with `auto_approve_plan=True`. Failures are caught and logged (not fatal). |
+| `extract_insights` | 1 | Analyzes the latest experiment result, produces an updated findings summary, and persists to `FindingsStore` for cross-campaign learning. |
+| `check_budget` | 0 | Split into `check_budget_node` (state update: writes `campaign_status`) and `route_budget` (routing function: returns `"continue"` or `"stop"`). Both check iteration count and wall-clock time. |
 
 ## CLI Usage
 
@@ -55,7 +55,12 @@ Two hard constraints control the campaign loop (checked in `check_budget`):
 | Max iterations | 10 | `--budget` |
 | Wall-clock time | 4 hours (14400s) | `--time-limit` |
 
-The budget checker is a pure function (zero LLM calls) that compares `current_iteration` against `budget_max_iterations` and elapsed time against `budget_time_limit_seconds`. When either limit is reached, the campaign stops.
+The budget checker is split into two functions:
+
+- `check_budget_node(state)` -- LangGraph node that evaluates budget and writes `campaign_status` to state (`"budget_exhausted"` or `"running"`)
+- `route_budget(state)` -- pure routing function for the conditional edge (`"continue"` or `"stop"`)
+
+Both use shared `_evaluate_budget()` logic: compare `current_iteration` against `budget_max_iterations` and elapsed time against `budget_time_limit_seconds`. When either limit is reached, the campaign stops.
 
 A convergence check prompt (`CONVERGENCE_CHECK_PROMPT`) is defined in `prompts.py` for future LLM-based convergence detection (evaluating diminishing returns), but is not yet wired into the budget checker.
 
@@ -71,6 +76,15 @@ Example findings: "Feature X has high importance", "Logistic Regression overfits
 
 For persistent cross-campaign memory, see the `memory/` module (`FindingsStore` with ChromaDB).
 
+### FindingsStore Integration
+
+The campaign now actively uses `FindingsStore` in two nodes:
+
+1. **`generate_hypotheses`** -- queries `FindingsStore.query_similar()` to retrieve relevant past findings and injects them as "Cross-Campaign Findings" context into the hypothesis generation prompt
+2. **`extract_insights`** -- calls `FindingsStore.add_finding()` to persist each experiment's results (algorithm, metrics, insights) for future campaigns
+
+Both operations degrade gracefully if ChromaDB is not installed.
+
 ## Checkpointing
 
 The campaign graph uses LangGraph `MemorySaver` for state persistence:
@@ -80,16 +94,16 @@ The campaign graph uses LangGraph `MemorySaver` for state persistence:
 - A custom checkpointer can be passed to `CampaignAgent(checkpointer=...)` for persistent storage
 - This enables campaign resumability after interruption
 
-## Experiment Runner (Stub)
+## Experiment Runner
 
-The `run_next_experiment` node (`nodes/experiment_runner.py`) is currently a **stub** that returns mock results. The planned full integration will:
+The `run_next_experiment` node (`nodes/experiment_runner.py`) invokes the full 5-agent pipeline for each hypothesis:
 
-1. Build a `TrainRequest` from the hypothesis (objective + algorithm suggestions)
-2. Instantiate `CentralAgent` and invoke the full 5-agent pipeline
-3. Extract results (experiment_id, best_model, metrics, etc.)
-4. Handle errors gracefully (failed experiments logged, not fatal)
-5. Emit campaign-level events for real-time monitoring
-6. Run with `auto_approve_plan=True` (campaigns are autonomous)
+1. Picks the top-ranked hypothesis from `hypotheses`
+2. Builds a `TrainRequest` with the hypothesis baked into the objective and `auto_approve_plan=True`
+3. Instantiates a fresh `CentralAgent` and calls `agent.run()`
+4. Extracts results (experiment_id, best_model, metrics, status, etc.)
+5. Updates `completed_experiments`, `current_iteration`, and `best_result`
+6. Handles errors gracefully -- failed experiments are logged and recorded but don't stop the campaign
 
 ## Schemas
 
@@ -116,10 +130,10 @@ Covers: iris classification (2 iterations) and house price regression (3 iterati
 | `states.py` | `CampaignState` TypedDict with budget, hypothesis, results, and findings fields |
 | `schemas.py` | `Hypothesis`, `HypothesisList`, `CampaignResult` Pydantic models |
 | `prompts.py` | `HYPOTHESIS_GENERATION_PROMPT`, `INSIGHT_EXTRACTION_PROMPT`, `CONVERGENCE_CHECK_PROMPT` |
-| `nodes/hypothesis_generator.py` | Ranked hypothesis generation (1 structured LLM call) |
-| `nodes/experiment_runner.py` | Inner pipeline invocation (**stub**) |
-| `nodes/insight_extractor.py` | Findings memory update (1 LLM call) |
-| `nodes/budget_checker.py` | Budget enforcement (0 LLM calls, pure function) |
+| `nodes/hypothesis_generator.py` | Ranked hypothesis generation (1 structured LLM call) + FindingsStore query |
+| `nodes/experiment_runner.py` | Inner pipeline invocation via `CentralAgent` |
+| `nodes/insight_extractor.py` | Findings memory update (1 LLM call) + FindingsStore write |
+| `nodes/budget_checker.py` | `check_budget_node` (state update) + `route_budget` (routing function) |
 
 ## Model
 

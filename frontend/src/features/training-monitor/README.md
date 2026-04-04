@@ -41,9 +41,9 @@ The `useExperimentEvents` hook (`hooks/use-experiment-events.ts`) manages the SS
 
 ### TrainingMonitorPage
 
-Page component that orchestrates the monitor:
+Page component that orchestrates the monitor. Includes an `ExperimentSelector` (from `@/components/shared/ExperimentSelector`) filtered to `["running", "pending"]` experiments for switching between active experiments.
 
-1. Resolves experiment ID from URL params or auto-detects the latest running/pending experiment.
+1. Resolves experiment ID from URL params, Zustand store (via `useExperimentIdSync`), or auto-detects the latest running/pending experiment.
 2. Fetches experiment status via `useTrainingStatus()`.
 3. Connects SSE via `useExperimentEvents()`.
 4. Falls back to stored `progress_events` when no live SSE activities exist (e.g., page refresh after experiment completes).
@@ -58,7 +58,7 @@ Visual 10-phase pipeline with step indicators:
 Init -> Classify -> EDA -> Data -> Plan -> Review -> Execute -> Analyze -> Summary -> Done
 ```
 
-Each step shows a check (completed), spinner (current), amber pulse (plan_review), or empty circle (pending). Also displays an iteration progress bar (current / 5) and experiment metadata.
+Each step shows a check (completed), spinner (current), amber pulse (plan_review), or empty circle (pending). Also displays an iteration progress bar (current / 5) and experiment metadata. When the backend emits `error_retry` events, the progress display reflects the retry status.
 
 ### PlanReviewPanel
 

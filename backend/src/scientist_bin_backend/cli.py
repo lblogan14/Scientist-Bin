@@ -34,13 +34,22 @@ def train(
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
     auto_approve: bool = typer.Option(False, "--auto-approve", help="Skip plan review"),
+    deep_research: bool = typer.Option(
+        False, "--deep-research", help="Run autonomous research campaign"
+    ),
+    budget: int = typer.Option(
+        10, "--budget", help="Max experiment iterations (deep research only)"
+    ),
+    time_limit: str = typer.Option(
+        "4h",
+        "--time-limit",
+        help="Wall-clock time limit, e.g. 4h, 30m (deep research only)",
+    ),
 ) -> None:
     """Run full training pipeline locally (no server required)."""
     import asyncio
     from pathlib import Path
 
-    from scientist_bin_backend.agents.central.agent import CentralAgent
-    from scientist_bin_backend.agents.central.schemas import TrainRequest
     from scientist_bin_backend.utils.naming import generate_experiment_id
 
     # Resolve data file path to absolute and validate before starting the agent
@@ -52,8 +61,73 @@ def train(
             raise typer.Exit(code=1)
         resolved_data_file = str(resolved)
 
-    agent = CentralAgent()
     experiment_id = generate_experiment_id(objective)
+
+    # -------------------------------------------------------------------
+    # Deep Research path: delegate to CampaignAgent
+    # -------------------------------------------------------------------
+    if deep_research:
+        import re
+
+        if not resolved_data_file:
+            typer.echo(
+                "Error: --data-file is required for --deep-research",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        match = re.match(r"^(\d+)(h|m|s)$", time_limit.strip())
+        if not match:
+            typer.echo(
+                "Invalid time limit format. Use e.g. '4h', '30m', '300s'.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        value, unit = int(match.group(1)), match.group(2)
+        seconds = value * {"h": 3600, "m": 60, "s": 1}[unit]
+
+        from scientist_bin_backend.agents.campaign.agent import CampaignAgent
+
+        if not quiet:
+            typer.echo("\n  Scientist-Bin  |  Deep Research Campaign")
+            typer.echo(f"  Experiment: {experiment_id}")
+            typer.echo(f"  Objective:  {objective}")
+            typer.echo(f"  Data file:  {resolved_data_file}")
+            typer.echo(f"  Budget:     {budget} experiments, {time_limit}")
+            typer.echo("")
+
+        agent = CampaignAgent()
+        result = asyncio.run(
+            agent.run(
+                objective=objective,
+                data_file_path=resolved_data_file,
+                data_description=data,
+                budget_max_iterations=budget,
+                budget_time_limit_seconds=float(seconds),
+            )
+        )
+
+        if not quiet:
+            typer.echo(
+                f"\nCampaign complete: "
+                f"{result.total_iterations} experiments in "
+                f"{result.total_time_seconds:.1f}s"
+            )
+            if result.best_algorithm:
+                typer.echo(f"  Best: {result.best_algorithm}")
+            for k, v in list(result.best_metrics.items())[:5]:
+                typer.echo(f"    {k}: {v}")
+
+        typer.echo(result.model_dump_json(indent=2))
+        return
+
+    # -------------------------------------------------------------------
+    # Standard path: delegate to CentralAgent
+    # -------------------------------------------------------------------
+    from scientist_bin_backend.agents.central.agent import CentralAgent
+    from scientist_bin_backend.agents.central.schemas import TrainRequest
+
+    agent = CentralAgent()
     request = TrainRequest(
         objective=objective,
         data_description=data,

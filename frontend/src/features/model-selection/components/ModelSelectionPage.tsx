@@ -2,6 +2,8 @@ import { useState } from "react";
 import { AlertTriangle, Boxes } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
+import { ExperimentSelector } from "@/components/shared/ExperimentSelector";
+import { useExperimentIdSync } from "@/hooks/use-experiment-id-sync";
 import type { ExperimentResult } from "@/types/api";
 import { isExperimentError } from "@/types/api";
 import { useModels } from "../hooks/use-models";
@@ -12,7 +14,8 @@ import { ModelRankingCard } from "./ModelRankingCard";
 import { ModelTradeoffScatter } from "./ModelTradeoffScatter";
 
 export default function ModelSelectionPage() {
-  const { data: models, isLoading, isError } = useModels();
+  const { experimentId, setExperimentId } = useExperimentIdSync();
+  const { data: models, isLoading, isError } = useModels(experimentId);
   const [deployedModelId, setDeployedModelId] = useState<string | null>(null);
 
   if (isLoading) return <LoadingSpinner message="Loading models..." />;
@@ -36,7 +39,16 @@ export default function ModelSelectionPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Models</h2>
+      <div className="flex items-center gap-3">
+        <h2 className="text-2xl font-bold">Models</h2>
+        <ExperimentSelector
+          statusFilter={["completed"]}
+          showAllOption
+          value={experimentId ?? "all"}
+          onChange={(id) => setExperimentId(id === "all" ? null : id)}
+          className="w-64"
+        />
+      </div>
       {!models || models.length === 0 ? (
         <EmptyState
           icon={Boxes}

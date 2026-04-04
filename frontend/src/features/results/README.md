@@ -77,9 +77,9 @@ All tab components are loaded via `React.lazy()` with dynamic imports. This keep
 
 ## ResultsPage Component
 
-`ResultsPage.tsx` orchestrates the feature:
+`ResultsPage.tsx` orchestrates the feature. Includes an `ExperimentSelector` (from `@/components/shared/ExperimentSelector`) filtered to `["completed"]` experiments for switching between results. The selected experiment ID is synced between the URL query parameter and Zustand store via `useExperimentIdSync`.
 
-1. Resolves experiment ID from URL params or auto-detects the latest completed experiment.
+1. Resolves experiment ID from URL params, Zustand store, or auto-detects the latest completed experiment.
 2. Fetches experiment data via `useResult()` hook.
 3. Renders `MetricCards` at the top for a quick summary of best metrics.
 4. Builds `TabContext` and calls `getTabsForResult()` to determine visible tabs.

@@ -102,6 +102,8 @@ class BaseMLState(TypedDict, total=False):
     best_experiment: dict | None
     current_iteration: int
     max_iterations: int
+    error_retry_count: int  # Consecutive failed execution attempts (resets on success)
+    max_error_retries: int  # Max error fix attempts per approach (default 3)
     next_action: str | None
     refinement_context: str | None
 

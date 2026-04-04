@@ -25,9 +25,21 @@ START -> generate_code -> validate_code -> execute_code -> analyze_results
 |------|------|-----------|-------------|
 | `validate_code` | `nodes/code_validator.py` | 0 | Static analysis: syntax check, import check, results marker, report_metric call. Max 2 retries. |
 | `execute_code` | `nodes/code_executor.py` | 0 | Sandboxed subprocess execution with dynamic timeout, metrics streaming, journal logging. |
-| `analyze_results` | `nodes/results_analyzer.py` | 0-2 | Parses metrics, decides next action (IMPROVE pattern), structured reflection (ERL). Uses `get_agent_model(fw)` for per-framework model selection. |
+| `analyze_results` | `nodes/results_analyzer.py` | 0-2 | Parses metrics, decides next action (IMPROVE pattern), structured reflection (ERL). Only increments `current_iteration` on success; error retries use a separate counter. Uses `get_agent_model(fw)` for per-framework model selection. |
 | `evaluate_on_test` | `nodes/test_evaluator.py` | 1 | Evaluates best model on held-out test set after iteration loop accepts. |
 | `finalize` | `nodes/results_analyzer.py` | 1 | Generates final structured report from best experiment. Uses `get_agent_model(fw)` for per-framework model selection. |
+
+## Error Retry Separation
+
+Error retries are tracked independently from the optimization budget:
+
+- `error_retry_count` -- consecutive failed execution attempts (resets to 0 on success)
+- `max_error_retries` -- max error fix attempts per approach (default 3)
+- `current_iteration` -- only incremented on **successful** execution
+
+When code execution fails, `analyze_results` increments `error_retry_count` without touching `current_iteration`. If retries are exhausted (`error_retry_count >= max_error_retries`), the agent moves to a new algorithm or aborts. On success, `error_retry_count` resets and `current_iteration` advances. This ensures runtime errors don't consume the limited optimization budget.
+
+Error retry events (`error_retry`) are emitted via the event bus for frontend visibility (e.g., progress indicators showing retry status).
 
 ## Modules
 
@@ -35,7 +47,7 @@ START -> generate_code -> validate_code -> execute_code -> analyze_results
 |------|---------|
 | `agent.py` | `BaseFrameworkAgent` ABC with shared `run()` interface |
 | `graph.py` | `build_framework_graph()` shared graph builder, `_route_decision`, `_route_validation` |
-| `states.py` | `BaseMLState` (incl. `framework_name: str \| None`), `DataProfile`, `ExperimentRecord` TypedDicts |
+| `states.py` | `BaseMLState` (incl. `framework_name`, `error_retry_count`, `max_error_retries`), `DataProfile`, `ExperimentRecord` TypedDicts |
 | `schemas.py` | `ProblemClassification`, `StrategyPlan`, `IterationDecision`, `FinalReport` |
 | `prompts.py` | Prompts for results analysis, reflection, final report, test evaluation |
 | `utils.py` | `strip_code_fences()` utility for cleaning LLM code output |

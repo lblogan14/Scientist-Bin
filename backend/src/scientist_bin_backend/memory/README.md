@@ -7,7 +7,12 @@ Persistent memory systems for cross-experiment learning. Two components:
 
 ## FindingsStore
 
-`findings_store.py` provides a ChromaDB-backed vector store for storing and querying experiment results. This enables the campaign orchestrator (and future agents) to retrieve relevant past findings when planning new experiments.
+`findings_store.py` provides a ChromaDB-backed vector store for storing and querying experiment results. The campaign orchestrator actively uses FindingsStore in two nodes:
+
+- **`generate_hypotheses`** -- queries `query_similar()` to retrieve relevant past findings for hypothesis generation context
+- **`extract_insights`** -- calls `add_finding()` to persist each experiment's results for cross-campaign learning
+
+This enables campaigns to build on prior experiments rather than starting from scratch each time.
 
 ### What Gets Stored
 

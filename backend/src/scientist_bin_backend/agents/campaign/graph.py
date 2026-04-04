@@ -13,7 +13,10 @@ from __future__ import annotations
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from scientist_bin_backend.agents.campaign.nodes.budget_checker import check_budget
+from scientist_bin_backend.agents.campaign.nodes.budget_checker import (
+    check_budget_node,
+    route_budget,
+)
 from scientist_bin_backend.agents.campaign.nodes.experiment_runner import (
     run_next_experiment,
 )
@@ -50,7 +53,7 @@ def build_campaign_graph(checkpointer=None):
     builder.add_node("generate_hypotheses", generate_hypotheses)
     builder.add_node("run_next_experiment", run_next_experiment)
     builder.add_node("extract_insights", extract_insights)
-    builder.add_node("check_budget", check_budget)
+    builder.add_node("check_budget", check_budget_node)
 
     # Linear edges
     builder.add_edge(START, "generate_hypotheses")
@@ -61,7 +64,7 @@ def build_campaign_graph(checkpointer=None):
     # Conditional loop-back or exit
     builder.add_conditional_edges(
         "check_budget",
-        check_budget,
+        route_budget,
         {
             "continue": "generate_hypotheses",
             "stop": END,

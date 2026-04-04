@@ -39,10 +39,21 @@ async def analyze_results(state: dict) -> dict:
     execution_success = state.get("execution_success", False)
     execution_output = state.get("execution_output", "")
     execution_error = state.get("execution_error", "")
-    current_iteration = state.get("current_iteration", 0) + 1
     max_iterations = state.get("max_iterations", 5)
+    error_retry_count = state.get("error_retry_count", 0)
+    max_error_retries = state.get("max_error_retries", 3)
     experiment_history = list(state.get("experiment_history", []))
     experiment_id = state.get("experiment_id", "default")
+
+    # Only increment current_iteration on successful execution.
+    # Error retries use a separate counter so they don't consume
+    # the optimization budget.
+    if execution_success:
+        current_iteration = state.get("current_iteration", 0) + 1
+        error_retry_count = 0  # Reset on success
+    else:
+        current_iteration = state.get("current_iteration", 0)
+        error_retry_count += 1
 
     # Get experiment journal for logging
     journal = get_journal_for_experiment(experiment_id)
@@ -120,20 +131,57 @@ async def analyze_results(state: dict) -> dict:
     # Decide next action
     reflection = None
     if not execution_success:
-        # Deterministic: execution failed, try to fix
-        next_action = "fix_error"
-        refinement_context = (
-            f"The code failed to execute. Error:\n{execution_error}\n\n"
-            "Please fix the error and regenerate the code."
-        )
-        decision_msg = f"Execution failed. Will attempt to fix. Error: {execution_error[:200]}"
-        journal.log(
-            "decision",
-            phase="analysis",
-            iteration=current_iteration,
-            reasoning="Execution failed, attempting fix",
-            data={"action": "fix_error"},
-        )
+        if error_retry_count >= max_error_retries:
+            # Error retries exhausted — give up on this approach
+            next_action = "accept" if best_experiment else "abort"
+            refinement_context = None
+            decision_msg = (
+                f"Error retries exhausted ({error_retry_count}/{max_error_retries}). "
+                "Finalizing with best available result."
+            )
+            journal.log(
+                "decision",
+                phase="analysis",
+                iteration=current_iteration,
+                reasoning=f"Error retries exhausted after {error_retry_count} attempts",
+                data={"action": next_action},
+            )
+        else:
+            # Deterministic: execution failed, try to fix (does not consume iteration budget)
+            next_action = "fix_error"
+            refinement_context = (
+                f"The code failed to execute "
+                f"(attempt {error_retry_count}/{max_error_retries}). "
+                f"Error:\n{execution_error}\n\n"
+                "Please fix the error and regenerate the code."
+            )
+            decision_msg = (
+                f"Execution failed (error retry {error_retry_count}/{max_error_retries}). "
+                f"Error: {execution_error[:200]}"
+            )
+            journal.log(
+                "decision",
+                phase="analysis",
+                iteration=current_iteration,
+                reasoning=(
+                    f"Execution failed, error retry {error_retry_count}/{max_error_retries}"
+                ),
+                data={"action": "fix_error", "error_retry_count": error_retry_count},
+            )
+
+            # Emit error retry event for frontend visibility
+            await event_bus.emit(
+                experiment_id,
+                ExperimentEvent(
+                    event_type="agent_activity",
+                    data={
+                        "action": "error_retry",
+                        "error_retry_count": error_retry_count,
+                        "max_error_retries": max_error_retries,
+                        "error": execution_error[:300],
+                    },
+                ),
+            )
     elif current_iteration >= max_iterations:
         # Deterministic: budget exhausted
         next_action = "accept" if best_experiment else "abort"
@@ -221,6 +269,7 @@ async def analyze_results(state: dict) -> dict:
         "experiment_history": new_records,  # Uses operator.add reducer
         "best_experiment": best_experiment,
         "current_iteration": current_iteration,
+        "error_retry_count": error_retry_count,
         "next_action": next_action,
         "refinement_context": refinement_context,
         "reflection": reflection,

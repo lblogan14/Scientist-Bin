@@ -1,11 +1,13 @@
 import { useEffect, useMemo } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { HTTPError } from "ky";
 import { Activity, AlertCircle } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { LoadingSpinner } from "@/components/feedback/LoadingSpinner";
+import { ExperimentSelector } from "@/components/shared/ExperimentSelector";
 import { Button } from "@/components/ui/button";
+import { useExperimentIdSync } from "@/hooks/use-experiment-id-sync";
 import { listExperiments } from "@/lib/api-client";
 import type { AgentActivity, ProgressEvent } from "@/types/api";
 import { isExperimentError } from "@/types/api";
@@ -19,8 +21,7 @@ import { MetricsStream } from "./MetricsStream";
 import { PlanReviewPanel } from "./PlanReviewPanel";
 
 export default function TrainingMonitorPage() {
-  const [searchParams] = useSearchParams();
-  const experimentIdParam = searchParams.get("id");
+  const { experimentId, setExperimentId } = useExperimentIdSync();
   const navigate = useNavigate();
 
   // Auto-detect the latest running/pending experiment when no ID is provided
@@ -34,17 +35,15 @@ export default function TrainingMonitorPage() {
         null
       );
     },
-    enabled: !experimentIdParam,
+    enabled: !experimentId,
   });
 
-  // Redirect to the latest experiment if found
+  // Set the latest experiment if found and none is selected
   useEffect(() => {
-    if (!experimentIdParam && latestExperiment) {
-      navigate(`/monitor?id=${latestExperiment.id}`, { replace: true });
+    if (!experimentId && latestExperiment) {
+      setExperimentId(latestExperiment.id);
     }
-  }, [experimentIdParam, latestExperiment, navigate]);
-
-  const experimentId = experimentIdParam ?? latestExperiment?.id ?? null;
+  }, [experimentId, latestExperiment, setExperimentId]);
 
   const {
     data: experiment,
@@ -174,7 +173,15 @@ export default function TrainingMonitorPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Training</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold">Training</h2>
+          <ExperimentSelector
+            statusFilter={["running", "pending"]}
+            value={experimentId}
+            onChange={setExperimentId}
+            className="w-64"
+          />
+        </div>
         <span aria-live="polite">
           {isConnected && (
             <span className="flex items-center gap-2 text-sm text-success">

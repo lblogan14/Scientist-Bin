@@ -8,19 +8,10 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def check_budget(state: dict) -> str:
-    """Check whether the campaign should continue or stop.
+def _evaluate_budget(state: dict) -> str:
+    """Shared budget evaluation logic.
 
-    This is a pure function (no LLM call). It evaluates two hard budget
-    constraints and returns a routing decision for the conditional edge.
-
-    Checks performed:
-    1. **Iteration budget**: ``current_iteration >= budget_max_iterations``
-    2. **Time budget**: elapsed time >= ``budget_time_limit_seconds``
-
-    Returns:
-        ``"continue"`` to loop back to hypothesis generation, or
-        ``"stop"`` to end the campaign.
+    Returns ``"continue"`` or ``"stop"`` and logs the decision.
     """
     iteration = state.get("current_iteration", 0)
     max_iterations = state.get("budget_max_iterations", 10)
@@ -55,3 +46,25 @@ def check_budget(state: dict) -> str:
         time_limit,
     )
     return "continue"
+
+
+def check_budget_node(state: dict) -> dict:
+    """LangGraph node that evaluates budget and writes campaign_status.
+
+    Returns:
+        Partial state update with ``campaign_status`` set to
+        ``"budget_exhausted"`` or ``"running"``.
+    """
+    decision = _evaluate_budget(state)
+    status = "budget_exhausted" if decision == "stop" else "running"
+    return {"campaign_status": status}
+
+
+def route_budget(state: dict) -> str:
+    """Pure routing function for the conditional edge after check_budget.
+
+    Returns:
+        ``"continue"`` to loop back to hypothesis generation, or
+        ``"stop"`` to end the campaign.
+    """
+    return _evaluate_budget(state)

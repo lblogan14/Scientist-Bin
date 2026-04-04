@@ -66,9 +66,11 @@ def test_create_experiment_with_auto_approve(client):
     # Verify auto_approve_plan was passed through to _run_training
     mock_run.assert_called_once()
     call_kwargs = mock_run.call_args
-    # _run_training is called with positional args from background_tasks.add_task
-    # The last argument is auto_approve_plan
-    assert call_kwargs[0][-1] is True
+    # _run_training positional args from background_tasks.add_task:
+    # (experiment_id, objective, data_description, data_file_path,
+    #  framework, auto_approve_plan, deep_research,
+    #  budget_max_iterations, budget_time_limit_seconds)
+    assert call_kwargs[0][5] is True  # auto_approve_plan
 
 
 def test_create_experiment_auto_approve_default_false(client):
@@ -84,7 +86,7 @@ def test_create_experiment_auto_approve_default_false(client):
     assert create_resp.status_code == 200
     mock_run.assert_called_once()
     call_kwargs = mock_run.call_args
-    assert call_kwargs[0][-1] is False
+    assert call_kwargs[0][5] is False  # auto_approve_plan
 
 
 def test_delete_experiment(client):

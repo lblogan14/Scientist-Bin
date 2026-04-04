@@ -50,7 +50,7 @@ Scatter plot of primary metric vs. training time for all experiment runs, using 
 
 ### ModelSelectionPage
 
-Page component that ties everything together:
+Page component that ties everything together. Includes an `ExperimentSelector` (from `@/components/shared/ExperimentSelector`) with `showAllOption` for per-experiment filtering. When a specific experiment is selected, ranking cards, charts, and the comparison table show only data from that experiment. Selecting "All experiments" returns to the aggregated cross-experiment view.
 
 1. Fetches completed experiments via `useModels()`.
 2. Renders `DeploymentCard` for the best model.
