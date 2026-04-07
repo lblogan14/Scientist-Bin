@@ -25,6 +25,24 @@ A 4-node loop with 2 LLM calls per iteration (hypothesis generation + insight ex
 | `extract_insights` | 1 | Analyzes the latest experiment result, produces an updated findings summary, and persists to `FindingsStore` for cross-campaign learning. |
 | `check_budget` | 0 | Split into `check_budget_node` (state update: writes `campaign_status`) and `route_budget` (routing function: returns `"continue"` or `"stop"`). Both check iteration count and wall-clock time. |
 
+## Input/Output
+
+**Input (from CLI):**
+- `objective` -- high-level research objective (e.g. "Find the best classifier for iris species")
+- `data_file_path` -- absolute path to the dataset file
+- `data_description` -- free-text description of the dataset characteristics
+- `budget_max_iterations` -- maximum number of experiments to run (default 10)
+- `budget_time_limit_seconds` -- wall-clock time limit in seconds (default 14400 = 4h)
+
+**Output (`CampaignResult`):**
+- `total_iterations` -- number of experiments completed
+- `total_time_seconds` -- wall-clock time for the entire campaign
+- `best_experiment_id` -- ID of the experiment that produced the best result
+- `best_algorithm` -- algorithm name from the best experiment
+- `best_metrics` -- evaluation metrics from the best experiment
+- `hypotheses_tested` -- total number of hypotheses that were executed
+- `key_findings` -- top generalizable findings from the campaign
+
 ## CLI Usage
 
 ```bash

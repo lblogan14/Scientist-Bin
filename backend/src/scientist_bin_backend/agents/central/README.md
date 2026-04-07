@@ -24,20 +24,37 @@ The central agent produces a structured `TaskAnalysis`, routes to the selected f
 
 ## Nodes
 
-- `analyzer.py` -- Produces a structured `TaskAnalysis` (task type, data characteristics, suggested frameworks) via `with_structured_output(TaskAnalysis)`.
-- `router.py` -- Selects framework: deterministic first (user preference or `task_analysis.suggested_frameworks`), LLM fallback for ambiguous cases. Contains `FRAMEWORK_REGISTRY` mapping framework names to agent class paths.
+| Node | LLM Calls | Description |
+|------|-----------|-------------|
+| `analyze` | 1 (structured) | Produces a structured `TaskAnalysis` (task type, data characteristics, suggested frameworks) via `with_structured_output(TaskAnalysis)` |
+| `route` | 0-1 | Selects framework: deterministic first (user preference or `task_analysis.suggested_frameworks`), LLM fallback for ambiguous cases. Contains `FRAMEWORK_REGISTRY` mapping framework names to agent class paths |
+| `_analyst_delegate` | delegate | Instantiates `AnalystAgent`, passes objective/data file + upstream `task_analysis`, `data_description`, `selected_framework`. Returns `analysis_report`, `split_data_paths`, `problem_type`, `data_profile`, `classification_confidence`, `classification_reasoning` |
+| `_plan_delegate` | delegate | Instantiates `PlanAgent`, passes objective/data + upstream `task_analysis` + analyst outputs (`analysis_report`, `data_profile`, `problem_type`). Returns `execution_plan`, `plan_approved`, `plan_markdown` |
+| `_framework_delegate` | delegate | Generic: reads `selected_framework`, looks up agent class in `FRAMEWORK_REGISTRY`, dynamically imports and invokes it. Returns `framework_results` |
+| `_summary_delegate` | delegate | Instantiates `SummaryAgent`, passes all upstream results. Returns `summary_report` and assembled `agent_response` |
 
-## Delegate Nodes (in `graph.py`)
+## Input/Output
 
-- `_analyst_delegate` -- Instantiates `AnalystAgent`, passes objective/data file + upstream `task_analysis`, `data_description`, `selected_framework`. Returns `analysis_report`, `split_data_paths`, `problem_type`, `data_profile`, `classification_confidence`, `classification_reasoning`.
-- `_plan_delegate` -- Instantiates `PlanAgent`, passes objective/data + upstream `task_analysis` + analyst outputs (`analysis_report`, `data_profile`, `problem_type`), returns `execution_plan`, `plan_approved`, `plan_markdown`.
-- `_framework_delegate` -- Generic: reads `selected_framework`, looks up agent class in `FRAMEWORK_REGISTRY`, dynamically imports and invokes it. Returns `framework_results`.
-- `_summary_delegate` -- Instantiates `SummaryAgent`, passes all upstream results, returns `summary_report` and assembled `agent_response`.
+**Input (from CLI / API via `TrainRequest`):**
+- `objective` -- the ML task description
+- `data_file_path` -- path to the dataset CSV file
+- `data_description` -- free-text dataset description
+- `framework_preference` -- optional user framework preference (e.g. `"sklearn"`)
+- `auto_approve_plan` -- whether to skip HITL plan review
 
-## State
+**Output (`AgentResponse`):**
+- `framework` -- framework used (e.g. `"sklearn"`)
+- `plan` -- the execution plan dict
+- `generated_code` -- final training script
+- `evaluation_results` -- best experiment metrics and hyperparameters
+- `experiment_history` -- list of all iteration records
+- `analysis_report` -- markdown data analysis report
+- `summary_report` -- markdown summary report
+- `best_model` -- name of the best algorithm
+- `test_metrics` -- held-out test set metrics
+- `status` -- `"success"` or `"error"`
 
-- `CentralState` -- Central agent's own fields (analyze + route nodes): objective, data_description, task_analysis, selected_framework, etc.
-- `PipelineState(CentralState)` -- Extended state for the full pipeline, adds downstream agent outputs (analysis_report, execution_plan, framework_results, summary_report, classification_confidence, classification_reasoning, etc.).
+**State architecture:** `CentralState` holds the orchestrator's own fields (analyze + route nodes). `PipelineState(CentralState)` extends it with all downstream agent outputs (`analysis_report`, `execution_plan`, `framework_results`, `summary_report`, etc.).
 
 ## Data Flow: Orchestrator --> Analyst --> Plan
 
@@ -96,6 +113,16 @@ Framework selection follows a 3-tier priority:
 2. **Task analysis** -- pick the first supported framework from `task_analysis.suggested_frameworks`
 3. **LLM fallback** -- ask the LLM to select when the above are ambiguous
 
+## Schemas
+
+| Schema | Purpose |
+|--------|---------|
+| `TrainRequest` | Incoming training request from user/CLI (objective, data file, framework preference) |
+| `TaskAnalysis` | Structured analysis output: task type, subtype, complexity, key considerations, suggested frameworks, data characteristics |
+| `DataCharacteristics` | Inferred data shape, types, target column hints (nested in `TaskAnalysis`) |
+| `FrameworkSelection` | Router output: selected framework + reasoning |
+| `AgentResponse` | Final pipeline output assembling all agent results into a single response dict |
+
 ## Examples
 
 `agent.py` includes `EXAMPLES` and a `_run_examples()` entrypoint to validate the analyze + route nodes in isolation:
@@ -118,3 +145,7 @@ Covers: iris classification, house price regression, customer segmentation (clus
 | `nodes/analyzer.py` | Structured task analysis node |
 | `nodes/router.py` | Framework selection + `FRAMEWORK_REGISTRY` |
 | `prompts.py` | Analyzer and router prompt templates |
+
+## Model
+
+Uses `gemini-3-flash-preview` via `get_agent_model("central")` for the analyze and route nodes. The flash model is sufficient for task classification and framework routing.

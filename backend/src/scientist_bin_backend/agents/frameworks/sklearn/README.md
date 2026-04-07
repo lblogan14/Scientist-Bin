@@ -55,13 +55,22 @@ After accepting a model, `evaluate_on_test` (base node) evaluates the best model
 | `evaluate_on_test` | 1 | `base/nodes/` | Evaluates best model on held-out test set |
 | `finalize` | 1 | `base/nodes/` | Generates final report |
 
-## Input (from Plan + Analyst)
+## Input/Output
 
+**Input (from Plan + Analyst):**
 - `execution_plan` -- structured plan with algorithms, preprocessing, metrics, success criteria
 - `split_data_paths` -- `{"train": path, "val": path, "test": path}`
 - `analysis_report` -- markdown report from the analyst agent
 - `data_profile` -- structured data profile (shape, columns, dtypes, etc.)
 - `problem_type` -- classification, regression, clustering, etc.
+
+**Output (to Summary Agent via PipelineState):**
+- `generated_code` -- final training script
+- `experiment_history` -- list of per-iteration experiment records (metrics, hyperparameters, enriched diagnostics)
+- `best_experiment` -- the highest-scoring experiment record
+- `test_metrics` -- metrics from held-out test set evaluation
+- `test_evaluation_code` -- the test evaluation script for reproducibility
+- `test_diagnostics` -- enriched test results (confusion matrix, residual stats, cluster profiles)
 
 ## Multi-Problem-Type Support
 
@@ -102,6 +111,12 @@ skills/
 ├── evaluation/SKILL.md       — Cross-validation and model selection patterns
 └── preprocessing/SKILL.md    — Data loading, feature engineering, pipeline construction
 ```
+
+## Schemas
+
+| Schema | Purpose |
+|--------|---------|
+| `SklearnStrategyPlan` | Extends base `StrategyPlan` with sklearn-specific plan parameters (inherits approach, algorithms, preprocessing, feature engineering, CV, success criteria) |
 
 ## Examples
 

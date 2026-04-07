@@ -32,11 +32,24 @@ The `review_plan` node (highlighted) uses LangGraph `interrupt()` to pause the g
 
 **LLM calls (happy path): 2** — 1 search-grounded + 1 structured output.
 
-## Schemas
+## Input/Output
 
-| Schema | Purpose |
-|--------|---------|
-| `ExecutionPlan` | Structured output: approach summary, problem type, algorithms, pipeline preprocessing, feature engineering, metrics, CV strategy, success criteria, hyperparameter tuning approach |
+**Input (from Central + Analyst):**
+- `objective` -- the ML task description
+- `data_file_path` -- path to the raw CSV data file
+- `experiment_id` -- unique experiment identifier
+- `task_analysis` -- upstream `TaskAnalysis` dict (task type, complexity, considerations, data characteristics estimates)
+- `analysis_report` -- markdown report from the analyst agent
+- `data_profile` -- structured data profile (actual shape, columns, types, target, missing values, class distribution)
+- `problem_type` -- the validated problem classification from the analyst
+- `auto_approve` -- whether to skip HITL review (default `False`)
+
+Rich upstream context is assembled via `build_upstream_context()` in `nodes/_context.py`. Data cleaning and train/val/test splitting are handled by the analyst — the plan focuses on sklearn-pipeline-level preprocessing, algorithm selection, evaluation, and tuning.
+
+**Output (to Framework Agent via PipelineState):**
+- `execution_plan` -- structured `ExecutionPlan` dict consumed by the framework agent
+- `plan_markdown` -- human-readable markdown version of the plan
+- `plan_approved` -- whether the plan was approved (always `True` after this node completes)
 
 ## Problem-Type-Specific Plans
 
@@ -64,14 +77,11 @@ The plan review uses LangGraph's `interrupt()` mechanism:
 
 When `auto_approve=True` (set via CLI `--auto-approve` or API `auto_approve_plan`), the interrupt is skipped entirely and the plan proceeds directly to `save_plan`.
 
-## Upstream Context
+## Schemas
 
-The plan agent receives rich context from upstream agents via `build_upstream_context()` in `nodes/_context.py`:
-
-- **Central orchestrator:** `task_analysis` (task type, complexity, considerations, data characteristics estimates)
-- **Analyst agent:** `data_profile` (actual shape, columns, types, target, missing values, class distribution), `analysis_report` (markdown), `problem_type` (validated)
-
-Data cleaning and train/val/test splitting are handled by the analyst — the plan focuses on sklearn-pipeline-level preprocessing, algorithm selection, evaluation, and tuning.
+| Schema | Purpose |
+|--------|---------|
+| `ExecutionPlan` | Structured output: approach summary, problem type, algorithms, pipeline preprocessing, feature engineering, metrics, CV strategy, success criteria, hyperparameter tuning approach |
 
 ## Examples
 
