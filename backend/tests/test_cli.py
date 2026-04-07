@@ -378,3 +378,29 @@ class TestPrintEvent:
         out = capsys.readouterr().out
         assert "accuracy" in out
         assert "0.87" in out
+
+
+# ---------------------------------------------------------------------------
+# Framework provisioning commands
+# ---------------------------------------------------------------------------
+
+
+class TestProvision:
+    def test_provision_no_args_lists_available(self):
+        """Calling provision with no args should list available frameworks."""
+        result = runner.invoke(app, ["provision"])
+        assert result.exit_code == 0
+        assert "analyst" in result.output
+        assert "traditional" in result.output
+
+    def test_provision_status(self):
+        """provision-status should list framework names with status."""
+        result = runner.invoke(app, ["provision-status"])
+        assert result.exit_code == 0
+        assert "analyst" in result.output.lower() or "traditional" in result.output.lower()
+
+    def test_provision_unknown_framework(self):
+        """Provisioning a nonexistent framework should show SKIP."""
+        result = runner.invoke(app, ["provision", "nonexistent_framework_xyz"])
+        # Should not crash; the framework dir won't have a pyproject.toml
+        assert "SKIP" in result.output or "no pyproject.toml" in result.output.lower()

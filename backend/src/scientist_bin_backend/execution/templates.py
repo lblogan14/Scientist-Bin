@@ -23,15 +23,26 @@ def report_metric(name: str, value: float, step: int | None = None) -> None:
             f.write(_sb_json.dumps(entry) + "\\n")
     print(f"METRIC: {name}={value}" + (f" step={step}" if step is not None else ""))
 
-# Patch pd.read_csv to convert pandas StringDtype to standard object dtype.
-# FLAML and some sklearn components cannot handle pandas extension dtypes.
+# Disable pandas StringDtype inference globally. FLAML, sklearn, and numpy
+# cannot handle the pandas ArrowDtype / StringDtype that newer pandas infers
+# by default. This must run BEFORE any pd.read_csv() call.
 try:
     import pandas as _sb_pd
+
+    # Disable future.infer_string so all string columns use object dtype
+    try:
+        _sb_pd.set_option("future.infer_string", False)
+    except Exception:
+        pass  # Option not available in older pandas
 
     _sb_orig_read_csv = _sb_pd.read_csv
 
     def _sb_read_csv_compat(*args, **kwargs):
         df = _sb_orig_read_csv(*args, **kwargs)
+        # Ensure column index uses plain Python strings (not StringDtype)
+        if hasattr(df.columns, 'dtype') and df.columns.dtype != object:
+            df.columns = [str(c) for c in df.columns]
+        # Convert any remaining StringDtype columns to object
         for col in df.columns:
             if _sb_pd.api.types.is_string_dtype(df[col]) and df[col].dtype != object:
                 df[col] = df[col].astype(object)

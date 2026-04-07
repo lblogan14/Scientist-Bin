@@ -88,8 +88,33 @@ Used by: DashboardStats, ModelRankingCard, ModelComparisonTable, MetricCards, Ov
 
 ## Testing
 
+### Unit Tests (Vitest)
+
 ```bash
 pnpm test         # Run all 167+ vitest tests
+```
+
+### E2E Tests (Playwright)
+
+```bash
+pnpm e2e              # Run all Playwright tests (smoke + lifecycle)
+pnpm e2e:smoke        # Smoke tests only (page loads, navigation, form validation — no API key needed)
+pnpm e2e:lifecycle    # Lifecycle tests (real training pipelines — requires GOOGLE_API_KEY on backend)
+pnpm e2e:report       # View HTML report from last run
+```
+
+The Playwright config (`playwright.config.ts`) auto-starts both the backend (port 8000) and frontend (port 5173) servers. Two test projects:
+
+- **smoke** (60s timeout): Page loads, sidebar navigation, form validation, framework dropdown, health indicator. Runs on every PR in CI.
+- **lifecycle** (600s timeout): Full training pipelines for sklearn (classification, regression, clustering) and FLAML (classification, regression, time-series forecast), plus plan review HITL, error handling, artifact downloads, and model selection page. Runs nightly in CI.
+
+E2E test fixtures live in `e2e/fixtures/`:
+- `page-objects.ts` -- DashboardPO, MonitorPO, ResultsPO, ModelsPO for reusable selectors
+- `experiment-api.ts` -- API helper for seeding/polling experiments directly
+
+### Other
+
+```bash
 pnpm lint         # ESLint
 pnpm format       # Prettier
 pnpm build        # Type-check + production build

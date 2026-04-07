@@ -7,8 +7,6 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: [["html", { open: "never" }], ["list"]],
-  timeout: 300_000,
-  expect: { timeout: 15_000 },
   use: {
     baseURL: "http://localhost:5173",
     trace: "on-first-retry",
@@ -16,8 +14,38 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
+      name: "smoke",
+      testMatch: ["smoke.spec.ts", "framework-selection.spec.ts"],
+      timeout: 60_000,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "lifecycle",
+      testMatch: [
+        "sklearn-*.spec.ts",
+        "flaml-*.spec.ts",
+        "plan-review.spec.ts",
+        "error-handling.spec.ts",
+        "artifacts.spec.ts",
+        "model-selection.spec.ts",
+      ],
+      timeout: 600_000,
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
+  webServer: [
+    {
+      command:
+        "cd ../backend && uv run uvicorn scientist_bin_backend.main:app --port 8000",
+      port: 8000,
+      timeout: 30_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: "pnpm dev",
+      port: 5173,
+      timeout: 15_000,
+      reuseExistingServer: !process.env.CI,
     },
   ],
 });

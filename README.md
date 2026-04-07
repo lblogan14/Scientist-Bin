@@ -191,7 +191,7 @@ outputs/
 - **ChromaDB** for findings memory (Deep Research mode, optional)
 - **Pydantic** for schemas, **Typer** for CLI
 - **pandas**, **scikit-learn**, **FLAML**, **matplotlib** for data science execution (optional extras or isolated venvs)
-- **uv** for packages, **ruff** for linting, **pytest** for testing (474+ tests)
+- **uv** for packages, **ruff** for linting, **pytest** for testing (490+ tests)
 
 ### Frontend
 
@@ -199,7 +199,7 @@ outputs/
 - **Vite 6**, **shadcn/ui** (Radix + Tailwind CSS v4)
 - **React Router v7**, **TanStack React Query**, **Zustand**
 - **Recharts** for visualizations (13 chart components)
-- **pnpm** for packages, **Vitest** + **Testing Library** for testing (167+ tests)
+- **pnpm** for packages, **Vitest** + **Testing Library** for testing (167+ tests), **Playwright** for E2E
 
 ## Framework Provisioning
 
@@ -272,7 +272,7 @@ Scientist-Bin/
 │   │   ├── execution/               # Sandboxed code runner, budgets, journal
 │   │   └── utils/                   # LLM helpers, artifacts, naming
 │   ├── framework_venvs/             # Isolated ML execution venvs (one per framework)
-│   ├── tests/                       # 474+ tests (pytest)
+│   ├── tests/                       # 490+ tests (pytest)
 │   └── data/                        # Input datasets
 ├── frontend/                        # React frontend (see frontend/README.md)
 │   └── src/
@@ -282,19 +282,23 @@ Scientist-Bin/
 │       ├── lib/                     # API client, metric utilities
 │       ├── stores/                  # Zustand state
 │       └── types/                   # TypeScript interfaces
-└── .github/workflows/ci.yml        # CI: lint + test + build
+├── e2e/                             # Playwright E2E tests (smoke + lifecycle)
+│   └── fixtures/                    # Page objects, API helpers
+└── .github/workflows/              # CI: lint + test + build + E2E smoke + nightly
 ```
 
 ## Development
 
 ```bash
 # Backend (from backend/)
-uv run pytest -v                     # Run all 474+ tests
+uv run pytest -v                     # Run all 490+ tests
 uv run pytest -m slow                # E2E pipeline tests (requires GOOGLE_API_KEY)
 uv run ruff check . && uv run ruff format .
 
 # Frontend (from frontend/)
-pnpm test                            # Run all 167+ tests
+pnpm test                            # Run all 167+ vitest tests
+pnpm e2e:smoke                       # Playwright smoke tests (fast, no API key needed)
+pnpm e2e:lifecycle                   # Playwright lifecycle tests (real LLM, slow)
 pnpm lint && pnpm format
 pnpm build                           # Type-check + production build
 ```
@@ -305,6 +309,9 @@ GitHub Actions runs on push/PR to `main` and `develop`:
 
 - **Backend:** ruff lint + pytest
 - **Frontend:** ESLint + TypeScript check + Vitest + production build
+- **E2E Smoke:** Playwright smoke tests (page loads, navigation, form validation)
+
+A **nightly** workflow (`.github/workflows/nightly.yml`) runs full E2E lifecycle tests with real LLM calls for both sklearn and FLAML frameworks.
 
 ## More Information
 

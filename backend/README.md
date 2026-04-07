@@ -302,8 +302,10 @@ Skills are discovered at runtime via `utils/skill_loader.py` and follow the [Ant
 ## Development
 
 ```bash
-uv run pytest -v                          # Run all 469+ tests (6 E2E skipped without API key)
+uv run pytest -v                          # Run all 490+ tests (E2E skipped without API key)
 uv run pytest -m slow                     # E2E pipeline tests (requires GOOGLE_API_KEY)
+uv run pytest tests/test_e2e_flaml.py -m slow  # FLAML-specific E2E tests
+uv run pytest tests/execution/test_flaml_codegen.py  # FLAML code execution (no LLM)
 uv run pytest tests/test_contracts.py     # Backend-frontend contract tests
 uv run pytest -k "iris"                   # Integration tests with real data
 uv run ruff check .                       # Lint
