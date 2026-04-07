@@ -47,6 +47,7 @@ export interface ListExperimentsParams {
   status?: string;
   framework?: string;
   search?: string;
+  problem_type?: string;
   offset?: number;
   limit?: number;
 }
@@ -58,6 +59,7 @@ export async function listExperiments(
   if (params?.status) searchParams.status = params.status;
   if (params?.framework) searchParams.framework = params.framework;
   if (params?.search) searchParams.search = params.search;
+  if (params?.problem_type) searchParams.problem_type = params.problem_type;
   if (params?.offset !== undefined) searchParams.offset = String(params.offset);
   if (params?.limit !== undefined) searchParams.limit = String(params.limit);
 
@@ -149,8 +151,3 @@ export async function undeployModel(
   return api.post(`experiments/${experimentId}/undeploy`).json();
 }
 
-export async function getDeployment(
-  experimentId: string,
-): Promise<DeploymentInfo & { experiment_id?: string }> {
-  return api.get(`experiments/${experimentId}/deployment`).json();
-}

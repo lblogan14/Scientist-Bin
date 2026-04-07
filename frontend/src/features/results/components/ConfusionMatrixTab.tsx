@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -36,6 +36,15 @@ export function ConfusionMatrixTab(props: ConfusionMatrixTabProps) {
   const matrices = getMatrices(props);
   const algorithms = Object.keys(matrices);
   const [selected, setSelected] = useState(algorithms[0] ?? "");
+
+  const algorithmsKey = algorithms.join(",");
+  useEffect(() => {
+    setSelected((prev) => {
+      if (algorithms.includes(prev)) return prev;
+      return algorithms[0] ?? "";
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [algorithmsKey]);
 
   if (algorithms.length === 0) {
     return (

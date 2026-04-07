@@ -18,5 +18,8 @@ dist/
 # Test coverage
 coverage/
 
+# Vitest run metadata
+test-results/
+
 # TypeScript incremental build
 *.tsbuildinfo

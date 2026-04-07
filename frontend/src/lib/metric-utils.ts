@@ -179,12 +179,3 @@ export function getBarColor(key: string, value: number): string {
   return "bg-destructive";
 }
 
-/** Label for the primary metric stat card on the dashboard. */
-export function getPrimaryMetricLabel(
-  problemType: string | null | undefined,
-): string {
-  if (problemType === "regression") return "Avg Best R²";
-  if (problemType === "clustering") return "Avg Silhouette";
-  if (problemType === "ts_forecast") return "Avg Best MAPE";
-  return "Avg Best Accuracy";
-}

@@ -62,19 +62,3 @@ def build_sandbox_env(run_dir: Path, metrics_file: Path) -> dict[str, str]:
     env["SCIENTIST_BIN_RUN_DIR"] = str(run_dir)
     env["SCIENTIST_BIN_ARTIFACTS_DIR"] = str(run_dir / "artifacts")
     return env
-
-
-def validate_data_path(data_path: str, allowed_root: Path) -> Path:
-    """Validate that a data file path is within the allowed root directory.
-
-    Raises ValueError if the path escapes the allowed root.
-    """
-    resolved = Path(data_path).resolve()
-    allowed_resolved = allowed_root.resolve()
-    if not str(resolved).startswith(str(allowed_resolved)):
-        msg = f"Data path {data_path} is outside allowed root {allowed_root}"
-        raise ValueError(msg)
-    if not resolved.exists():
-        msg = f"Data file not found: {data_path}"
-        raise FileNotFoundError(msg)
-    return resolved

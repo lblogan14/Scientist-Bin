@@ -5,14 +5,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 from scientist_bin_backend.execution.sandbox import (
     build_sandbox_env,
     create_run_directory,
     get_sandbox_python,
     prepare_script,
-    validate_data_path,
 )
 
 
@@ -89,25 +86,3 @@ def test_build_sandbox_env_injects_sandbox_vars(tmp_path: Path):
     assert env["SCIENTIST_BIN_METRICS_FILE"] == str(metrics_file)
     assert env["SCIENTIST_BIN_RUN_DIR"] == str(run_dir)
     assert env["SCIENTIST_BIN_ARTIFACTS_DIR"] == str(run_dir / "artifacts")
-
-
-def test_validate_data_path_within_root(tmp_path: Path):
-    """Valid path within allowed root succeeds."""
-    data_file = tmp_path / "data.csv"
-    data_file.write_text("a,b\n1,2\n")
-
-    result = validate_data_path(str(data_file), tmp_path)
-    assert result == data_file.resolve()
-
-
-def test_validate_data_path_escapes_root(tmp_path: Path):
-    """Path outside allowed root raises ValueError."""
-    with pytest.raises(ValueError, match="outside allowed root"):
-        validate_data_path("/etc/passwd", tmp_path)
-
-
-def test_validate_data_path_nonexistent(tmp_path: Path):
-    """Non-existent file raises FileNotFoundError."""
-    missing = tmp_path / "nonexistent.csv"
-    with pytest.raises(FileNotFoundError, match="not found"):
-        validate_data_path(str(missing), tmp_path)

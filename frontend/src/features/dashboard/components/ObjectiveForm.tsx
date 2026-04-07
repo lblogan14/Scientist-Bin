@@ -25,6 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { Framework } from "@/types/api";
 import { useSubmitTrain } from "../hooks/use-submit-train";
 
 const formSchema = z.object({
@@ -69,7 +70,7 @@ export function ObjectiveForm() {
       objective: values.objective,
       data_description: values.data_description,
       data_file_path: values.data_file_path || undefined,
-      framework_preference: fw && fw !== "auto" ? (fw as "sklearn") : undefined,
+      framework_preference: fw && fw !== "auto" ? (fw as Framework) : undefined,
       auto_approve_plan: values.auto_approve_plan || undefined,
       deep_research: values.deep_research || undefined,
       budget_max_iterations: values.deep_research
