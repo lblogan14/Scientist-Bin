@@ -21,6 +21,10 @@ const ERROR_METRICS = new Set([
   "val_mape",
   "davies_bouldin",
   "davies_bouldin_score",
+  "smape",
+  "val_smape",
+  "mase",
+  "val_mase",
 ]);
 
 /** Ratio/score metrics bounded roughly in [0, 1] (higher is better). */

@@ -320,4 +320,28 @@ def _build_chart_data(ctx: dict, problem_type: str) -> dict:
     if residual_stats:
         charts["residual_stats"] = residual_stats
 
+    # 8. Forecast data (time series)
+    forecast_data_all = ctx.get("forecast_data", {})
+    if forecast_data_all:
+        for algo in reversed(ctx.get("algorithms_tried", [])):
+            if algo in forecast_data_all:
+                charts["forecast_data"] = forecast_data_all[algo]
+                break
+
+    # 9. Trial history (FLAML)
+    trial_history_all = ctx.get("trial_history", {})
+    if trial_history_all:
+        for algo in reversed(ctx.get("algorithms_tried", [])):
+            if algo in trial_history_all:
+                charts["trial_history"] = trial_history_all[algo]
+                break
+
+    # 10. Estimator comparison (FLAML)
+    estimator_comparison_all = ctx.get("estimator_comparison", {})
+    if estimator_comparison_all:
+        for algo in reversed(ctx.get("algorithms_tried", [])):
+            if algo in estimator_comparison_all:
+                charts["estimator_comparison"] = estimator_comparison_all[algo]
+                break
+
     return charts

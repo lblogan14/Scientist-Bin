@@ -2726,6 +2726,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "scikit-learn" },
+    { name = "statsmodels" },
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -2753,6 +2754,7 @@ requires-dist = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "scikit-learn" },
+    { name = "statsmodels" },
     { name = "typer" },
     { name = "uvicorn", extras = ["standard"] },
 ]

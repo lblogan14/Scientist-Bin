@@ -22,6 +22,7 @@ dependencies = [
     "matplotlib",
     # FLAML AutoML execution dependencies (used by sandboxed subprocess)
     "flaml[automl,forecast]",
+    "statsmodels",
 ]
 
 [project.scripts]

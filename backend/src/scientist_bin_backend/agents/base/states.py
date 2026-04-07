@@ -33,6 +33,11 @@ class DataProfile(TypedDict, total=False):
     temporal_columns: list[str] | None
     detected_frequency: str | None  # e.g., "D", "H", "M"
     suggested_period: int | None  # e.g., 12, 24, 7
+    # TS-specific profiling (populated when problem_type == "ts_forecast")
+    stationarity: dict | None  # {adf_statistic, p_value, is_stationary}
+    autocorrelation_values: list[float] | None  # First 20 ACF lags
+    seasonal_strength: float | None  # 0-1, strength of seasonal component
+    trend_direction: str | None  # "increasing", "decreasing", "stable"
 
 
 class ExperimentRecord(TypedDict, total=False):

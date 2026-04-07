@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 
 # Maximum chars of reference content to inject
-_MAX_REFERENCE_CHARS = 6000
+_MAX_REFERENCE_CHARS = 10000
 
 # Default FLAML estimators by problem type
 _DEFAULT_ESTIMATORS = {
@@ -183,15 +183,33 @@ async def generate_code(state: dict) -> dict:
     if problem_type == "ts_forecast":
         ts_period = state.get("ts_period") or plan.get("ts_period", 12)
         # Detect temporal and target columns from data profile
-        temporal_column = "date"
-        target_column = "value"
+        temporal_column = None
+        target_column = None
         if data_profile:
             temporal_cols = data_profile.get("temporal_columns", [])
             if temporal_cols:
                 temporal_column = temporal_cols[0]
-            tc = data_profile.get("target_column")
-            if tc:
-                target_column = tc
+            target_column = data_profile.get("target_column")
+
+        # Fallback: infer from column names if data profile didn't detect them
+        if not temporal_column:
+            col_names = (data_profile or {}).get("column_names", [])
+            for candidate in ["DATE", "Date", "date", "datetime", "ds", "timestamp"]:
+                if candidate in col_names:
+                    temporal_column = candidate
+                    break
+            if not temporal_column and col_names:
+                temporal_column = col_names[0]  # first column as last resort
+
+        if not target_column:
+            col_names = (data_profile or {}).get("column_names", [])
+            # Target is likely the non-temporal numeric column
+            for c in col_names:
+                if c != temporal_column:
+                    target_column = c
+                    break
+            if not target_column:
+                target_column = "value"
 
         prompt = FLAML_TS_FORECAST_PROMPT.format(
             objective=state.get("objective", ""),

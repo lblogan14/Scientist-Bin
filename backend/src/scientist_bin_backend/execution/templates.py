@@ -179,5 +179,62 @@ if temporal_columns:
     except Exception:
         pass
 
+# Time series-specific profiling (stationarity, autocorrelation, seasonality)
+profile["stationarity"] = None
+profile["autocorrelation_values"] = None
+profile["seasonal_strength"] = None
+profile["trend_direction"] = None
+if PROBLEM_TYPE == "ts_forecast" and TARGET_COLUMN and TARGET_COLUMN in df.columns:
+    target_series = df[TARGET_COLUMN].dropna()
+    if len(target_series) > 10:
+        # Stationarity (ADF test)
+        try:
+            from statsmodels.tsa.stattools import adfuller
+            adf_result = adfuller(target_series, autolag="AIC")
+            profile["stationarity"] = {{
+                "adf_statistic": float(adf_result[0]),
+                "p_value": float(adf_result[1]),
+                "is_stationary": adf_result[1] < 0.05,
+            }}
+        except Exception:
+            pass
+
+        # Autocorrelation (first 20 lags)
+        try:
+            from statsmodels.tsa.stattools import acf
+            acf_values = acf(target_series, nlags=min(20, len(target_series) // 2 - 1))
+            profile["autocorrelation_values"] = [float(v) for v in acf_values.tolist()]
+        except Exception:
+            pass
+
+        # Seasonal strength (via decomposition)
+        try:
+            from statsmodels.tsa.seasonal import seasonal_decompose
+            period = profile.get("suggested_period") or 12
+            if len(target_series) >= 2 * period:
+                decomp = seasonal_decompose(target_series.values, model="additive", period=period)
+                var_seasonal = float(decomp.seasonal.var())
+                var_resid = float(decomp.resid[~pd.isna(decomp.resid)].var())
+                total_var = var_seasonal + var_resid
+                strength = round(var_seasonal / total_var, 4) if total_var > 0 else 0.0
+                profile["seasonal_strength"] = strength
+        except Exception:
+            pass
+
+        # Trend direction (simple linear slope)
+        try:
+            x = np.arange(len(target_series))
+            slope = float(np.polyfit(x, target_series.values, 1)[0])
+            mean_val = float(target_series.mean())
+            rel_slope = abs(slope * len(target_series)) / mean_val if mean_val != 0 else 0
+            if rel_slope < 0.05:
+                profile["trend_direction"] = "stable"
+            elif slope > 0:
+                profile["trend_direction"] = "increasing"
+            else:
+                profile["trend_direction"] = "decreasing"
+        except Exception:
+            pass
+
 print(json.dumps(profile, default=str))
 '''

@@ -39,6 +39,10 @@ async def collect_context(state: dict) -> dict:
     all_cluster_sizes: dict[str, list] = {}
     all_cluster_profiles: dict[str, list] = {}
     all_silhouette_per_sample: dict[str, list] = {}
+    # FLAML / time series-specific enrichment fields
+    all_forecast_data: dict[str, list] = {}
+    all_trial_history: dict[str, list] = {}
+    all_estimator_comparison: dict[str, list] = {}
 
     for record in experiment_history:
         algo = record.get("algorithm", "unknown")
@@ -84,6 +88,19 @@ async def collect_context(state: dict) -> dict:
         if silhouette_per_sample:
             all_silhouette_per_sample[algo] = silhouette_per_sample
 
+        # FLAML / time series-specific fields
+        forecast_data = record.get("forecast_data")
+        if forecast_data:
+            all_forecast_data[algo] = forecast_data
+
+        trial_history = record.get("trial_history")
+        if trial_history:
+            all_trial_history[algo] = trial_history
+
+        estimator_comparison = record.get("estimator_comparison")
+        if estimator_comparison:
+            all_estimator_comparison[algo] = estimator_comparison
+
     # Include test-set diagnostics if available
     if test_diagnostics:
         if test_diagnostics.get("confusion_matrix"):
@@ -121,6 +138,9 @@ async def collect_context(state: dict) -> dict:
         "cluster_sizes": all_cluster_sizes,
         "cluster_profiles": all_cluster_profiles,
         "silhouette_per_sample": all_silhouette_per_sample,
+        "forecast_data": all_forecast_data,
+        "trial_history": all_trial_history,
+        "estimator_comparison": all_estimator_comparison,
         "test_metrics": test_metrics,
         "test_diagnostics": test_diagnostics,
         "algorithms_tried": algorithms_tried,

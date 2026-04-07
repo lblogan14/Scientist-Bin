@@ -85,6 +85,12 @@ Use these considerations to guide your cleaning decisions. For example:
 one-hot
 - If missing data patterns are noted, consider whether missingness is informative
 - If the target framework is "sklearn", ensure all features are numeric after cleaning
+- If the problem_type is "ts_forecast":
+  - Use forward-fill (ffill) or time-based interpolation for missing values, NOT median/mode
+  - Preserve temporal ordering — do NOT shuffle or reindex
+  - Do NOT drop rows with missing values — interpolate instead
+  - Do NOT encode the temporal column — keep it as-is for datetime parsing
+  - Only remove exact duplicates of the entire row (same timestamp + same values)
 
 == Data Sample (first 5 rows) ==
 {data_sample}

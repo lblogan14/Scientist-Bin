@@ -137,6 +137,16 @@ const ForecastPlotTab = lazy(() =>
     default: m.ForecastPlotTab,
   })),
 );
+const ForecastErrorTab = lazy(() =>
+  import("./components/ForecastErrorTab").then((m) => ({
+    default: m.ForecastErrorTab,
+  })),
+);
+const SeasonalProfileTab = lazy(() =>
+  import("./components/SeasonalProfileTab").then((m) => ({
+    default: m.SeasonalProfileTab,
+  })),
+);
 const TrialHistoryTab = lazy(() =>
   import("./components/TrialHistoryTab").then((m) => ({
     default: m.TrialHistoryTab,
@@ -283,6 +293,20 @@ function hasEstimatorComparison(ctx: TabContext): boolean {
     ctx.chartData?.estimator_comparison?.length ||
     ctx.experimentHistory.some((r) => r.estimator_comparison?.length)
   );
+}
+
+function hasForecastErrors(ctx: TabContext): boolean {
+  // Need forecast data with actual values to compute errors
+  const fd = ctx.chartData?.forecast_data ?? [];
+  if (fd.some((d) => d.actual != null)) return true;
+  return ctx.experimentHistory.some((r) =>
+    r.forecast_data?.some((d) => d.actual != null),
+  );
+}
+
+function hasSeasonalProfile(ctx: TabContext): boolean {
+  const dp = ctx.result?.data_profile;
+  return !!(dp?.autocorrelation_values?.length || dp?.stationarity);
 }
 
 function hasDataProfile(ctx: TabContext): boolean {
@@ -517,32 +541,39 @@ const TS_FORECAST_TABS: TabDefinition[] = [
     order: 10,
   },
   {
+    id: "forecast-errors",
+    label: "Forecast Errors",
+    component: ForecastErrorTab,
+    isAvailable: hasForecastErrors,
+    order: 11,
+  },
+  {
+    id: "seasonal-profile",
+    label: "Seasonal Profile",
+    component: SeasonalProfileTab,
+    isAvailable: hasSeasonalProfile,
+    order: 12,
+  },
+  {
     id: "trial-history",
     label: "Trial History",
     component: TrialHistoryTab,
     isAvailable: hasTrialHistory,
-    order: 11,
+    order: 13,
   },
   {
     id: "estimator-comparison",
     label: "Estimators",
     component: EstimatorComparisonTab,
     isAvailable: hasEstimatorComparison,
-    order: 12,
+    order: 14,
   },
   {
     id: "features",
     label: "Features",
     component: FeatureTabWrapper,
     isAvailable: hasFeatureImportance,
-    order: 13,
-  },
-  {
-    id: "overfit",
-    label: "Overfitting",
-    component: OverfitTabWrapper,
-    isAvailable: () => true,
-    order: 14,
+    order: 15,
   },
 ];
 

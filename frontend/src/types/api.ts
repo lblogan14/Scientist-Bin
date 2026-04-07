@@ -366,6 +366,15 @@ export interface DataProfile {
   temporal_columns?: string[];
   detected_frequency?: string;
   suggested_period?: number;
+  // TS-specific profiling (populated when problem_type == "ts_forecast")
+  stationarity?: {
+    adf_statistic: number;
+    p_value: number;
+    is_stationary: boolean;
+  };
+  autocorrelation_values?: number[];
+  seasonal_strength?: number;
+  trend_direction?: string;
 }
 
 // ---------------------------------------------------------------------------
