@@ -15,6 +15,9 @@ build/
 .venv/
 venv/
 
+# Framework virtual environments (provisioned locally)
+framework_venvs/*/.venv/
+
 # Environment variables
 .env
 

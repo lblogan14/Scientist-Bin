@@ -17,6 +17,7 @@ from scientist_bin_backend.agents.analyst.utils import read_data_sample, resolve
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.runner import CodeRunner, RunConfig
+from scientist_bin_backend.execution.sandbox import get_framework_python
 from scientist_bin_backend.utils.llm import extract_text_content, get_agent_model
 
 logger = logging.getLogger(__name__)
@@ -98,7 +99,7 @@ async def clean_data(state: AnalystState) -> dict:
     cleaning_code = _extract_code_block(raw_content)
 
     # --- Execute the cleaning script ---
-    runner = CodeRunner()
+    runner = CodeRunner(python_path=get_framework_python("analyst"))
     result = await runner.execute(
         RunConfig(
             experiment_id=experiment_id,

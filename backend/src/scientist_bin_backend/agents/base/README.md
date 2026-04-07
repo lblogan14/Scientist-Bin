@@ -27,7 +27,7 @@ Framework agents inject `generate_code` and optionally `error_research` nodes. A
 | Node | File | LLM Calls | Description |
 |------|------|-----------|-------------|
 | `validate_code` | `nodes/code_validator.py` | 0 | Static analysis: syntax check, import check, results marker, report_metric call. Max 2 retries. |
-| `execute_code` | `nodes/code_executor.py` | 0 | Sandboxed subprocess execution with dynamic timeout, metrics streaming, journal logging. |
+| `execute_code` | `nodes/code_executor.py` | 0 | Sandboxed subprocess execution with dynamic timeout, metrics streaming, journal logging. Uses `get_framework_python(state["framework_name"])` to run code in the correct framework venv. |
 | `analyze_results` | `nodes/results_analyzer.py` | 0-2 | Parses metrics, decides next action (IMPROVE pattern), structured reflection (ERL). Only increments `current_iteration` on success; error retries use a separate counter. Uses `get_agent_model(fw)` for per-framework model selection. |
 | `evaluate_on_test` | `nodes/test_evaluator.py` | 1 | Evaluates best model on held-out test set after iteration loop accepts. |
 | `finalize` | `nodes/results_analyzer.py` | 1 | Generates final structured `FinalReport` from best experiment. Uses `get_agent_model(fw)` for per-framework model selection. |

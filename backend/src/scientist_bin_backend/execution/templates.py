@@ -25,18 +25,21 @@ def report_metric(name: str, value: float, step: int | None = None) -> None:
 
 # Patch pd.read_csv to convert pandas StringDtype to standard object dtype.
 # FLAML and some sklearn components cannot handle pandas extension dtypes.
-import pandas as _sb_pd
+try:
+    import pandas as _sb_pd
 
-_sb_orig_read_csv = _sb_pd.read_csv
+    _sb_orig_read_csv = _sb_pd.read_csv
 
-def _sb_read_csv_compat(*args, **kwargs):
-    df = _sb_orig_read_csv(*args, **kwargs)
-    for col in df.columns:
-        if _sb_pd.api.types.is_string_dtype(df[col]) and df[col].dtype != object:
-            df[col] = df[col].astype(object)
-    return df
+    def _sb_read_csv_compat(*args, **kwargs):
+        df = _sb_orig_read_csv(*args, **kwargs)
+        for col in df.columns:
+            if _sb_pd.api.types.is_string_dtype(df[col]) and df[col].dtype != object:
+                df[col] = df[col].astype(object)
+        return df
 
-_sb_pd.read_csv = _sb_read_csv_compat
+    _sb_pd.read_csv = _sb_read_csv_compat
+except ImportError:
+    pass  # pandas not available in this environment
 
 # === End Harness ===
 

@@ -24,6 +24,7 @@ from scientist_bin_backend.agents.base.schemas import ProblemClassification
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.runner import CodeRunner, RunConfig
+from scientist_bin_backend.execution.sandbox import get_framework_python
 from scientist_bin_backend.execution.templates import EDA_TEMPLATE
 from scientist_bin_backend.utils.llm import get_agent_model
 
@@ -193,7 +194,7 @@ async def profile_data(state: AnalystState) -> dict:
         problem_type=problem_type,
     )
 
-    runner = CodeRunner()
+    runner = CodeRunner(python_path=get_framework_python("analyst"))
     result = await runner.execute(
         RunConfig(
             experiment_id=experiment_id,

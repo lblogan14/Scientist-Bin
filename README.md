@@ -56,9 +56,12 @@ Findings are stored in a ChromaDB vector store so later iterations build on earl
 ### Supported Frameworks
 
 - **scikit-learn** -- fully supported (classification, regression, clustering)
-- **PyTorch** -- planned
-- **TensorFlow** -- planned
-- **Hugging Face Transformers / Diffusers** -- planned
+- **FLAML** -- fully supported (AutoML for classification, regression, time series)
+- **PyTorch** -- planned (GPU/CPU venv configs ready)
+- **TensorFlow** -- planned (venv config ready)
+- **Hugging Face Transformers / Diffusers** -- planned (venv configs ready)
+
+Each framework runs in its own isolated virtual environment. See [Framework Provisioning](#framework-provisioning) below.
 
 ## Quick Start
 
@@ -77,8 +80,12 @@ cd Scientist-Bin
 # Configure
 cp backend/.env.example backend/.env   # Set GOOGLE_API_KEY
 
-# Backend
+# Backend (core + traditional ML frameworks in one venv — simplest for development)
+cd backend && uv sync --all-groups --extra all-traditional
+
+# Or: Backend (core only) + isolated framework venvs (production / no conflicts)
 cd backend && uv sync --all-groups
+cd backend && uv run scientist-bin provision analyst traditional
 
 # Frontend
 cd ../frontend && pnpm install
@@ -141,6 +148,11 @@ uv run scientist-bin summarize <experiment-id>
 uv run scientist-bin deploy <experiment-id>                            # Build Docker image
 uv run scientist-bin deploy <experiment-id> --tag mymodel:latest       # Custom tag
 uv run scientist-bin deploy <experiment-id> --no-build --output-dir .  # Artifacts only
+
+# Framework provisioning
+uv run scientist-bin provision analyst traditional                     # Provision specific venvs
+uv run scientist-bin provision --all                                   # Provision all venvs
+uv run scientist-bin provision-status                                  # Check provisioning status
 ```
 
 ### Remote Commands (requires running server)
@@ -178,8 +190,8 @@ outputs/
 - **Google Gemini** via `langchain-google-genai` and `google-genai`
 - **ChromaDB** for findings memory (Deep Research mode, optional)
 - **Pydantic** for schemas, **Typer** for CLI
-- **pandas**, **scikit-learn**, **matplotlib** for data science execution
-- **uv** for packages, **ruff** for linting, **pytest** for testing (469+ tests)
+- **pandas**, **scikit-learn**, **FLAML**, **matplotlib** for data science execution (optional extras or isolated venvs)
+- **uv** for packages, **ruff** for linting, **pytest** for testing (474+ tests)
 
 ### Frontend
 
@@ -188,6 +200,44 @@ outputs/
 - **React Router v7**, **TanStack React Query**, **Zustand**
 - **Recharts** for visualizations (13 chart components)
 - **pnpm** for packages, **Vitest** + **Testing Library** for testing (167+ tests)
+
+## Framework Provisioning
+
+ML framework dependencies are **not** installed by default. Two installation paths:
+
+### Path A: Extras (simple, single venv)
+
+```bash
+cd backend
+uv sync --all-groups --extra all-traditional   # analyst + sklearn + FLAML
+uv sync --all-groups --extra pytorch-gpu       # PyTorch with CUDA
+```
+
+All deps go into the core `.venv`. Convenient for development. Some frameworks may conflict in the same venv (e.g., pytorch-gpu + tensorflow).
+
+### Path B: Isolated venvs (production, no conflicts)
+
+```bash
+cd backend
+uv run scientist-bin provision analyst traditional   # Provision specific venvs
+uv run scientist-bin provision pytorch-gpu           # Provision PyTorch GPU
+uv run scientist-bin provision --all                 # Provision everything
+uv run scientist-bin provision-status                # Check status
+```
+
+Each framework gets its own `.venv` under `backend/framework_venvs/<name>/`. Full isolation. The `GET /api/v1/health` endpoint reports which frameworks are provisioned.
+
+### Available Environments
+
+| Venv | Frameworks | Key Deps |
+|------|-----------|----------|
+| `analyst` | Data profiler, cleaner, splitter | pandas, numpy, matplotlib, statsmodels |
+| `traditional` | sklearn, FLAML | scikit-learn, flaml, pandas, joblib |
+| `pytorch-gpu` | PyTorch (CUDA) | torch (cu128), torchvision |
+| `pytorch-cpu` | PyTorch (CPU) | torch (cpu), torchvision |
+| `tensorflow` | TensorFlow | tensorflow |
+| `transformers` | HF Transformers | transformers, torch |
+| `diffusers` | HF Diffusers | diffusers, torch, accelerate |
 
 ## Test Datasets
 
@@ -213,14 +263,16 @@ Scientist-Bin/
 │   │   │   ├── campaign/            # Deep Research campaign orchestrator
 │   │   │   ├── hypothesis/          # Hypothesis generation for campaigns (planned)
 │   │   │   ├── frameworks/
-│   │   │   │   └── sklearn/         # Scikit-learn code gen + execution
+│   │   │   │   ├── sklearn/         # Scikit-learn code gen + execution
+│   │   │   │   └── flaml/           # FLAML AutoML code gen + execution
 │   │   │   └── summary/             # Best model selection + report
 │   │   ├── api/                     # FastAPI routes + experiment store
 │   │   ├── deploy/                  # Docker deployment (templates, builder)
 │   │   ├── memory/                  # Findings store (ChromaDB), ERL journal
 │   │   ├── execution/               # Sandboxed code runner, budgets, journal
 │   │   └── utils/                   # LLM helpers, artifacts, naming
-│   ├── tests/                       # 469+ tests (pytest)
+│   ├── framework_venvs/             # Isolated ML execution venvs (one per framework)
+│   ├── tests/                       # 474+ tests (pytest)
 │   └── data/                        # Input datasets
 ├── frontend/                        # React frontend (see frontend/README.md)
 │   └── src/
@@ -237,7 +289,7 @@ Scientist-Bin/
 
 ```bash
 # Backend (from backend/)
-uv run pytest -v                     # Run all 469+ tests
+uv run pytest -v                     # Run all 474+ tests
 uv run pytest -m slow                # E2E pipeline tests (requires GOOGLE_API_KEY)
 uv run ruff check . && uv run ruff format .
 

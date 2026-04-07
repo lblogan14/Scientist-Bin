@@ -25,7 +25,7 @@ uv run scientist-bin deploy <experiment-id> --push
 
 1. **Locate artifacts** -- finds `outputs/models/{id}.joblib` and `outputs/results/{id}.json`
 2. **Build metadata** -- extracts algorithm, problem type, framework, hyperparameters, test metrics, and feature columns from the result JSON
-3. **Generate files** -- writes Dockerfile, serve.py, requirements.txt, and metadata.json to `outputs/deploy/{id}/`
+3. **Generate files** -- writes Dockerfile, serve.py, requirements.txt, and metadata.json to `outputs/deploy/{id}/`. Package versions in requirements.txt are resolved from the framework venv if provisioned, falling back to the core venv
 4. **Copy model** -- copies the trained `.joblib` model into the deploy directory
 5. **Build image** (optional) -- runs `docker build` to create the container image
 6. **Push image** (optional) -- runs `docker push` to a registry

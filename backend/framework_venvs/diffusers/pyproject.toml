@@ -1,0 +1,17 @@
+[project]
+name = "scientist-bin-diffusers"
+version = "0.1.0"
+description = "ML execution environment for Hugging Face Diffusers"
+requires-python = ">=3.11"
+dependencies = [
+    "diffusers>=0.31",
+    "torch>=2.6",
+    "accelerate",
+    "pandas",
+    "numpy",
+    "joblib",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

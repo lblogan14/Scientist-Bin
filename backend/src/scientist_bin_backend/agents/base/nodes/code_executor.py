@@ -26,6 +26,7 @@ from scientist_bin_backend.execution.estimator import (
 )
 from scientist_bin_backend.execution.journal import get_journal_for_experiment
 from scientist_bin_backend.execution.runner import CodeRunner, RunConfig
+from scientist_bin_backend.execution.sandbox import get_framework_python
 
 
 async def execute_code(state: dict) -> dict:
@@ -97,7 +98,8 @@ async def execute_code(state: dict) -> dict:
             ),
         )
 
-    runner = CodeRunner()
+    framework_name = state.get("framework_name")
+    runner = CodeRunner(python_path=get_framework_python(framework_name))
     result = await runner.execute(
         RunConfig(
             experiment_id=experiment_id,

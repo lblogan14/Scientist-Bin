@@ -23,14 +23,39 @@ logger = logging.getLogger(__name__)
 _OUTPUTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "outputs"
 
 
-def _get_package_version(package: str) -> str:
-    """Get installed version of a Python package."""
+def _get_package_version(package: str, framework: str | None = None) -> str:
+    """Get installed version of a Python package.
+
+    Tries the current environment first, then falls back to querying the
+    framework venv's Python if available.
+    """
     try:
         from importlib.metadata import version
 
         return version(package)
     except Exception:
-        return "latest"
+        pass
+
+    # Fallback: query the framework venv's Python
+    if framework:
+        try:
+            from scientist_bin_backend.execution.sandbox import get_framework_python
+
+            fw_python = get_framework_python(framework)
+            if fw_python:
+                cmd = f"from importlib.metadata import version; print(version('{package}'))"
+                result = subprocess.run(
+                    [fw_python, "-c", cmd],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0:
+                    return result.stdout.strip()
+        except Exception:
+            pass
+
+    return "latest"
 
 
 def _build_metadata(experiment_id: str, result_path: Path) -> dict:
@@ -113,13 +138,14 @@ def generate_deploy_artifacts(
         encoding="utf-8",
     )
 
-    # Write requirements.txt
+    # Write requirements.txt — resolve versions from framework venv if needed
+    framework = metadata.get("framework", "sklearn")
     (output_dir / "requirements.txt").write_text(
         REQUIREMENTS_TEMPLATE.format(
-            sklearn_version=_get_package_version("scikit-learn"),
-            pandas_version=_get_package_version("pandas"),
-            numpy_version=_get_package_version("numpy"),
-            joblib_version=_get_package_version("joblib"),
+            sklearn_version=_get_package_version("scikit-learn", framework),
+            pandas_version=_get_package_version("pandas", framework),
+            numpy_version=_get_package_version("numpy", framework),
+            joblib_version=_get_package_version("joblib", framework),
         ),
         encoding="utf-8",
     )

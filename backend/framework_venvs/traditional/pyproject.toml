@@ -1,0 +1,18 @@
+[project]
+name = "scientist-bin-traditional"
+version = "0.1.0"
+description = "ML execution environment for scikit-learn and FLAML frameworks"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scikit-learn",
+    "flaml[automl,forecast]",
+    "statsmodels",
+    "joblib",
+    "matplotlib",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

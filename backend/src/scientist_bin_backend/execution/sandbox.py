@@ -2,11 +2,92 @@
 
 from __future__ import annotations
 
+import importlib
+import logging
 import os
 import sys
 from pathlib import Path
 
 from scientist_bin_backend.execution.templates import METRICS_REPORTER_HARNESS
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Framework venv resolution
+# ---------------------------------------------------------------------------
+
+_FRAMEWORKS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "framework_venvs"
+
+# Maps agent framework_name → venv directory name under frameworks/
+FRAMEWORK_VENV_MAP: dict[str, str] = {
+    "analyst": "analyst",
+    "sklearn": "traditional",
+    "flaml": "traditional",
+    "pytorch": "pytorch-gpu",
+    "pytorch-gpu": "pytorch-gpu",
+    "pytorch-cpu": "pytorch-cpu",
+    "tensorflow": "tensorflow",
+    "transformers": "transformers",
+    "diffusers": "diffusers",
+}
+
+# Marker package to verify a framework's deps are importable in the current venv
+_FRAMEWORK_MARKER_PACKAGE: dict[str, str] = {
+    "analyst": "pandas",
+    "traditional": "sklearn",
+    "pytorch-gpu": "torch",
+    "pytorch-cpu": "torch",
+    "tensorflow": "tensorflow",
+    "transformers": "transformers",
+    "diffusers": "diffusers",
+}
+
+
+def get_framework_python(framework_name: str | None = None) -> str:
+    """Resolve the Python executable for a framework's execution environment.
+
+    Resolution order:
+      1. Provisioned framework venv (``frameworks/<name>/.venv/``)
+      2. Current venv if the marker package is importable (extras installed)
+      3. ``RuntimeError`` with provisioning instructions
+
+    Returns ``sys.executable`` when *framework_name* is ``None`` (backward
+    compat for code that doesn't specify a framework).
+    """
+    if not framework_name:
+        return sys.executable
+
+    venv_name = FRAMEWORK_VENV_MAP.get(framework_name, framework_name)
+
+    # 1. Check for a provisioned framework venv
+    venv_dir = _FRAMEWORKS_DIR / venv_name / ".venv"
+    if sys.platform == "win32":
+        python_path = venv_dir / "Scripts" / "python.exe"
+    else:
+        python_path = venv_dir / "bin" / "python"
+
+    if python_path.exists():
+        return str(python_path)
+
+    # 2. Fallback: deps available in the current venv (extras installed)
+    marker = _FRAMEWORK_MARKER_PACKAGE.get(venv_name)
+    if marker:
+        try:
+            importlib.import_module(marker)
+            logger.debug(
+                "Framework '%s' not provisioned, using current venv (extras fallback)",
+                framework_name,
+            )
+            return sys.executable
+        except ImportError:
+            pass
+
+    # 3. Neither available
+    raise RuntimeError(
+        f"Framework '{framework_name}' is not available.\n"
+        f"Either provision its venv:  scientist-bin provision {venv_name}\n"
+        f"Or install as extra:       uv sync --extra {venv_name}"
+    )
 
 
 def get_sandbox_python() -> str:

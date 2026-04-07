@@ -1,0 +1,16 @@
+[project]
+name = "scientist-bin-analyst"
+version = "0.1.0"
+description = "ML execution environment for data profiling, cleaning, and splitting"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "statsmodels",
+    "scikit-learn",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

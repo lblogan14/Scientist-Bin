@@ -63,6 +63,22 @@ def train(
 
     experiment_id = generate_experiment_id(objective)
 
+    # Pre-flight: check that required framework venvs are available
+    from scientist_bin_backend.execution.sandbox import get_framework_python
+
+    try:
+        get_framework_python("analyst")
+    except RuntimeError as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    if framework:
+        try:
+            get_framework_python(framework)
+        except RuntimeError as exc:
+            typer.echo(f"Error: {exc}", err=True)
+            raise typer.Exit(code=1)
+
     # -------------------------------------------------------------------
     # Deep Research path: delegate to CampaignAgent
     # -------------------------------------------------------------------
@@ -673,6 +689,119 @@ def health(
     except httpx.ConnectError:
         typer.echo("Server is not reachable.", err=True)
         raise typer.Exit(code=1)
+
+
+@app.command()
+def provision(
+    frameworks: list[str] = typer.Argument(
+        None, help="Framework venvs to provision (e.g., traditional, pytorch-gpu, analyst)"
+    ),
+    all_: bool = typer.Option(False, "--all", help="Provision all available framework venvs"),
+) -> None:
+    """Create and sync framework virtual environments.
+
+    Each framework runs ML code in its own isolated venv. Use this command
+    to install the required dependencies before training.
+
+    Examples:
+        scientist-bin provision analyst traditional
+        scientist-bin provision pytorch-gpu
+        scientist-bin provision --all
+    """
+    import shutil
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    frameworks_dir = Path(__file__).resolve().parent.parent.parent / "framework_venvs"
+
+    if not frameworks_dir.exists():
+        typer.echo(f"Frameworks directory not found: {frameworks_dir}", err=True)
+        raise typer.Exit(code=1)
+
+    # Discover available frameworks
+    available = sorted(
+        d.name for d in frameworks_dir.iterdir()
+        if d.is_dir() and (d / "pyproject.toml").exists()
+    )
+
+    if all_:
+        targets = available
+    elif frameworks:
+        targets = frameworks
+    else:
+        typer.echo("Available framework venvs:")
+        for name in available:
+            typer.echo(f"  {name}")
+        typer.echo("\nUsage: scientist-bin provision <name> [<name> ...] or --all")
+        return
+
+    # Find uv executable
+    uv_path = shutil.which("uv")
+    if not uv_path:
+        typer.echo("Error: 'uv' not found. Install it: https://docs.astral.sh/uv/", err=True)
+        raise typer.Exit(code=1)
+
+    for name in targets:
+        fw_dir = frameworks_dir / name
+        if not (fw_dir / "pyproject.toml").exists():
+            typer.echo(f"  [SKIP] {name} — no pyproject.toml found")
+            continue
+
+        typer.echo(f"  Provisioning {name}...", nl=False)
+        result = subprocess.run(
+            [uv_path, "sync", "--directory", str(fw_dir)],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            # Verify Python executable exists
+            if sys.platform == "win32":
+                python_path = fw_dir / ".venv" / "Scripts" / "python.exe"
+            else:
+                python_path = fw_dir / ".venv" / "bin" / "python"
+            if python_path.exists():
+                typer.echo(" OK")
+            else:
+                typer.echo(f" WARN (synced but python not found at {python_path})")
+        else:
+            typer.echo(" FAILED")
+            typer.echo(f"    stderr: {result.stderr[:500]}", err=True)
+
+
+@app.command(name="provision-status")
+def provision_status() -> None:
+    """Show which framework virtual environments are provisioned."""
+    import sys
+    from pathlib import Path
+
+    frameworks_dir = Path(__file__).resolve().parent.parent.parent / "framework_venvs"
+
+    if not frameworks_dir.exists():
+        typer.echo("No frameworks directory found.")
+        return
+
+    available = sorted(
+        d.name for d in frameworks_dir.iterdir()
+        if d.is_dir() and (d / "pyproject.toml").exists()
+    )
+
+    if not available:
+        typer.echo("No framework definitions found.")
+        return
+
+    typer.echo("Framework venv status:")
+    for name in available:
+        fw_dir = frameworks_dir / name
+        if sys.platform == "win32":
+            python_path = fw_dir / ".venv" / "Scripts" / "python.exe"
+        else:
+            python_path = fw_dir / ".venv" / "bin" / "python"
+
+        if python_path.exists():
+            typer.echo(f"  {name}: provisioned")
+        else:
+            typer.echo(f"  {name}: not provisioned")
 
 
 @app.command()

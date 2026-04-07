@@ -661,8 +661,24 @@ async def get_summary(experiment_id: str) -> dict:
 
 @router.get("/health")
 async def health_check() -> dict:
-    """Health check endpoint."""
-    return {"status": "ok"}
+    """Health check endpoint with framework venv status."""
+    import sys
+    from pathlib import Path
+
+    frameworks_dir = Path(__file__).resolve().parent.parent.parent.parent / "framework_venvs"
+    framework_status: dict[str, str] = {}
+
+    if frameworks_dir.exists():
+        for d in sorted(frameworks_dir.iterdir()):
+            if d.is_dir() and (d / "pyproject.toml").exists():
+                if sys.platform == "win32":
+                    python_path = d / ".venv" / "Scripts" / "python.exe"
+                else:
+                    python_path = d / ".venv" / "bin" / "python"
+                status = "provisioned" if python_path.exists() else "not_provisioned"
+                framework_status[d.name] = status
+
+    return {"status": "ok", "frameworks": framework_status}
 
 
 # ---------------------------------------------------------------------------

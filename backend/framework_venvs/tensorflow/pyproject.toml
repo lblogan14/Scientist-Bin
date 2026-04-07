@@ -1,0 +1,16 @@
+[project]
+name = "scientist-bin-tensorflow"
+version = "0.1.0"
+description = "ML execution environment for TensorFlow"
+requires-python = ">=3.11"
+dependencies = [
+    "tensorflow>=2.18",
+    "pandas",
+    "numpy",
+    "joblib",
+    "matplotlib",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

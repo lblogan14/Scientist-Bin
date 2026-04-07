@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Multi-agent system for automated data science model training and evaluation"
 requires-python = ">=3.11"
 dependencies = [
+    # Orchestration only — no ML frameworks (those live in extras or framework venvs)
     "langchain>=1.0,<2.0",
     "langchain-core>=1.0,<2.0",
     "langgraph>=1.0,<2.0",
@@ -15,15 +16,32 @@ dependencies = [
     "typer",
     "python-dotenv",
     "httpx",
-    # Data science execution dependencies (used by sandboxed subprocess)
-    "pandas",
-    "scikit-learn",
-    "joblib",
-    "matplotlib",
-    # FLAML AutoML execution dependencies (used by sandboxed subprocess)
-    "flaml[automl,forecast]",
-    "statsmodels",
 ]
+
+[project.optional-dependencies]
+# Lightweight data processing (analyst agent subprocess)
+analyst = ["pandas", "numpy", "matplotlib", "statsmodels", "scikit-learn"]
+
+# Traditional ML — sklearn + FLAML (share deps, no conflicts)
+traditional = [
+    "pandas", "numpy", "scikit-learn", "flaml[automl,forecast]",
+    "statsmodels", "joblib", "matplotlib",
+]
+
+# PyTorch variants (mutually exclusive via [tool.uv] conflicts)
+pytorch-cpu = ["torch>=2.6", "torchvision>=0.21", "pandas", "numpy", "joblib", "matplotlib"]
+pytorch-gpu = ["torch>=2.6", "torchvision>=0.21", "pandas", "numpy", "joblib", "matplotlib"]
+
+# TensorFlow
+tensorflow = ["tensorflow>=2.18", "pandas", "numpy", "joblib", "matplotlib"]
+
+# Hugging Face
+transformers = ["transformers>=4.47", "torch>=2.6", "sentencepiece", "pandas", "numpy", "joblib"]
+diffusers = ["diffusers>=0.31", "torch>=2.6", "accelerate", "pandas", "numpy", "joblib"]
+
+# Convenience bundles
+all-traditional = ["scientist_bin_backend[analyst,traditional]"]
+all = ["scientist_bin_backend[analyst,traditional,pytorch-gpu,tensorflow,transformers,diffusers]"]
 
 [project.scripts]
 scientist-bin = "scientist_bin_backend.cli:app"
@@ -53,3 +71,32 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+# ---------------------------------------------------------------------------
+# uv: GPU/CPU variant handling for PyTorch extras
+# ---------------------------------------------------------------------------
+
+[tool.uv]
+conflicts = [
+    [{ extra = "pytorch-cpu" }, { extra = "pytorch-gpu" }],
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "pytorch-cpu" },
+    { index = "pytorch-gpu", extra = "pytorch-gpu" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "pytorch-cpu" },
+    { index = "pytorch-gpu", extra = "pytorch-gpu" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

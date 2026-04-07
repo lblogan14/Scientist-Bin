@@ -16,6 +16,7 @@ from scientist_bin_backend.agents.analyst.utils import resolve_run_subdir
 from scientist_bin_backend.events.bus import event_bus
 from scientist_bin_backend.events.types import ExperimentEvent
 from scientist_bin_backend.execution.runner import CodeRunner, RunConfig
+from scientist_bin_backend.execution.sandbox import get_framework_python
 
 logger = logging.getLogger(__name__)
 
@@ -377,7 +378,7 @@ async def split_data(state: AnalystState) -> dict:
         second_split_ratio=second_split_ratio,
     )
 
-    runner = CodeRunner()
+    runner = CodeRunner(python_path=get_framework_python("analyst"))
     result = await runner.execute(
         RunConfig(
             experiment_id=experiment_id,

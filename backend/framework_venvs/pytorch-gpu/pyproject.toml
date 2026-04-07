@@ -1,0 +1,26 @@
+[project]
+name = "scientist-bin-pytorch-gpu"
+version = "0.1.0"
+description = "ML execution environment for PyTorch (GPU/CUDA)"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.6",
+    "torchvision>=0.21",
+    "pandas",
+    "numpy",
+    "joblib",
+    "matplotlib",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-gpu" }]
+torchvision = [{ index = "pytorch-gpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

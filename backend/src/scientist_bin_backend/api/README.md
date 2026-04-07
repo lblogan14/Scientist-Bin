@@ -17,7 +17,7 @@ FastAPI REST endpoints for the Scientist-Bin backend.
 | `GET` | `/api/v1/experiments/{id}/summary` | Get the summary report |
 | `GET` | `/api/v1/experiments/{id}/artifacts/{type}` | Download artifact (model, results, analysis, summary, plan, charts, journal) |
 | `DELETE` | `/api/v1/experiments/{id}` | Delete an experiment |
-| `GET` | `/api/v1/health` | Health check |
+| `GET` | `/api/v1/health` | Health check with framework venv provisioning status |
 | `GET` | `/` | Root endpoint with API info |
 
 ## Request Body: `POST /api/v1/train`
