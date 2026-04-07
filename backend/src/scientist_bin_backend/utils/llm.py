@@ -23,6 +23,7 @@ def _build_agent_models(settings: Settings | None = None) -> dict[str, str]:
         "plan": pro,
         "analyst": pro,
         "sklearn": pro,
+        "flaml": pro,
         "summary": flash,
         "campaign": pro,
     }

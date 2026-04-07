@@ -59,6 +59,7 @@ export function ExperimentFilterBar({
         <SelectContent>
           <SelectItem value="all">All frameworks</SelectItem>
           <SelectItem value="sklearn">Scikit-learn</SelectItem>
+          <SelectItem value="flaml">FLAML</SelectItem>
           <SelectItem value="pytorch">PyTorch</SelectItem>
           <SelectItem value="tensorflow">TensorFlow</SelectItem>
         </SelectContent>
@@ -72,6 +73,7 @@ export function ExperimentFilterBar({
           <SelectItem value="classification">Classification</SelectItem>
           <SelectItem value="regression">Regression</SelectItem>
           <SelectItem value="clustering">Clustering</SelectItem>
+          <SelectItem value="ts_forecast">Time Series</SelectItem>
         </SelectContent>
       </Select>
     </div>

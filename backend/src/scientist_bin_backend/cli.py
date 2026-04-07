@@ -371,6 +371,70 @@ def train_sklearn(
     typer.echo(json.dumps(result, indent=2, default=str))
 
 
+@app.command(name="train-flaml")
+def train_flaml(
+    objective: str = typer.Argument(..., help="Training objective description"),
+    data_dir: str | None = typer.Option(None, "--data-dir", help="Dir with train/val/test CSVs"),
+    plan_file: str | None = typer.Option(None, "--plan-file", help="Execution plan JSON file"),
+    analysis_file: str | None = typer.Option(None, "--analysis-file", help="Analysis report file"),
+    problem_type: str | None = typer.Option(
+        None, "--problem-type", help="Problem type (classification, regression, ts_forecast)"
+    ),
+    max_iterations: int = typer.Option(5, "--max-iterations", help="Max training iterations"),
+    time_budget: int = typer.Option(120, "--time-budget", help="FLAML time budget in seconds"),
+) -> None:
+    """Run only the FLAML Agent (AutoML code generation, training, iteration)."""
+    import asyncio
+    import json
+    from pathlib import Path
+
+    from scientist_bin_backend.agents.frameworks.flaml.agent import FlamlAgent
+    from scientist_bin_backend.utils.naming import generate_experiment_id
+
+    split_data_paths = {}
+    if data_dir:
+        d = Path(data_dir).resolve()
+        split_data_paths = {
+            "train": str(d / "train.csv"),
+            "val": str(d / "val.csv"),
+            "test": str(d / "test.csv"),
+        }
+
+    execution_plan = None
+    if plan_file:
+        plan_path = Path(plan_file).resolve()
+        if plan_path.exists():
+            execution_plan = json.loads(plan_path.read_text(encoding="utf-8"))
+
+    # Inject time_budget into execution plan if not already set
+    if execution_plan is None:
+        execution_plan = {}
+    execution_plan.setdefault("time_budget", time_budget)
+
+    analysis_report = None
+    if analysis_file:
+        analysis_path = Path(analysis_file).resolve()
+        if analysis_path.exists():
+            analysis_report = analysis_path.read_text(encoding="utf-8")
+
+    agent = FlamlAgent()
+    experiment_id = generate_experiment_id(objective)
+
+    async def run() -> dict:
+        return await agent.run(
+            objective=objective,
+            execution_plan=execution_plan,
+            analysis_report=analysis_report,
+            split_data_paths=split_data_paths,
+            problem_type=problem_type,
+            max_iterations=max_iterations,
+            experiment_id=experiment_id,
+        )
+
+    result = asyncio.run(run())
+    typer.echo(json.dumps(result, indent=2, default=str))
+
+
 @app.command()
 def summarize(
     experiment_id: str = typer.Argument(..., help="Experiment ID to summarize"),

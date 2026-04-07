@@ -64,6 +64,7 @@ class ValidatedClassification(BaseModel):
         "clustering",
         "dimensionality_reduction",
         "anomaly_detection",
+        "ts_forecast",
     ] = Field(..., description="The validated ML problem type")
     confidence: Literal["confirmed", "refined", "overridden"] = Field(
         ...,

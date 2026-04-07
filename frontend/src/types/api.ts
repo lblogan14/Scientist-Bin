@@ -2,6 +2,7 @@ export type ExperimentStatus = "pending" | "running" | "completed" | "failed";
 
 export type Framework =
   | "sklearn"
+  | "flaml"
   | "pytorch"
   | "tensorflow"
   | "transformers"
@@ -192,6 +193,10 @@ export interface ChartData {
   actual_vs_predicted?: ActualVsPredictedPoint[];
   coefficients?: CoefficientEntry[];
   learning_curve?: LearningCurvePoint[];
+  // FLAML / Time series additions
+  trial_history?: TrialHistoryPoint[];
+  estimator_comparison?: EstimatorComparisonEntry[];
+  forecast_data?: ForecastDataPoint[];
 }
 
 export interface SummaryReportSections {
@@ -336,6 +341,12 @@ export interface ExperimentRecord {
   actual_vs_predicted?: ActualVsPredictedPoint[];
   coefficients?: CoefficientEntry[];
   learning_curve?: LearningCurvePoint[];
+  // FLAML-specific enrichments
+  trial_history?: TrialHistoryPoint[];
+  best_estimator_type?: string;
+  estimator_comparison?: EstimatorComparisonEntry[];
+  // Time series forecasting enrichments
+  forecast_data?: ForecastDataPoint[];
 }
 
 export interface DataProfile {
@@ -351,6 +362,10 @@ export interface DataProfile {
   target_stats: Record<string, number> | null;
   statistics_summary: string;
   data_quality_issues: string[];
+  // Temporal fields (populated for ts_forecast)
+  temporal_columns?: string[];
+  detected_frequency?: string;
+  suggested_period?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -384,6 +399,32 @@ export interface AgentActivity {
 
 export interface HealthResponse {
   status: "ok";
+}
+
+// ---------------------------------------------------------------------------
+// FLAML / Time series types
+// ---------------------------------------------------------------------------
+
+export interface TrialHistoryPoint {
+  trial_id: number;
+  estimator: string;
+  config: Record<string, unknown>;
+  loss: number;
+  time: number;
+}
+
+export interface EstimatorComparisonEntry {
+  estimator: string;
+  best_loss: number;
+  best_config: Record<string, unknown>;
+}
+
+export interface ForecastDataPoint {
+  timestamp: string;
+  actual: number | null;
+  predicted: number;
+  lower?: number;
+  upper?: number;
 }
 
 // ---------------------------------------------------------------------------

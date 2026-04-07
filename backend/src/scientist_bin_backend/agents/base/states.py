@@ -29,6 +29,10 @@ class DataProfile(TypedDict, total=False):
     target_stats: dict[str, float] | None
     statistics_summary: str
     data_quality_issues: list[str]
+    # Temporal fields (populated for ts_forecast)
+    temporal_columns: list[str] | None
+    detected_frequency: str | None  # e.g., "D", "H", "M"
+    suggested_period: int | None  # e.g., 12, 24, 7
 
 
 class ExperimentRecord(TypedDict, total=False):
@@ -54,6 +58,12 @@ class ExperimentRecord(TypedDict, total=False):
     feature_importances: list[dict] | None  # [{feature, importance}, ...]
     confusion_matrix: dict | None  # {labels: [...], matrix: [[...]]}
     residual_stats: dict | None  # Regression: {mean, std, max_abs, percentiles}
+    # FLAML-specific enrichments (optional)
+    trial_history: list[dict] | None  # [{trial_id, estimator, config, loss, time}, ...]
+    best_estimator_type: str | None  # Winning estimator name (e.g., "lgbm")
+    estimator_comparison: list[dict] | None  # [{estimator, best_loss, best_config}, ...]
+    # Time series forecasting enrichments (optional)
+    forecast_data: list[dict] | None  # [{timestamp, actual, predicted, lower, upper}, ...]
 
 
 class BaseMLState(TypedDict, total=False):

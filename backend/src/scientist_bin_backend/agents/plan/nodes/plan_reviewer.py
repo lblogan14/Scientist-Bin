@@ -138,7 +138,18 @@ async def revise_plan(state: PlanState) -> dict:
         upstream_context=upstream_context,
     )
 
-    revised_plan: ExecutionPlan = await structured_llm.ainvoke([HumanMessage(content=prompt)])
+    # Retry up to 3 times — Gemini occasionally returns empty/malformed JSON
+    last_error = None
+    revised_plan: ExecutionPlan | None = None
+    for attempt in range(3):
+        try:
+            revised_plan = await structured_llm.ainvoke([HumanMessage(content=prompt)])
+            break
+        except Exception as exc:
+            last_error = exc
+            logger.warning("Plan revision attempt %d failed: %s", attempt + 1, exc)
+    if revised_plan is None:
+        raise last_error  # type: ignore[misc]
 
     # Re-generate markdown from revised structured plan
     from scientist_bin_backend.agents.plan.nodes.plan_writer import _plan_to_markdown

@@ -95,6 +95,15 @@ export function pickPrimaryMetric(
       "calinski_harabasz",
       "calinski_harabasz_score",
     ]);
+  } else if (problemType === "ts_forecast") {
+    result = tryKeys([
+      "val_mape",
+      "mape",
+      "val_rmse",
+      "rmse",
+      "val_mae",
+      "mae",
+    ]);
   } else {
     // Classification (default)
     result = tryKeys([
@@ -172,5 +181,6 @@ export function getPrimaryMetricLabel(
 ): string {
   if (problemType === "regression") return "Avg Best R²";
   if (problemType === "clustering") return "Avg Silhouette";
+  if (problemType === "ts_forecast") return "Avg Best MAPE";
   return "Avg Best Accuracy";
 }

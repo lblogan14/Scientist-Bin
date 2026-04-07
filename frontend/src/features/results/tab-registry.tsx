@@ -131,6 +131,23 @@ const ClusterProfileTab = lazy(() =>
   })),
 );
 
+// FLAML / Time series-specific
+const ForecastPlotTab = lazy(() =>
+  import("./components/ForecastPlotTab").then((m) => ({
+    default: m.ForecastPlotTab,
+  })),
+);
+const TrialHistoryTab = lazy(() =>
+  import("./components/TrialHistoryTab").then((m) => ({
+    default: m.TrialHistoryTab,
+  })),
+);
+const EstimatorComparisonTab = lazy(() =>
+  import("./components/EstimatorComparisonTab").then((m) => ({
+    default: m.EstimatorComparisonTab,
+  })),
+);
+
 // Regression-specific
 const ActualVsPredictedTab = lazy(() =>
   import("./components/ActualVsPredictedTab").then((m) => ({
@@ -247,6 +264,27 @@ function hasLearningCurve(ctx: TabContext): boolean {
   );
 }
 
+function hasForecastData(ctx: TabContext): boolean {
+  return !!(
+    ctx.chartData?.forecast_data?.length ||
+    ctx.experimentHistory.some((r) => r.forecast_data?.length)
+  );
+}
+
+function hasTrialHistory(ctx: TabContext): boolean {
+  return !!(
+    ctx.chartData?.trial_history?.length ||
+    ctx.experimentHistory.some((r) => r.trial_history?.length)
+  );
+}
+
+function hasEstimatorComparison(ctx: TabContext): boolean {
+  return !!(
+    ctx.chartData?.estimator_comparison?.length ||
+    ctx.experimentHistory.some((r) => r.estimator_comparison?.length)
+  );
+}
+
 function hasDataProfile(ctx: TabContext): boolean {
   return ctx.result?.data_profile != null;
 }
@@ -350,6 +388,20 @@ const CLASSIFICATION_TABS: TabDefinition[] = [
     isAvailable: hasHyperparamSearch,
     order: 14,
   },
+  {
+    id: "trial-history",
+    label: "Trial History",
+    component: TrialHistoryTab,
+    isAvailable: hasTrialHistory,
+    order: 15,
+  },
+  {
+    id: "estimator-comparison",
+    label: "Estimators",
+    component: EstimatorComparisonTab,
+    isAvailable: hasEstimatorComparison,
+    order: 16,
+  },
 ];
 
 const REGRESSION_TABS: TabDefinition[] = [
@@ -409,6 +461,20 @@ const REGRESSION_TABS: TabDefinition[] = [
     isAvailable: hasHyperparamSearch,
     order: 17,
   },
+  {
+    id: "trial-history",
+    label: "Trial History",
+    component: TrialHistoryTab,
+    isAvailable: hasTrialHistory,
+    order: 18,
+  },
+  {
+    id: "estimator-comparison",
+    label: "Estimators",
+    component: EstimatorComparisonTab,
+    isAvailable: hasEstimatorComparison,
+    order: 19,
+  },
 ];
 
 const CLUSTERING_TABS: TabDefinition[] = [
@@ -442,10 +508,49 @@ const CLUSTERING_TABS: TabDefinition[] = [
   },
 ];
 
+const TS_FORECAST_TABS: TabDefinition[] = [
+  {
+    id: "forecast",
+    label: "Forecast",
+    component: ForecastPlotTab,
+    isAvailable: hasForecastData,
+    order: 10,
+  },
+  {
+    id: "trial-history",
+    label: "Trial History",
+    component: TrialHistoryTab,
+    isAvailable: hasTrialHistory,
+    order: 11,
+  },
+  {
+    id: "estimator-comparison",
+    label: "Estimators",
+    component: EstimatorComparisonTab,
+    isAvailable: hasEstimatorComparison,
+    order: 12,
+  },
+  {
+    id: "features",
+    label: "Features",
+    component: FeatureTabWrapper,
+    isAvailable: hasFeatureImportance,
+    order: 13,
+  },
+  {
+    id: "overfit",
+    label: "Overfitting",
+    component: OverfitTabWrapper,
+    isAvailable: () => true,
+    order: 14,
+  },
+];
+
 const TASK_TYPE_TABS: Record<string, TabDefinition[]> = {
   classification: CLASSIFICATION_TABS,
   regression: REGRESSION_TABS,
   clustering: CLUSTERING_TABS,
+  ts_forecast: TS_FORECAST_TABS,
 };
 
 // ---------------------------------------------------------------------------

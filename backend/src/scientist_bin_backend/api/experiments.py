@@ -41,6 +41,7 @@ class ExperimentPhase(StrEnum):
 
 class Framework(StrEnum):
     sklearn = "sklearn"
+    flaml = "flaml"
     pytorch = "pytorch"
     tensorflow = "tensorflow"
     transformers = "transformers"

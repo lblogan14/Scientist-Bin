@@ -23,6 +23,21 @@ def report_metric(name: str, value: float, step: int | None = None) -> None:
             f.write(_sb_json.dumps(entry) + "\\n")
     print(f"METRIC: {name}={value}" + (f" step={step}" if step is not None else ""))
 
+# Patch pd.read_csv to convert pandas StringDtype to standard object dtype.
+# FLAML and some sklearn components cannot handle pandas extension dtypes.
+import pandas as _sb_pd
+
+_sb_orig_read_csv = _sb_pd.read_csv
+
+def _sb_read_csv_compat(*args, **kwargs):
+    df = _sb_orig_read_csv(*args, **kwargs)
+    for col in df.columns:
+        if _sb_pd.api.types.is_string_dtype(df[col]) and df[col].dtype != object:
+            df[col] = df[col].astype(object)
+    return df
+
+_sb_pd.read_csv = _sb_read_csv_compat
+
 # === End Harness ===
 
 '''
@@ -118,6 +133,51 @@ if TARGET_COLUMN and TARGET_COLUMN in df.columns and PROBLEM_TYPE == "classifica
         if imbalance_ratio > 10:
             issues.append(f"Severe class imbalance (ratio {{imbalance_ratio:.1f}}:1)")
 profile["data_quality_issues"] = issues
+
+# Temporal column detection (for time series forecasting)
+temporal_columns = []
+# Check for datetime dtypes
+datetime_cols = list(df.select_dtypes(include=["datetime64", "datetimetz"]).columns)
+temporal_columns.extend(datetime_cols)
+# Check object columns that look like dates
+if not temporal_columns:
+    for col in df.select_dtypes(include=["object"]).columns[:5]:
+        try:
+            parsed = pd.to_datetime(df[col], infer_datetime_format=True, errors="coerce")
+            if parsed.notna().sum() > 0.8 * len(df):
+                temporal_columns.append(col)
+        except Exception:
+            pass
+# Check for columns with common temporal names
+if not temporal_columns:
+    for candidate in ["date", "datetime", "timestamp", "time", "ds", "Date", "Timestamp"]:
+        if candidate in df.columns:
+            temporal_columns.append(candidate)
+profile["temporal_columns"] = temporal_columns
+
+# Detect frequency and suggest period for time series
+profile["detected_frequency"] = None
+profile["suggested_period"] = None
+if temporal_columns:
+    try:
+        tc = temporal_columns[0]
+        dt_series = pd.to_datetime(df[tc], errors="coerce").dropna().sort_values()
+        if len(dt_series) > 2:
+            freq = pd.infer_freq(dt_series)
+            profile["detected_frequency"] = freq
+            # Suggest period based on frequency
+            freq_period_map = {{
+                "D": 30, "W": 52, "M": 12, "MS": 12, "H": 24,
+                "T": 60, "min": 60, "Q": 4, "QS": 4,
+                "Y": 1, "YS": 1, "A": 1, "AS": 1, "B": 22,
+            }}
+            if freq:
+                for key, period in freq_period_map.items():
+                    if freq.startswith(key):
+                        profile["suggested_period"] = period
+                        break
+    except Exception:
+        pass
 
 print(json.dumps(profile, default=str))
 '''

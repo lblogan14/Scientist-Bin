@@ -93,6 +93,12 @@ async def analyze_results(state: dict) -> dict:
                 "actual_vs_predicted": entry.get("actual_vs_predicted"),
                 "coefficients": entry.get("coefficients"),
                 "learning_curve": entry.get("learning_curve"),
+                # FLAML-specific fields
+                "trial_history": entry.get("trial_history"),
+                "best_estimator_type": entry.get("best_estimator_type"),
+                "estimator_comparison": entry.get("estimator_comparison"),
+                # Time series forecasting fields
+                "forecast_data": entry.get("forecast_data"),
             }
             new_records.append(record)
 

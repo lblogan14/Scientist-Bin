@@ -20,6 +20,7 @@ class ProblemClassification(BaseModel):
         "clustering",
         "dimensionality_reduction",
         "anomaly_detection",
+        "ts_forecast",
     ]
     reasoning: str = Field(..., description="Why this problem type was chosen")
     target_column_guess: str | None = Field(

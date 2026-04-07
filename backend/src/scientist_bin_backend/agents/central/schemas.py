@@ -53,6 +53,7 @@ class TaskAnalysis(BaseModel):
         "clustering",
         "dimensionality_reduction",
         "anomaly_detection",
+        "ts_forecast",
     ] = Field(..., description="The ML problem type")
     task_subtype: str | None = Field(
         default=None,

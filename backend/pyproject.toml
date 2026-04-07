@@ -20,6 +20,8 @@ dependencies = [
     "scikit-learn",
     "joblib",
     "matplotlib",
+    # FLAML AutoML execution dependencies (used by sandboxed subprocess)
+    "flaml[automl,forecast]",
 ]
 
 [project.scripts]

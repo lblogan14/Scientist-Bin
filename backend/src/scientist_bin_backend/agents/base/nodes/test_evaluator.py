@@ -88,7 +88,7 @@ async def evaluate_on_test(state: dict) -> dict:
     best_hyperparameters = best_experiment.get("hyperparameters", {})
 
     # Generate test evaluation script
-    llm = get_agent_model("sklearn")  # Uses framework from state when available
+    llm = get_agent_model(state.get("framework_name") or "sklearn")
     prompt = TEST_EVALUATION_PROMPT.format(
         objective=state.get("objective", ""),
         problem_type=state.get("problem_type", "classification"),

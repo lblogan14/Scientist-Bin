@@ -105,7 +105,9 @@ class TestExperimentContract:
 
     def test_framework_values_match_frontend(self):
         """All Framework values match the frontend union type."""
-        frontend_frameworks = {"sklearn", "pytorch", "tensorflow", "transformers", "diffusers"}
+        frontend_frameworks = {
+            "sklearn", "flaml", "pytorch", "tensorflow", "transformers", "diffusers",
+        }
         backend_frameworks = {f.value for f in Framework}
         assert backend_frameworks == frontend_frameworks
 

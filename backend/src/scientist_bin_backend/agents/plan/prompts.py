@@ -3,8 +3,8 @@
 PLAN_WRITER_PROMPT = """\
 You are a senior data scientist creating a detailed execution plan for an \
 ML experiment. Your plan will be handed to an automated agent that will \
-generate and run scikit-learn code, so it must be precise, complete, and \
-unambiguous.
+generate and run code (scikit-learn or FLAML AutoML depending on the framework), \
+so it must be precise, complete, and unambiguous.
 
 == User Objective ==
 {objective}
@@ -22,10 +22,24 @@ unambiguous.
 
 IMPORTANT: The data has already been cleaned and split into train/val/test \
 sets by the analyst agent. Your preprocessing steps should focus on \
-sklearn-pipeline-level transforms (StandardScaler, OneHotEncoder, \
-ColumnTransformer, etc.) that run inside the training pipeline — NOT on \
+pipeline-level transforms that run inside the training pipeline — NOT on \
 data cleaning tasks like deduplication, missing value imputation, or column \
 dropping, which have already been handled.
+
+If the framework is "flaml":
+- FLAML handles preprocessing, model selection, and hyperparameter tuning automatically
+- Do NOT recommend sklearn pipeline transforms — FLAML does this internally
+- Instead, recommend: time_budget (seconds), estimator_list, and evaluation metric
+- Time budget guidelines: small data (<10k rows) 60-120s, medium (10k-100k) 120-300s, \
+large (>100k) 300-600s
+- For ts_forecast: specify the forecast period (number of future time steps) and \
+recommend appropriate estimators (prophet, arima, sarimax for statistical; lgbm, \
+xgboost for ML-based forecasting)
+- Include a "time_budget" field and "estimator_list" field in your plan
+
+If the framework is "sklearn":
+- Recommend sklearn-pipeline-level transforms (StandardScaler, OneHotEncoder, \
+ColumnTransformer, etc.)
 
 Use the actual data characteristics above (column types, distributions, \
 missing values, class balance) to make concrete, grounded recommendations \

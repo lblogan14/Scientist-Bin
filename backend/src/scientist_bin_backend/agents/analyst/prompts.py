@@ -14,6 +14,7 @@ Classify this as one of:
 - clustering: Grouping data without labels
 - dimensionality_reduction: Reducing feature space
 - anomaly_detection: Identifying outliers
+- ts_forecast: Predicting future values in a time-ordered sequence
 
 Also suggest which column is likely the target and what metrics are appropriate.
 """

@@ -137,6 +137,7 @@ export function ObjectiveForm() {
               <SelectContent>
                 <SelectItem value="auto">Auto-detect</SelectItem>
                 <SelectItem value="sklearn">Scikit-learn</SelectItem>
+                <SelectItem value="flaml">FLAML (AutoML)</SelectItem>
                 <SelectItem value="pytorch" disabled>
                   PyTorch (coming soon)
                 </SelectItem>

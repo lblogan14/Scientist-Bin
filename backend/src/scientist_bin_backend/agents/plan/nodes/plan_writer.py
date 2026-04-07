@@ -100,7 +100,18 @@ async def write_plan(state: PlanState) -> dict:
         upstream_context=upstream_context,
     )
 
-    plan: ExecutionPlan = await structured_llm.ainvoke([HumanMessage(content=prompt)])
+    # Retry up to 3 times — Gemini occasionally returns empty/malformed JSON
+    last_error = None
+    plan: ExecutionPlan | None = None
+    for attempt in range(3):
+        try:
+            plan = await structured_llm.ainvoke([HumanMessage(content=prompt)])
+            break
+        except Exception as exc:
+            last_error = exc
+            logger.warning("Plan generation attempt %d failed: %s", attempt + 1, exc)
+    if plan is None:
+        raise last_error  # type: ignore[misc]
 
     plan_dict = plan.model_dump()
     plan_markdown = _plan_to_markdown(plan)

@@ -15,6 +15,7 @@ from scientist_bin_backend.utils.llm import get_agent_model
 # Adding a new framework requires one entry here + implementing the agent.
 FRAMEWORK_REGISTRY: dict[str, str] = {
     "sklearn": "scientist_bin_backend.agents.frameworks.sklearn.agent.SklearnAgent",
+    "flaml": "scientist_bin_backend.agents.frameworks.flaml.agent.FlamlAgent",
     # "pytorch": "scientist_bin_backend.agents.frameworks.pytorch.agent.PytorchAgent",
 }
 
