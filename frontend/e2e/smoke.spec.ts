@@ -29,9 +29,7 @@ test.describe("Page loads", () => {
   test("Training Monitor page loads", async ({ page }) => {
     await page.goto("/monitor");
     await expect(
-      page
-        .getByRole("heading", { name: /training/i })
-        .or(page.getByText(/no.*experiment/i)),
+      page.getByRole("heading", { name: /training/i }),
     ).toBeVisible();
   });
 
@@ -100,7 +98,10 @@ test.describe("Health & stability", () => {
       "/models",
     ]) {
       await page.goto(path);
-      await page.waitForLoadState("networkidle");
+      // Use domcontentloaded instead of networkidle — SSE on /monitor
+      // keeps a persistent connection that prevents networkidle.
+      await page.waitForLoadState("domcontentloaded");
+      await page.waitForTimeout(1_000);
     }
 
     const unexpectedErrors = errors.filter(

@@ -15,7 +15,12 @@ export default defineConfig({
   projects: [
     {
       name: "smoke",
-      testMatch: ["smoke.spec.ts", "framework-selection.spec.ts"],
+      testMatch: [
+        "smoke.spec.ts",
+        "framework-selection.spec.ts",
+        "theme-switching.spec.ts",
+        "navigation.spec.ts",
+      ],
       timeout: 60_000,
       use: { ...devices["Desktop Chrome"] },
     },
@@ -28,9 +33,26 @@ export default defineConfig({
         "error-handling.spec.ts",
         "artifacts.spec.ts",
         "model-selection.spec.ts",
+        "experiment-filtering.spec.ts",
+        "experiment-detail.spec.ts",
+        "active-banner.spec.ts",
+        "sidebar-notification.spec.ts",
+        "page-refresh.spec.ts",
+        "download-buttons.spec.ts",
+        "monitor-auto-select.spec.ts",
+        "deep-link-results.spec.ts",
       ],
       timeout: 600_000,
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+      },
+      expect: {
+        toHaveScreenshot: {
+          maxDiffPixelRatio: 0.02,
+          threshold: 0.3,
+          animations: "disabled",
+        },
+      },
     },
   ],
   webServer: [

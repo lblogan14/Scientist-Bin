@@ -20,6 +20,7 @@ interface CreateExperimentOpts {
 interface Experiment {
   id: string;
   status: string;
+  phase: string | null;
   framework: string | null;
   problem_type: string | null;
   result: unknown;
@@ -81,4 +82,31 @@ export async function checkHealth(
 ): Promise<{ status: string; frameworks: Record<string, string> }> {
   const response = await request.get(`${API_BASE}/health`);
   return response.json();
+}
+
+/**
+ * Poll until the experiment reaches a specific phase (e.g. "plan_review").
+ * Throws if the experiment completes/fails before reaching the target phase.
+ */
+export async function waitForPhase(
+  request: APIRequestContext,
+  id: string,
+  targetPhase: string,
+  timeoutMs = 180_000,
+  pollIntervalMs = 3_000,
+): Promise<Experiment> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const exp = await getExperiment(request, id);
+    if (exp.phase === targetPhase) return exp;
+    if (exp.status === "completed" || exp.status === "failed") {
+      throw new Error(
+        `Experiment ${id} reached status "${exp.status}" before phase "${targetPhase}"`,
+      );
+    }
+    await new Promise((r) => setTimeout(r, pollIntervalMs));
+  }
+  throw new Error(
+    `Experiment ${id} did not reach phase "${targetPhase}" within ${timeoutMs / 1000}s`,
+  );
 }

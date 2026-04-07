@@ -48,6 +48,19 @@ export class DashboardPO {
     ).toBeVisible();
   }
 
+  /** Check if the ActiveExperimentBanner is visible on the dashboard. */
+  async isActiveBannerVisible(): Promise<boolean> {
+    return this.page
+      .getByText("Plan Review Needed")
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+  }
+
+  /** Click the "Review Plan" link in the active experiment banner. */
+  async clickActiveBannerReviewLink() {
+    await this.page.getByRole("link", { name: /Review Plan/i }).click();
+  }
+
   async selectFramework(name: "sklearn" | "flaml" | "auto") {
     // Open the Select dropdown
     const trigger = this.page
@@ -186,6 +199,31 @@ export class ResultsPO {
       }
     }
   }
+
+  /**
+   * After clicking a tab, wait for the active TabsContent to have
+   * visible content (Suspense resolved, spinner gone).
+   */
+  async waitForTabContent(timeout = 10_000) {
+    const activePanel = this.page.locator(
+      'div[role="tabpanel"][data-state="active"]',
+    );
+    await expect(activePanel).toBeVisible({ timeout });
+    // Wait for Loading spinner to disappear
+    await expect(async () => {
+      const loading = await activePanel
+        .locator("text=Loading...")
+        .isVisible()
+        .catch(() => false);
+      expect(loading).toBe(false);
+    }).toPass({ timeout });
+  }
+
+  /** Extract the experiment ID from the current URL query params. */
+  getExperimentIdFromUrl(): string | null {
+    const url = new URL(this.page.url());
+    return url.searchParams.get("id");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -210,5 +248,87 @@ export class ModelsPO {
     // ModelRankingCard renders cards with algorithm names
     const cards = this.page.locator('[class*="card"]');
     return (await cards.count()) > 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Experiments List
+// ---------------------------------------------------------------------------
+
+export class ExperimentsPO {
+  readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
+
+  async goto() {
+    await this.page.goto("/experiments");
+    await expect(
+      this.page.getByRole("heading", { name: /Experiments/i }),
+    ).toBeVisible();
+  }
+
+  async filterByStatus(status: string) {
+    // Status dropdown shows "All statuses" by default
+    await this.page.getByText("All statuses").click();
+    await this.page.getByRole("option", { name: new RegExp(status, "i") }).click();
+  }
+
+  async filterByFramework(framework: string) {
+    await this.page.getByText("All frameworks").click();
+    await this.page.getByRole("option", { name: new RegExp(framework, "i") }).click();
+  }
+
+  async filterByProblemType(problemType: string) {
+    await this.page.getByText("All types").click();
+    await this.page.getByRole("option", { name: new RegExp(problemType, "i") }).click();
+  }
+
+  async searchExperiments(query: string) {
+    await this.page.getByPlaceholder(/Search experiments/).fill(query);
+  }
+
+  async clearSearch() {
+    await this.page.getByPlaceholder(/Search experiments/).clear();
+  }
+
+  /** Count visible experiment rows (excludes "no experiments" placeholder). */
+  async getVisibleRowCount(): Promise<number> {
+    const rows = this.page.locator("tbody tr").filter({
+      hasNot: this.page.locator("text=No experiments"),
+    });
+    return rows.count();
+  }
+
+  /** Parse the "Showing X of Y experiments" text. */
+  async getShowingCount(): Promise<{ showing: number; total: number }> {
+    const text = await this.page
+      .locator("text=/Showing \\d+ of \\d+/")
+      .textContent()
+      .catch(() => null);
+    const match = text?.match(/Showing (\d+) of (\d+)/);
+    return {
+      showing: match ? parseInt(match[1]) : 0,
+      total: match ? parseInt(match[2]) : 0,
+    };
+  }
+
+  /** Click on an experiment row by its ID. */
+  async clickExperimentRow(experimentId: string) {
+    await this.page
+      .locator("tr")
+      .filter({ hasText: experimentId.slice(0, 12) })
+      .first()
+      .click();
+  }
+
+  /** Click on an experiment row by objective text. */
+  async clickExperimentByObjective(objective: string) {
+    await this.page
+      .locator("tr")
+      .filter({ hasText: objective })
+      .first()
+      .click();
   }
 }

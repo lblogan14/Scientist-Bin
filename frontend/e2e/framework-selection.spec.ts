@@ -14,9 +14,8 @@ test.describe("Framework selection dropdown", () => {
   });
 
   test("Shows all framework options", async ({ page }) => {
-    // Click the framework select trigger to open the dropdown
-    const trigger = page.locator("button").filter({ hasText: /framework/i })
-      .or(page.getByText("Auto-detect"));
+    // The framework Select renders as a combobox button
+    const trigger = page.getByRole("combobox").first();
     await trigger.click();
 
     // Verify all options
@@ -38,21 +37,19 @@ test.describe("Framework selection dropdown", () => {
   });
 
   test("Can select FLAML framework", async ({ page }) => {
-    const trigger = page.locator("button").filter({ hasText: /framework/i })
-      .or(page.getByText("Auto-detect"));
+    const trigger = page.getByRole("combobox").first();
     await trigger.click();
     await page.getByRole("option", { name: /FLAML/i }).click();
 
-    // Verify the trigger now shows the selection
-    await expect(page.getByText(/FLAML/i)).toBeVisible();
+    // Verify the combobox trigger now shows the selection
+    await expect(trigger).toHaveText(/FLAML/i);
   });
 
   test("Can select Scikit-learn framework", async ({ page }) => {
-    const trigger = page.locator("button").filter({ hasText: /framework/i })
-      .or(page.getByText("Auto-detect"));
+    const trigger = page.getByRole("combobox").first();
     await trigger.click();
     await page.getByRole("option", { name: "Scikit-learn" }).click();
 
-    await expect(page.getByText("Scikit-learn")).toBeVisible();
+    await expect(trigger).toHaveText(/Scikit-learn/);
   });
 });
