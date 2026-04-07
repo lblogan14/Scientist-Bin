@@ -38,5 +38,6 @@ data/*
 !data/cc_data/
 !data/mall_data/
 !data/wine_data/
+!data/electric_data/
 outputs/*
 !outputs/.gitkeep
