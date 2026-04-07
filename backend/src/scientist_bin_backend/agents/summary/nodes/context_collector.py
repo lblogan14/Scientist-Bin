@@ -33,6 +33,12 @@ async def collect_context(state: dict) -> dict:
     all_feature_importances: dict[str, list[dict]] = {}
     all_confusion_matrices: dict[str, dict] = {}
     all_residual_stats: dict[str, dict] = {}
+    # Clustering-specific enrichment fields
+    all_cluster_scatter: dict[str, list] = {}
+    all_elbow_data: dict[str, list] = {}
+    all_cluster_sizes: dict[str, list] = {}
+    all_cluster_profiles: dict[str, list] = {}
+    all_silhouette_per_sample: dict[str, list] = {}
 
     for record in experiment_history:
         algo = record.get("algorithm", "unknown")
@@ -57,6 +63,27 @@ async def collect_context(state: dict) -> dict:
         if residual_stats:
             all_residual_stats[algo] = residual_stats
 
+        # Clustering-specific fields
+        cluster_scatter = record.get("cluster_scatter")
+        if cluster_scatter:
+            all_cluster_scatter[algo] = cluster_scatter
+
+        elbow_data = record.get("elbow_data")
+        if elbow_data:
+            all_elbow_data[algo] = elbow_data
+
+        cluster_sizes = record.get("cluster_sizes")
+        if cluster_sizes:
+            all_cluster_sizes[algo] = cluster_sizes
+
+        cluster_profiles = record.get("cluster_profiles")
+        if cluster_profiles:
+            all_cluster_profiles[algo] = cluster_profiles
+
+        silhouette_per_sample = record.get("silhouette_per_sample")
+        if silhouette_per_sample:
+            all_silhouette_per_sample[algo] = silhouette_per_sample
+
     # Include test-set diagnostics if available
     if test_diagnostics:
         if test_diagnostics.get("confusion_matrix"):
@@ -64,6 +91,10 @@ async def collect_context(state: dict) -> dict:
             all_confusion_matrices["__test__"] = test_diagnostics["confusion_matrix"]
         if test_diagnostics.get("residual_stats"):
             all_residual_stats["__test__"] = test_diagnostics["residual_stats"]
+        if test_diagnostics.get("cluster_scatter"):
+            all_cluster_scatter["__test__"] = test_diagnostics["cluster_scatter"]
+        if test_diagnostics.get("cluster_profiles"):
+            all_cluster_profiles["__test__"] = test_diagnostics["cluster_profiles"]
 
     # Compute aggregates
     algorithms_tried = []
@@ -85,6 +116,11 @@ async def collect_context(state: dict) -> dict:
         "feature_importances": all_feature_importances,
         "confusion_matrices": all_confusion_matrices,
         "residual_stats": all_residual_stats,
+        "cluster_scatter": all_cluster_scatter,
+        "elbow_data": all_elbow_data,
+        "cluster_sizes": all_cluster_sizes,
+        "cluster_profiles": all_cluster_profiles,
+        "silhouette_per_sample": all_silhouette_per_sample,
         "test_metrics": test_metrics,
         "test_diagnostics": test_diagnostics,
         "algorithms_tried": algorithms_tried,
@@ -94,13 +130,16 @@ async def collect_context(state: dict) -> dict:
 
     logger.info(
         "Collected context: %d experiments, %d algorithms, "
-        "cv_folds=%d, importances=%d, confusion=%d, residuals=%d",
+        "cv_folds=%d, importances=%d, confusion=%d, residuals=%d, "
+        "clusters=%d, elbow=%d",
         len(experiment_history),
         len(algorithms_tried),
         len(all_cv_fold_scores),
         len(all_feature_importances),
         len(all_confusion_matrices),
         len(all_residual_stats),
+        len(all_cluster_scatter),
+        len(all_elbow_data),
     )
 
     return {

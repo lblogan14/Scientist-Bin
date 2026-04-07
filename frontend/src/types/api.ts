@@ -62,6 +62,9 @@ export interface TrainRequest {
   data_file_path?: string;
   framework_preference?: Framework;
   auto_approve_plan?: boolean;
+  deep_research?: boolean;
+  budget_max_iterations?: number;
+  budget_time_limit_seconds?: number;
 }
 
 export interface ReviewRequest {
@@ -89,6 +92,7 @@ export interface Experiment {
   analysis_report: string | null;
   summary_report: string | null;
   split_data_paths: Record<string, string> | null;
+  problem_type: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -179,6 +183,15 @@ export interface ChartData {
   training_times?: Array<{ algorithm: string; time_seconds: number }>;
   hyperparam_search?: Record<string, CVResultEntry[]>;
   residual_stats?: Record<string, ResidualStats>;
+  // Clustering additions
+  cluster_scatter?: ClusterScatterPoint[];
+  elbow_curve?: ElbowPoint[];
+  cluster_profiles?: ClusterProfile[];
+  silhouette_data?: SilhouetteSample[];
+  // Regression additions
+  actual_vs_predicted?: ActualVsPredictedPoint[];
+  coefficients?: CoefficientEntry[];
+  learning_curve?: LearningCurvePoint[];
 }
 
 export interface SummaryReportSections {
@@ -253,6 +266,53 @@ export interface ResidualStats {
   residual_percentiles: Record<string, number>;
 }
 
+// ---------------------------------------------------------------------------
+// Clustering-specific chart data
+// ---------------------------------------------------------------------------
+
+export interface ClusterScatterPoint {
+  x: number;
+  y: number;
+  cluster: number;
+}
+
+export interface ElbowPoint {
+  k: number;
+  inertia: number;
+}
+
+export interface ClusterProfile {
+  cluster_id: number;
+  size: number;
+  centroid: Record<string, number>;
+}
+
+export interface SilhouetteSample {
+  sample_index: number;
+  score: number;
+  cluster: number;
+}
+
+// ---------------------------------------------------------------------------
+// Regression-specific chart data
+// ---------------------------------------------------------------------------
+
+export interface ActualVsPredictedPoint {
+  actual: number;
+  predicted: number;
+}
+
+export interface CoefficientEntry {
+  feature: string;
+  coefficient: number;
+}
+
+export interface LearningCurvePoint {
+  train_size: number;
+  train_score: number;
+  val_score: number;
+}
+
 export interface ExperimentRecord {
   iteration: number;
   algorithm: string;
@@ -265,6 +325,17 @@ export interface ExperimentRecord {
   feature_importances?: FeatureImportance[];
   confusion_matrix?: ConfusionMatrix;
   residual_stats?: ResidualStats;
+  // Clustering additions
+  cluster_scatter?: ClusterScatterPoint[];
+  elbow_data?: ElbowPoint[];
+  cluster_sizes?: number[];
+  n_clusters?: number;
+  silhouette_per_sample?: SilhouetteSample[];
+  cluster_profiles?: ClusterProfile[];
+  // Regression additions
+  actual_vs_predicted?: ActualVsPredictedPoint[];
+  coefficients?: CoefficientEntry[];
+  learning_curve?: LearningCurvePoint[];
 }
 
 export interface DataProfile {
@@ -313,4 +384,22 @@ export interface AgentActivity {
 
 export interface HealthResponse {
   status: "ok";
+}
+
+// ---------------------------------------------------------------------------
+// Deployment types
+// ---------------------------------------------------------------------------
+
+export type DeploymentStatus =
+  | "not_deployed"
+  | "deploying"
+  | "deployed"
+  | "failed"
+  | "stopped";
+
+export interface DeploymentInfo {
+  status: DeploymentStatus;
+  endpoint_url: string | null;
+  deployed_at: string | null;
+  model_version: string;
 }

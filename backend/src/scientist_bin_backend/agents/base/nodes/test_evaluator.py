@@ -129,6 +129,8 @@ async def evaluate_on_test(state: dict) -> dict:
     test_metrics: dict | None = None
     test_confusion_matrix: dict | None = None
     test_residual_stats: dict | None = None
+    test_cluster_scatter: list | None = None
+    test_actual_vs_predicted: list | None = None
     if result.success:
         parsed = _parse_test_results(result.stdout)
         if parsed:
@@ -136,6 +138,8 @@ async def evaluate_on_test(state: dict) -> dict:
                 test_metrics = parsed["metrics"]
             test_confusion_matrix = parsed.get("confusion_matrix")
             test_residual_stats = parsed.get("residual_stats")
+            test_cluster_scatter = parsed.get("cluster_scatter")
+            test_actual_vs_predicted = parsed.get("actual_vs_predicted")
 
     if test_metrics:
         status_msg = f"Test evaluation completed. Metrics: {json.dumps(test_metrics)}"
@@ -162,6 +166,10 @@ async def evaluate_on_test(state: dict) -> dict:
         test_diagnostics["confusion_matrix"] = test_confusion_matrix
     if test_residual_stats:
         test_diagnostics["residual_stats"] = test_residual_stats
+    if test_cluster_scatter:
+        test_diagnostics["cluster_scatter"] = test_cluster_scatter
+    if test_actual_vs_predicted:
+        test_diagnostics["actual_vs_predicted"] = test_actual_vs_predicted
 
     return {
         "test_metrics": test_metrics,

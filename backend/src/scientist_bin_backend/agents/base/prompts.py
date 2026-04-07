@@ -115,7 +115,7 @@ so calling model.predict() handles preprocessing automatically
 5. Compute all relevant metrics for the problem type ({problem_type}):
    - Classification: accuracy, precision, recall, f1 (weighted), confusion matrix
    - Regression: mse, rmse, mae, r2
-   - Clustering: silhouette_score, calinski_harabasz_score
+   - Clustering: silhouette_score, calinski_harabasz_score, davies_bouldin_score
 6. Call report_metric(name, value) for each metric (this function is pre-defined)
 7. Print "===TEST_RESULTS===" followed by a JSON object:
    {{"algorithm": "{best_algorithm}", "metrics": {{"test_<metric>": value, ...}}, \
@@ -126,8 +126,15 @@ sklearn.metrics.confusion_matrix and include "confusion_matrix": \
 {{"labels": [<class_labels>], "matrix": [[int, ...], ...]}} in the JSON
 10. For regression: also compute residual statistics (y_test - y_pred) and include \
 "residual_stats": {{"mean_residual": float, "std_residual": float, \
-"max_abs_residual": float, "residual_percentiles": {{"25": float, "50": float, "75": float}}}}
-11. Requirements 9-10 are OPTIONAL enrichments — wrap each in try/except so failures \
+"max_abs_residual": float, "residual_percentiles": {{"25": float, "50": float, "75": float}}}}. \
+Also include "actual_vs_predicted": [{{"actual": float, "predicted": float}}, ...] \
+(subsample to max 2000 points if needed)
+11. For clustering: the model is a clustering pipeline. Call model.predict(X_test) to \
+get cluster labels. Compute silhouette_score, calinski_harabasz_score, davies_bouldin_score. \
+Also generate PCA 2D coordinates: \
+"cluster_scatter": [{{"x": float, "y": float, "cluster": int}}, ...] \
+(subsample to max 2000 points if needed)
+12. Requirements 9-11 are OPTIONAL enrichments — wrap each in try/except so failures \
 do not break the test evaluation script
 
 Return ONLY the Python code, no markdown fences.

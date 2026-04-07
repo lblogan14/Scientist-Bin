@@ -9,6 +9,9 @@ interface AppState {
 
   theme: Theme;
   setTheme: (theme: Theme) => void;
+
+  selectedExperimentId: string | null;
+  setSelectedExperimentId: (id: string | null) => void;
 }
 
 function getInitialTheme(): Theme {
@@ -37,4 +40,7 @@ export const useAppStore = create<AppState>((set) => ({
     applyTheme(theme);
     set({ theme });
   },
+
+  selectedExperimentId: null,
+  setSelectedExperimentId: (id) => set({ selectedExperimentId: id }),
 }));

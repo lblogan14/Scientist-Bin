@@ -32,6 +32,9 @@ export function OverfitGaugeChart({
     risk: e.overfit_risk,
   }));
 
+  const longestLabel = Math.max(...data.map((d) => d.name.length), 0);
+  const yAxisWidth = Math.min(Math.max(longestLabel * 6, 100), 220);
+
   return (
     <ChartContainer title={title} height={Math.max(data.length * 50, 200)}>
       <BarChart
@@ -44,7 +47,7 @@ export function OverfitGaugeChart({
         <YAxis
           dataKey="name"
           type="category"
-          width={150}
+          width={yAxisWidth}
           tick={{ fontSize: 11 }}
         />
         <Tooltip

@@ -1,33 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  isRatioMetric,
+  getMetricColor,
+  getBarColor,
+} from "@/lib/metric-utils";
 
 interface MetricCardsProps {
   metrics: Record<string, unknown> | null;
-}
-
-const RATIO_METRICS = new Set([
-  "accuracy",
-  "f1",
-  "macro_f1",
-  "micro_f1",
-  "weighted_f1",
-  "precision",
-  "recall",
-  "r2",
-  "roc_auc",
-]);
-
-function getMetricColor(key: string, value: number): string {
-  if (!RATIO_METRICS.has(key)) return "";
-  if (value >= 0.9) return "text-success";
-  if (value >= 0.7) return "text-warning";
-  return "text-destructive";
-}
-
-function getBarColor(key: string, value: number): string {
-  if (!RATIO_METRICS.has(key)) return "bg-primary";
-  if (value >= 0.9) return "bg-success";
-  if (value >= 0.7) return "bg-warning";
-  return "bg-destructive";
 }
 
 export function MetricCards({ metrics }: MetricCardsProps) {
@@ -39,12 +18,12 @@ export function MetricCards({ metrics }: MetricCardsProps) {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Object.entries(metrics).map(([key, value]) => {
         const numVal = typeof value === "number" ? value : null;
-        const isRatio = numVal !== null && RATIO_METRICS.has(key);
+        const isRatio = numVal !== null && isRatioMetric(key);
 
         return (
           <Card key={key}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground text-xs font-medium uppercase">
+              <CardTitle className="text-muted-foreground truncate text-xs font-medium uppercase">
                 {key}
               </CardTitle>
             </CardHeader>

@@ -1,15 +1,30 @@
 # Scientist-Bin
 
-A multi-agent system that automatically trains and evaluates data science models. Describe your objective in plain language, upload a dataset, and the system handles everything from data profiling to model selection.
+A multi-agent system that automatically trains and evaluates data science models. Describe your objective in plain language, upload a dataset, and the system handles everything from data profiling to model selection and deployment.
 
 Built with [LangGraph](https://github.com/langchain-ai/langgraph) for agent orchestration and [Google Gemini](https://ai.google.dev/) as the LLM backbone.
 
 ## How It Works
 
-Scientist-Bin runs a **5-agent pipeline** that takes a natural-language objective and a dataset, then produces a trained model, evaluation metrics, and a comprehensive report.
+### Standard Mode -- 5-Agent Pipeline
 
-```
-Central ──> Analyst ──> Plan (HITL) ──> Sklearn ──> Summary
+The default mode runs a linear pipeline that takes a natural-language objective and a dataset, then produces a trained model, evaluation metrics, and a comprehensive report.
+
+```mermaid
+graph TD
+    A[Central Agent] -- "analyze + route" --> B{Framework<br/>Selection}
+    B -->|sklearn| C[Analyst Agent]
+    B -->|unsupported| C
+    C -- "split data + report" --> D[Plan Agent]
+    D -- "execution plan<br/>(HITL review)" --> E[Framework Agent]
+    E -- "experiment results" --> F[Summary Agent]
+    F -- "final report +<br/>best model" --> Z
+
+    style A fill:#4a9eff,color:#fff
+    style C fill:#26de81,color:#fff
+    style D fill:#ff9f43,color:#fff
+    style E fill:#a55eea,color:#fff
+    style F fill:#fd9644,color:#fff
 ```
 
 | Agent | Role | Model Tier |
@@ -20,107 +35,124 @@ Central ──> Analyst ──> Plan (HITL) ──> Sklearn ──> Summary
 | **Sklearn** | Generate scikit-learn code, execute, iteratively refine, evaluate on test set | Pro |
 | **Summary** | Review all runs, pick the best model, generate a final report with charts | Flash |
 
-The **Plan** agent includes a human-in-the-loop step -- you can approve the plan, request changes, or let it auto-approve.
+### Deep Research Mode -- Campaign Orchestrator
 
-**Currently supports scikit-learn.** PyTorch, TensorFlow, Hugging Face Transformers, and Diffusers are planned.
+For complex problems, Deep Research mode wraps the standard pipeline in an iterative campaign loop that generates hypotheses, runs experiments, extracts insights, and learns from previous attempts:
+
+```
+generate_hypotheses -> run_experiment -> extract_insights -> check_budget -> loop
+```
+
+Findings are stored in a ChromaDB vector store so later iterations build on earlier discoveries. Use `--deep-research` on the CLI or `deep_research=True` in the API.
+
+### Problem Types
+
+| Type | Description | Example Datasets |
+|------|-------------|------------------|
+| **Classification** | Predict discrete labels | Iris, WineQT |
+| **Regression** | Predict continuous values | AmesHousing |
+| **Clustering** | Discover natural groupings | Mall_Customers, CC_GENERAL |
+
+### Supported Frameworks
+
+- **scikit-learn** -- fully supported (classification, regression, clustering)
+- **PyTorch** -- planned
+- **TensorFlow** -- planned
+- **Hugging Face Transformers / Diffusers** -- planned
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 22+
-- [uv](https://docs.astral.sh/uv/) (Python package manager)
-- [pnpm](https://pnpm.io/) 10+ (Node package manager)
+- Python 3.11+, Node.js 22+
+- [uv](https://docs.astral.sh/uv/) (Python), [pnpm](https://pnpm.io/) 10+ (Node)
 - A [Google AI API key](https://aistudio.google.com/apikey)
 
-### 1. Clone and configure
+### Install
 
 ```bash
 git clone https://github.com/Scientist-Bin/Scientist-Bin.git
 cd Scientist-Bin
-```
 
-Create `backend/.env` from the example:
+# Configure
+cp backend/.env.example backend/.env   # Set GOOGLE_API_KEY
 
-```bash
-cp backend/.env.example backend/.env
-```
-
-Edit `backend/.env` and set your API key:
-
-```
-GOOGLE_API_KEY=your-api-key-here
-```
-
-### 2. Install dependencies
-
-```bash
 # Backend
-cd backend
-uv sync --all-groups
+cd backend && uv sync --all-groups
 
 # Frontend
-cd ../frontend
-pnpm install
+cd ../frontend && pnpm install
 ```
 
-### 3. Run
-
-**Option A: Full stack (web UI)**
+### Run -- Full Stack (Web UI)
 
 ```bash
-# Terminal 1 -- backend API server
-cd backend
-uv run scientist-bin serve
+# Terminal 1: backend
+cd backend && uv run scientist-bin serve
 
-# Terminal 2 -- frontend dev server
-cd frontend
-pnpm dev
+# Terminal 2: frontend
+cd frontend && pnpm dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173). The frontend proxies API calls to the backend at port 8000.
 
-**Option B: CLI only (no server required)**
+### Run -- CLI Only (No Server)
 
 ```bash
 cd backend
+
+# Standard pipeline
 uv run scientist-bin train "Classify iris species" \
-  --data-file data/iris_data/Iris.csv \
-  --auto-approve
+  --data-file data/iris_data/Iris.csv --auto-approve
+
+# Deep research mode
+uv run scientist-bin train "Predict house prices" \
+  --data-file data/ames_data/AmesHousing.csv \
+  --deep-research --budget 10 --time-limit 4h
+
+# Standalone campaign
+uv run scientist-bin campaign "Segment customers" \
+  --data-file data/mall_data/Mall_Customers.csv --budget 5
 ```
 
 ## CLI Reference
 
-The `scientist-bin` CLI supports both local execution (no server) and remote commands (against a running server).
+All commands run from `backend/`.
 
 ### Local Commands
 
 ```bash
 # Full pipeline
-uv run scientist-bin train "Classify iris species" --data-file data/iris_data/Iris.csv
-uv run scientist-bin train "Classify iris" --data-file data/iris_data/Iris.csv --auto-approve
-uv run scientist-bin train "Classify iris" --data "4 features, 3 classes" --quiet
+uv run scientist-bin train "Classify iris" --data-file data/iris_data/Iris.csv
+uv run scientist-bin train "Classify iris" --auto-approve              # Skip plan review
+uv run scientist-bin train "Classify iris" --deep-research --budget 10 # Deep research mode
+uv run scientist-bin train "Classify iris" --quiet                     # JSON output only
+
+# Standalone campaign
+uv run scientist-bin campaign "objective" --data-file path --budget 10 --time-limit 4h
 
 # Individual agents
 uv run scientist-bin analyze data/iris_data/Iris.csv --objective "Classify iris"
 uv run scientist-bin plan "Classify iris" --data-file data/iris_data/Iris.csv --run-analyst
 uv run scientist-bin train-sklearn "Classify iris" --data-dir outputs/runs/<id>/data/ --problem-type classification
 uv run scientist-bin summarize <experiment-id>
+
+# Deployment
+uv run scientist-bin deploy <experiment-id>                            # Build Docker image
+uv run scientist-bin deploy <experiment-id> --tag mymodel:latest       # Custom tag
+uv run scientist-bin deploy <experiment-id> --no-build --output-dir .  # Artifacts only
 ```
 
 ### Remote Commands (requires running server)
 
 ```bash
-uv run scientist-bin train-remote "Classify iris" --auto-approve   # Submit + stream
-uv run scientist-bin watch <experiment-id>                          # Stream events
-uv run scientist-bin review <experiment-id> "approve"               # Approve plan
-uv run scientist-bin review <experiment-id> "Try XGBoost instead"   # Request revision
-uv run scientist-bin download <experiment-id> model -o model.joblib # Download model
-uv run scientist-bin download <experiment-id> all                   # Download all artifacts
-uv run scientist-bin list --status completed --framework sklearn    # Filter experiments
-uv run scientist-bin show <experiment-id>                           # Experiment details
-uv run scientist-bin delete <experiment-id>                         # Delete experiment
+uv run scientist-bin train-remote "Classify iris" --auto-approve
+uv run scientist-bin watch <experiment-id>
+uv run scientist-bin review <experiment-id> "approve"
+uv run scientist-bin download <experiment-id> model -o model.joblib
+uv run scientist-bin list --status completed --framework sklearn
+uv run scientist-bin show <experiment-id>
+uv run scientist-bin delete <experiment-id>
 ```
 
 ## Output Artifacts
@@ -138,141 +170,82 @@ outputs/
 └── logs/<id>.jsonl                 # Decision journal
 ```
 
-## Frontend
-
-The web UI provides five pages for managing the full experiment lifecycle:
-
-| Page | Description |
-|------|-------------|
-| **Dashboard** | Submit objectives, view stats, see active experiments |
-| **Experiments** | Browse, filter, and inspect past experiments |
-| **Training Monitor** | Real-time progress (10-phase pipeline), plan review, agent activity log, metrics stream |
-| **Results** | 13-tab deep-dive: overview, confusion matrix, CV stability, overfitting, feature importance, hyperparameters, plan, analysis, summary, code, data, journal |
-| **Model Selection** | Rank models, compare metrics, tradeoff scatter plots |
-
-Real-time updates are streamed via Server-Sent Events (SSE). Three color themes are available: light, dark, and science.
-
-## API
-
-The backend exposes a REST API at `http://localhost:8000/api/v1/`:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/train` | Start a new experiment |
-| `GET` | `/experiments` | List experiments (with filtering) |
-| `GET` | `/experiments/{id}` | Get experiment details |
-| `GET` | `/experiments/{id}/events` | SSE event stream |
-| `POST` | `/experiments/{id}/review` | Submit plan review (HITL) |
-| `GET` | `/experiments/{id}/journal` | Get decision journal |
-| `GET` | `/experiments/{id}/plan` | Get execution plan |
-| `GET` | `/experiments/{id}/analysis` | Get analysis report |
-| `GET` | `/experiments/{id}/summary` | Get summary report |
-| `GET` | `/experiments/{id}/artifacts/{type}` | Download artifact |
-| `DELETE` | `/experiments/{id}` | Delete experiment |
-| `GET` | `/health` | Health check |
-
-## Project Structure
-
-```
-Scientist-Bin/
-├── backend/
-│   ├── src/scientist_bin_backend/
-│   │   ├── agents/
-│   │   │   ├── base/            # Shared framework agent infrastructure
-│   │   │   ├── central/         # Request analysis + routing
-│   │   │   ├── analyst/         # Data profiling, cleaning, splitting
-│   │   │   ├── plan/            # Online search, plan creation, HITL
-│   │   │   ├── frameworks/
-│   │   │   │   └── sklearn/     # Scikit-learn code gen + execution
-│   │   │   └── summary/         # Best model selection + report
-│   │   ├── api/                 # FastAPI routes + experiment store
-│   │   ├── config/              # Pydantic Settings (env-based)
-│   │   ├── events/              # Event bus for real-time updates
-│   │   ├── execution/           # Sandboxed code runner, budgets, journal
-│   │   ├── utils/               # LLM helpers, artifacts, naming
-│   │   ├── main.py              # FastAPI app entry point
-│   │   └── cli.py               # Typer CLI entry point
-│   ├── tests/
-│   ├── data/                    # Input datasets
-│   └── outputs/                 # Generated models, results, logs
-├── frontend/
-│   ├── src/
-│   │   ├── app/                 # Router, providers, layout
-│   │   ├── features/            # Feature modules (1 per page)
-│   │   ├── components/          # Shared UI, charts, layout
-│   │   ├── lib/                 # API client, utilities
-│   │   ├── stores/              # Zustand state
-│   │   └── types/               # TypeScript interfaces
-│   └── ...
-└── .github/workflows/ci.yml    # CI: lint + test + build
-```
-
 ## Tech Stack
 
 ### Backend
 
 - **Python 3.11+** with **FastAPI** and **LangGraph**
 - **Google Gemini** via `langchain-google-genai` and `google-genai`
-- **Pydantic** for schemas and settings
-- **Typer** for CLI
+- **ChromaDB** for findings memory (Deep Research mode, optional)
+- **Pydantic** for schemas, **Typer** for CLI
 - **pandas**, **scikit-learn**, **matplotlib** for data science execution
-- **uv** for package management
-- **ruff** for linting/formatting, **pytest** for testing
+- **uv** for packages, **ruff** for linting, **pytest** for testing (469+ tests)
 
 ### Frontend
 
 - **React 19** with **TypeScript 5.9** (strict mode)
-- **Vite 8** for build tooling
-- **shadcn/ui** (Radix + Tailwind CSS v4)
-- **React Router v7** for routing
-- **TanStack React Query** for server state
-- **Zustand** for client state
-- **Recharts** for visualizations
-- **ky** for HTTP, **react-hook-form** + **Zod** for forms
-- **pnpm** for package management
-- **Vitest** + **Testing Library** for testing
+- **Vite 6**, **shadcn/ui** (Radix + Tailwind CSS v4)
+- **React Router v7**, **TanStack React Query**, **Zustand**
+- **Recharts** for visualizations (13 chart components)
+- **pnpm** for packages, **Vitest** + **Testing Library** for testing (167+ tests)
 
-## Configuration
+## Test Datasets
 
-All environment variables go in `backend/.env`. See `backend/.env.example` for defaults:
+| Dataset | Path | Problem Type |
+|---------|------|-------------|
+| Iris | `data/iris_data/` | Classification |
+| AmesHousing | `data/ames_data/` | Regression |
+| WineQT | `data/wine_data/` | Classification / Regression |
+| Mall_Customers | `data/mall_data/` | Clustering |
+| CC_GENERAL | `data/cc_data/` | Clustering |
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GOOGLE_API_KEY` | *(required)* | Google AI API key |
-| `SCIENTIST_BIN_GEMINI_MODEL` | `gemini-2.0-flash` | Default Gemini model |
-| `SCIENTIST_BIN_GEMINI_MODEL_FLASH` | `gemini-3-flash-preview` | Flash tier (Central, Summary) |
-| `SCIENTIST_BIN_GEMINI_MODEL_PRO` | `gemini-3.1-pro-preview` | Pro tier (Analyst, Plan, Sklearn) |
-| `SCIENTIST_BIN_DEBUG` | `false` | Enable debug logging |
-| `SCIENTIST_BIN_CORS_ORIGINS` | `["http://localhost:5173"]` | Allowed CORS origins |
-| `SCIENTIST_BIN_SANDBOX_TIMEOUT` | `300` | Code execution timeout (seconds) |
-| `SCIENTIST_BIN_MAX_ITERATIONS` | `5` | Max refinement iterations |
+## Project Structure
+
+```
+Scientist-Bin/
+├── backend/                         # Python backend (see backend/README.md)
+│   ├── src/scientist_bin_backend/
+│   │   ├── agents/
+│   │   │   ├── base/                # Shared framework agent infrastructure
+│   │   │   ├── central/             # Request analysis + routing
+│   │   │   ├── analyst/             # Data profiling, cleaning, splitting
+│   │   │   ├── plan/                # Online search, plan creation, HITL
+│   │   │   ├── campaign/            # Deep Research campaign orchestrator
+│   │   │   ├── hypothesis/          # Hypothesis generation for campaigns (planned)
+│   │   │   ├── frameworks/
+│   │   │   │   └── sklearn/         # Scikit-learn code gen + execution
+│   │   │   └── summary/             # Best model selection + report
+│   │   ├── api/                     # FastAPI routes + experiment store
+│   │   ├── deploy/                  # Docker deployment (templates, builder)
+│   │   ├── memory/                  # Findings store (ChromaDB), ERL journal
+│   │   ├── execution/               # Sandboxed code runner, budgets, journal
+│   │   └── utils/                   # LLM helpers, artifacts, naming
+│   ├── tests/                       # 469+ tests (pytest)
+│   └── data/                        # Input datasets
+├── frontend/                        # React frontend (see frontend/README.md)
+│   └── src/
+│       ├── features/                # Feature modules (1 per page)
+│       ├── components/              # Shared UI, charts, layout
+│       ├── hooks/                   # Shared hooks
+│       ├── lib/                     # API client, metric utilities
+│       ├── stores/                  # Zustand state
+│       └── types/                   # TypeScript interfaces
+└── .github/workflows/ci.yml        # CI: lint + test + build
+```
 
 ## Development
 
 ```bash
 # Backend (from backend/)
-uv run ruff check .              # Lint
-uv run ruff format .             # Format
-uv run pytest -v                 # Test
+uv run pytest -v                     # Run all 469+ tests
+uv run pytest -m slow                # E2E pipeline tests (requires GOOGLE_API_KEY)
+uv run ruff check . && uv run ruff format .
 
 # Frontend (from frontend/)
-pnpm lint                        # ESLint
-pnpm format                      # Prettier
-pnpm test                        # Vitest
-pnpm build                       # Type-check + production build
+pnpm test                            # Run all 167+ tests
+pnpm lint && pnpm format
+pnpm build                           # Type-check + production build
 ```
-
-## Adding a New Framework
-
-The system is designed to be extensible. To add a new ML framework (e.g., PyTorch):
-
-1. Create `backend/src/scientist_bin_backend/agents/frameworks/pytorch/`
-2. Extend `BaseFrameworkAgent` and implement `_build_graph()`
-3. Add framework-specific prompts, schemas, and state
-4. Register in `FRAMEWORK_REGISTRY` (`agents/central/nodes/router.py`)
-5. Add a model entry to `AGENT_MODELS` (`utils/llm.py`)
-
-The routing infrastructure will automatically discover and delegate to the new agent.
 
 ## CI
 
@@ -280,3 +253,8 @@ GitHub Actions runs on push/PR to `main` and `develop`:
 
 - **Backend:** ruff lint + pytest
 - **Frontend:** ESLint + TypeScript check + Vitest + production build
+
+## More Information
+
+- [Backend README](backend/README.md) -- architecture details, API reference, agent internals
+- [Frontend README](frontend/README.md) -- page details, component architecture, hooks

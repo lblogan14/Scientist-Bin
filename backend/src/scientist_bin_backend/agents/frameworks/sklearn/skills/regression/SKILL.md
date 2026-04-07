@@ -37,3 +37,8 @@ Use this skill when the objective involves predicting a continuous numeric value
 8. Compare metrics (MAE, RMSE, R2) and select best model
 9. Analyze residuals for model diagnostics
 10. Generate final evaluation report
+
+## Reference
+
+See `reference.md` in this directory for comprehensive algorithm decision trees,
+parameter tuning grids, residual analysis patterns, and metric selection guidance.

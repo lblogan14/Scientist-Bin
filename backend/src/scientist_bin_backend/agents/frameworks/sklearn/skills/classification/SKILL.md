@@ -36,3 +36,8 @@ Use this skill when the objective involves predicting a categorical label from i
 7. Tune hyperparameters via cross-validated search
 8. Compare metrics across algorithms and select best model
 9. Generate final evaluation report with interpretation
+
+## Reference
+
+See `reference.md` in this directory for comprehensive algorithm decision trees,
+parameter tuning grids, code patterns, and metric selection guidance.

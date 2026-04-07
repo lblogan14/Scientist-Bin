@@ -34,13 +34,22 @@ def train(
     framework: str | None = typer.Option(None, "--framework", help="Framework preference"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress progress output"),
     auto_approve: bool = typer.Option(False, "--auto-approve", help="Skip plan review"),
+    deep_research: bool = typer.Option(
+        False, "--deep-research", help="Run autonomous research campaign"
+    ),
+    budget: int = typer.Option(
+        10, "--budget", help="Max experiment iterations (deep research only)"
+    ),
+    time_limit: str = typer.Option(
+        "4h",
+        "--time-limit",
+        help="Wall-clock time limit, e.g. 4h, 30m (deep research only)",
+    ),
 ) -> None:
     """Run full training pipeline locally (no server required)."""
     import asyncio
     from pathlib import Path
 
-    from scientist_bin_backend.agents.central.agent import CentralAgent
-    from scientist_bin_backend.agents.central.schemas import TrainRequest
     from scientist_bin_backend.utils.naming import generate_experiment_id
 
     # Resolve data file path to absolute and validate before starting the agent
@@ -52,8 +61,73 @@ def train(
             raise typer.Exit(code=1)
         resolved_data_file = str(resolved)
 
-    agent = CentralAgent()
     experiment_id = generate_experiment_id(objective)
+
+    # -------------------------------------------------------------------
+    # Deep Research path: delegate to CampaignAgent
+    # -------------------------------------------------------------------
+    if deep_research:
+        import re
+
+        if not resolved_data_file:
+            typer.echo(
+                "Error: --data-file is required for --deep-research",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        match = re.match(r"^(\d+)(h|m|s)$", time_limit.strip())
+        if not match:
+            typer.echo(
+                "Invalid time limit format. Use e.g. '4h', '30m', '300s'.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        value, unit = int(match.group(1)), match.group(2)
+        seconds = value * {"h": 3600, "m": 60, "s": 1}[unit]
+
+        from scientist_bin_backend.agents.campaign.agent import CampaignAgent
+
+        if not quiet:
+            typer.echo("\n  Scientist-Bin  |  Deep Research Campaign")
+            typer.echo(f"  Experiment: {experiment_id}")
+            typer.echo(f"  Objective:  {objective}")
+            typer.echo(f"  Data file:  {resolved_data_file}")
+            typer.echo(f"  Budget:     {budget} experiments, {time_limit}")
+            typer.echo("")
+
+        agent = CampaignAgent()
+        result = asyncio.run(
+            agent.run(
+                objective=objective,
+                data_file_path=resolved_data_file,
+                data_description=data,
+                budget_max_iterations=budget,
+                budget_time_limit_seconds=float(seconds),
+            )
+        )
+
+        if not quiet:
+            typer.echo(
+                f"\nCampaign complete: "
+                f"{result.total_iterations} experiments in "
+                f"{result.total_time_seconds:.1f}s"
+            )
+            if result.best_algorithm:
+                typer.echo(f"  Best: {result.best_algorithm}")
+            for k, v in list(result.best_metrics.items())[:5]:
+                typer.echo(f"    {k}: {v}")
+
+        typer.echo(result.model_dump_json(indent=2))
+        return
+
+    # -------------------------------------------------------------------
+    # Standard path: delegate to CentralAgent
+    # -------------------------------------------------------------------
+    from scientist_bin_backend.agents.central.agent import CentralAgent
+    from scientist_bin_backend.agents.central.schemas import TrainRequest
+
+    agent = CentralAgent()
     request = TrainRequest(
         objective=objective,
         data_description=data,
@@ -535,6 +609,157 @@ def health(
     except httpx.ConnectError:
         typer.echo("Server is not reachable.", err=True)
         raise typer.Exit(code=1)
+
+
+@app.command()
+def deploy(
+    experiment_id: str = typer.Argument(..., help="Experiment ID to deploy"),
+    tag: str | None = typer.Option(
+        None,
+        "--tag",
+        help="Docker image tag",
+    ),
+    push: bool = typer.Option(
+        False,
+        "--push",
+        help="Push image to registry after build",
+    ),
+    output_dir: str | None = typer.Option(
+        None,
+        "--output-dir",
+        help="Write artifacts only (no build)",
+    ),
+    build: bool = typer.Option(
+        True,
+        "--build/--no-build",
+        help="Build Docker image",
+    ),
+) -> None:
+    """Deploy a trained model as a Docker inference container.
+
+    Generates a Dockerfile, serve.py, and requirements.txt, then optionally
+    builds a Docker image. The inference server exposes /predict, /health,
+    and /info endpoints.
+    """
+    from pathlib import Path
+
+    from scientist_bin_backend.deploy.builder import (
+        build_docker_image,
+        generate_deploy_artifacts,
+        push_docker_image,
+    )
+
+    dest = Path(output_dir) if output_dir else None
+
+    try:
+        deploy_dir = generate_deploy_artifacts(experiment_id, output_dir=dest)
+    except FileNotFoundError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Deploy artifacts written to: {deploy_dir}")
+
+    if not build:
+        typer.echo("Skipping Docker build (--no-build).")
+        return
+
+    try:
+        image_tag = build_docker_image(deploy_dir, tag=tag, experiment_id=experiment_id)
+        typer.echo(f"Docker image built: {image_tag}")
+    except RuntimeError as exc:
+        typer.echo(f"Docker build failed:\n{exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    if push:
+        try:
+            push_docker_image(image_tag)
+            typer.echo(f"Docker image pushed: {image_tag}")
+        except RuntimeError as exc:
+            typer.echo(f"Docker push failed:\n{exc}", err=True)
+            raise typer.Exit(code=1) from exc
+
+
+@app.command()
+def campaign(
+    objective: str = typer.Argument(
+        ...,
+        help="High-level research objective",
+    ),
+    data_file: str = typer.Option(
+        ...,
+        "--data-file",
+        help="Path to dataset file",
+    ),
+    budget: int = typer.Option(
+        10,
+        "--budget",
+        help="Maximum number of experiments",
+    ),
+    time_limit: str = typer.Option(
+        "4h",
+        "--time-limit",
+        help="Wall-clock time limit (e.g. 1h, 30m)",
+    ),
+    data: str = typer.Option("", "--data", help="Data description"),
+) -> None:
+    """Run an autonomous research campaign (long-running experiment loop).
+
+    The campaign orchestrator generates hypotheses, runs experiments,
+    extracts insights, and iterates until budget is exhausted or
+    results converge.
+    """
+    import asyncio
+    import re
+    from pathlib import Path
+
+    # Parse time limit
+    match = re.match(r"^(\d+)(h|m|s)$", time_limit.strip())
+    if not match:
+        typer.echo(
+            "Invalid time limit format. Use e.g. '4h', '30m', '300s'.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    value, unit = int(match.group(1)), match.group(2)
+    seconds = value * {"h": 3600, "m": 60, "s": 1}[unit]
+
+    # Resolve data file
+    data_path = Path(data_file)
+    if not data_path.is_absolute():
+        backend_data = Path(__file__).resolve().parent.parent / "data"
+        candidate = backend_data / data_path
+        if candidate.exists():
+            data_path = candidate
+    data_path = data_path.resolve()
+
+    if not data_path.exists():
+        typer.echo(f"Data file not found: {data_path}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"Starting campaign: {objective}")
+    typer.echo(f"  Data: {data_path}")
+    typer.echo(f"  Budget: {budget} experiments, {time_limit}")
+
+    from scientist_bin_backend.agents.campaign.agent import CampaignAgent
+
+    agent = CampaignAgent()
+    result = asyncio.run(
+        agent.run(
+            objective=objective,
+            data_file_path=str(data_path),
+            data_description=data,
+            budget_max_iterations=budget,
+            budget_time_limit_seconds=float(seconds),
+        )
+    )
+
+    typer.echo(f"\nCampaign complete: {result.get('campaign_status', '?')}")
+    best = result.get("best_result", {})
+    if best:
+        typer.echo(f"  Best: {best.get('algorithm', '?')}")
+        metrics = best.get("metrics", {})
+        for k, v in list(metrics.items())[:5]:
+            typer.echo(f"    {k}: {v}")
 
 
 # ---------------------------------------------------------------------------

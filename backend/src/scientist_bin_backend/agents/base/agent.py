@@ -98,6 +98,8 @@ class BaseFrameworkAgent(ABC):
             "best_experiment": None,
             "current_iteration": 0,
             "max_iterations": max_iterations,
+            "error_retry_count": 0,
+            "max_error_retries": 3,
             "next_action": None,
             "refinement_context": None,
             # Test evaluation

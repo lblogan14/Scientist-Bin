@@ -1,14 +1,17 @@
-import { Award } from "lucide-react";
+import { Award, Rocket } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Experiment, ExperimentResult } from "@/types/api";
 import { isExperimentError } from "@/types/api";
+import { pickPrimaryMetric, compareMetricValues } from "@/lib/metric-utils";
 
 interface ModelRankingCardProps {
   models: Experiment[];
+  onDeployClick?: (experimentId: string) => void;
 }
 
-export function ModelRankingCard({ models }: ModelRankingCardProps) {
+export function ModelRankingCard({ models, onDeployClick }: ModelRankingCardProps) {
   // Extract best model info per completed experiment
   const rankings = models
     .filter((m) => m.result && !isExperimentError(m.result))
@@ -17,23 +20,26 @@ export function ModelRankingCard({ models }: ModelRankingCardProps) {
       const bestRecord = result.experiment_history?.find(
         (h) => h.algorithm === result.best_model,
       );
-      // Find primary metric (first val_ metric, then first metric)
+      // Find primary metric based on problem type
       const metrics = bestRecord?.metrics ?? {};
-      const primaryKey =
-        Object.keys(metrics).find((k) => k.startsWith("val_")) ??
-        Object.keys(metrics)[0];
-      const primaryValue = primaryKey ? metrics[primaryKey] : null;
+      const primary = pickPrimaryMetric(metrics, result.problem_type);
       return {
         id: m.id,
         objective: m.objective,
         algorithm: result.best_model ?? "Unknown",
-        primaryMetric: primaryKey ?? "",
-        primaryValue,
+        primaryMetric: primary.key,
+        primaryValue: primary.key ? primary.value : null,
         reasoning: result.selection_reasoning,
         trainingTime: bestRecord?.training_time_seconds ?? 0,
       };
     })
-    .sort((a, b) => (b.primaryValue ?? 0) - (a.primaryValue ?? 0));
+    .sort((a, b) => {
+      if (a.primaryValue == null && b.primaryValue == null) return 0;
+      if (a.primaryValue == null) return 1;
+      if (b.primaryValue == null) return -1;
+      const metricKey = a.primaryMetric || b.primaryMetric;
+      return compareMetricValues(a.primaryValue, b.primaryValue, metricKey);
+    });
 
   if (rankings.length === 0) return null;
 
@@ -65,9 +71,22 @@ export function ModelRankingCard({ models }: ModelRankingCardProps) {
                 </Badge>
               </div>
             )}
-            <p className="text-muted-foreground text-xs">
-              {r.trainingTime.toFixed(1)}s training time
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-xs">
+                {r.trainingTime.toFixed(1)}s training time
+              </p>
+              {onDeployClick && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => onDeployClick(r.id)}
+                >
+                  <Rocket className="mr-1 size-3" />
+                  Deploy
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
       ))}

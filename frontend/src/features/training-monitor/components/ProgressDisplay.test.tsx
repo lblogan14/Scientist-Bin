@@ -23,6 +23,7 @@ function makeExperiment(
     analysis_report: null,
     summary_report: null,
     split_data_paths: null,
+    problem_type: null,
     created_at: "2026-04-01T10:00:00Z",
     updated_at: "2026-04-01T10:30:00Z",
     ...overrides,

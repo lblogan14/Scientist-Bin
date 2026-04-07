@@ -24,6 +24,7 @@ def _build_agent_models(settings: Settings | None = None) -> dict[str, str]:
         "analyst": pro,
         "sklearn": pro,
         "summary": flash,
+        "campaign": pro,
     }
 
 

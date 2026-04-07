@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownRenderer } from "@/components/shared/MarkdownRenderer";
 import { ParetoFrontierChart } from "@/components/charts/ParetoFrontierChart";
 import type { ExperimentResult } from "@/types/api";
+import { pickPrimaryMetric } from "@/lib/metric-utils";
 import { MetricCards } from "./MetricCards";
 
 interface OverviewTabProps {
@@ -26,12 +27,7 @@ export function OverviewTab({ result }: OverviewTabProps) {
   const paretoData = result.experiment_history
     ?.filter((r) => r.training_time_seconds > 0)
     .map((r) => {
-      const primaryMetric =
-        r.metrics.val_accuracy ??
-        r.metrics.accuracy ??
-        r.metrics.val_f1_macro ??
-        Object.values(r.metrics)[0] ??
-        0;
+      const primaryMetric = pickPrimaryMetric(r.metrics, result.problem_type).value;
       return {
         name: r.algorithm,
         performance: primaryMetric,
@@ -76,8 +72,8 @@ export function OverviewTab({ result }: OverviewTabProps) {
             {bestParams && Object.keys(bestParams).length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(bestParams).map(([key, val]) => (
-                  <Badge key={key} variant="outline" className="text-xs">
-                    {key}: {String(val)}
+                  <Badge key={key} variant="outline" className="max-w-48 text-xs">
+                    <span className="truncate">{key}: {String(val)}</span>
                   </Badge>
                 ))}
               </div>

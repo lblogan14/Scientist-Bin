@@ -35,3 +35,8 @@ Use this skill when there are no labels and the objective involves grouping simi
 6. Visualize clusters using PCA/t-SNE reduction
 7. Profile clusters (mean feature values per cluster)
 8. Generate final report with cluster descriptions
+
+## Reference
+
+See `reference.md` in this directory for comprehensive algorithm decision trees,
+parameter tuning guidance, visualization patterns, and evaluation metric details.

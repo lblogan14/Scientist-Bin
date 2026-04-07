@@ -54,9 +54,31 @@ When `task_analysis` is provided by the central orchestrator, the profiler node 
 
 When `task_analysis` is absent (standalone CLI usage), the profiler falls back to independent classification and always returns `confidence = "confirmed"`.
 
+## Problem-Type-Specific Splitting
+
+Data splitting in `nodes/data_splitter.py` differs significantly by problem type:
+
+### Supervised Tasks (Classification, Regression)
+
+Standard two-stage split producing train/val/test sets:
+1. First split: data into train vs. temp (val + test)
+2. Second split: temp into val and test
+3. Classification uses **stratified splits** (preserving class proportions) when the target column has at least 2 samples per class
+4. Regression uses random splits (no stratification)
+
+### Clustering (Unsupervised)
+
+Clustering uses a dedicated `_build_clustering_split_script()`:
+- Produces only **train (80%) + test (20%)** -- no validation set
+- No target column is used (unsupervised -- no stratification)
+- `val_path` is set to `None` in the split statistics
+- `val_samples` = 0, `val_ratio` = 0.0
+
+The split function dispatches based on `problem_type == "clustering"` before building the split script.
+
 ## Adaptive Split Ratios
 
-Split ratios adapt based on task context:
+Split ratios adapt based on task context (supervised tasks only):
 
 | Condition | Train/Val/Test | Reasoning |
 |-----------|---------------|-----------|
@@ -64,6 +86,16 @@ Split ratios adapt based on task context:
 | High complexity (`task_analysis`) | 60/20/20 | More validation data for reliable model selection |
 | Tiny dataset (<200 rows) | 80/10/10 | Preserve training data |
 | Guard | >= 60% train | Safety floor |
+
+## Cleaning Behavior by Problem Type
+
+For **supervised tasks**, the cleaning script is informed by the target column and may apply target-aware operations (e.g., avoiding dropping minority class samples for imbalanced classification).
+
+For **clustering**, there is no target column expected. The cleaning script focuses on:
+- Handling missing values in feature columns
+- Removing or encoding categorical features (distance-based algorithms need numeric input)
+- Scaling considerations (important for KMeans, DBSCAN, etc.)
+- No stratification-related cleaning (no class distribution to preserve)
 
 ## Context-Aware Cleaning
 

@@ -15,6 +15,8 @@ interface ExperimentFilterBarProps {
   onStatusChange: (value: string) => void;
   framework: string;
   onFrameworkChange: (value: string) => void;
+  problemType: string;
+  onProblemTypeChange: (value: string) => void;
 }
 
 export function ExperimentFilterBar({
@@ -24,6 +26,8 @@ export function ExperimentFilterBar({
   onStatusChange,
   framework,
   onFrameworkChange,
+  problemType,
+  onProblemTypeChange,
 }: ExperimentFilterBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -57,6 +61,17 @@ export function ExperimentFilterBar({
           <SelectItem value="sklearn">Scikit-learn</SelectItem>
           <SelectItem value="pytorch">PyTorch</SelectItem>
           <SelectItem value="tensorflow">TensorFlow</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={problemType} onValueChange={onProblemTypeChange}>
+        <SelectTrigger className="w-40">
+          <SelectValue placeholder="All types" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All types</SelectItem>
+          <SelectItem value="classification">Classification</SelectItem>
+          <SelectItem value="regression">Regression</SelectItem>
+          <SelectItem value="clustering">Clustering</SelectItem>
         </SelectContent>
       </Select>
     </div>

@@ -20,7 +20,7 @@ export default function ExperimentSetupPage() {
                 experimentId={selectedId}
                 onDeleted={() => setSelectedId(null)}
               />
-              <HyperparameterForm />
+              <HyperparameterForm experimentId={selectedId} />
             </>
           ) : (
             <p className="text-muted-foreground text-sm">

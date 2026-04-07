@@ -40,6 +40,7 @@ export function ExperimentList({ selectedId, onSelect }: ExperimentListProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [frameworkFilter, setFrameworkFilter] = useState("all");
+  const [problemTypeFilter, setProblemTypeFilter] = useState("all");
 
   const { data: experiments, isLoading } = useQuery({
     queryKey: ["experiments"],
@@ -54,6 +55,10 @@ export function ExperimentList({ selectedId, onSelect }: ExperimentListProps) {
       if (statusFilter !== "all" && exp.status !== statusFilter) return false;
       if (frameworkFilter !== "all" && exp.framework !== frameworkFilter)
         return false;
+      if (problemTypeFilter !== "all") {
+        const pt = exp.problem_type ?? (exp.result && !("error" in exp.result) ? exp.result.problem_type : null);
+        if (pt !== problemTypeFilter) return false;
+      }
       if (
         search &&
         !exp.objective.toLowerCase().includes(search.toLowerCase()) &&
@@ -62,7 +67,7 @@ export function ExperimentList({ selectedId, onSelect }: ExperimentListProps) {
         return false;
       return true;
     });
-  }, [experiments, search, statusFilter, frameworkFilter]);
+  }, [experiments, search, statusFilter, frameworkFilter, problemTypeFilter]);
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -75,6 +80,8 @@ export function ExperimentList({ selectedId, onSelect }: ExperimentListProps) {
         onStatusChange={setStatusFilter}
         framework={frameworkFilter}
         onFrameworkChange={setFrameworkFilter}
+        problemType={problemTypeFilter}
+        onProblemTypeChange={setProblemTypeFilter}
       />
 
       <Table>

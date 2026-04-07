@@ -38,6 +38,10 @@ packages = ["src/scientist_bin_backend"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (run with -m slow)",
+    "timeout: set a timeout for a test (requires pytest-timeout plugin)",
+]
 
 [tool.ruff]
 target-version = "py311"
